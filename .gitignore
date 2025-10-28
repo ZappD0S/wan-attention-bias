@@ -2,3 +2,7 @@
 .ruff_cache/
 .ipynb_checkpoints/
 weights/
+*.mp4
+*.avi
+old/
+
