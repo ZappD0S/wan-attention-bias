@@ -11,14 +11,14 @@ import torch.nn.functional as F
 from matplotlib import pyplot as plt
 from PIL import Image
 from torchvision import transforms
-from wan import CustomWanI2V
 from wan.configs.wan_i2v_14B import i2v_14B
+from wan.regional_prompt import WanI2V
 from wan.utils.utils import cache_video
 
 warnings.filterwarnings("ignore", category=FutureWarning, message=".*torch.cuda.amp.autocast.*")
 
 # %%
-wan_i2v = CustomWanI2V(
+wan_i2v = WanI2V(
     config=i2v_14B,
     checkpoint_dir="./weights/Wan2.1-I2V-14B-480P/",
     device_id=0,
@@ -26,7 +26,7 @@ wan_i2v = CustomWanI2V(
 )
 
 # %%
-img_file = Path("examples/women_looking_at_each_other.jpg")
+img_file = Path("examples/women_looking_at_each_other/original.jpg")
 # img_file = Path("examples/girl_looking_at_guy.jpg")
 img = Image.open(img_file).convert("RGB")
 
@@ -37,7 +37,8 @@ transform = transforms.Compose(
 )
 img = transform(img)
 
-transformed_img_file = img_file.with_stem(img_file.stem + "_transformed")
+# transformed_img_file = img_file.with_stem(img_file.stem + "_transformed")
+transformed_img_file = img_file.with_stem("transformed")
 img.save(transformed_img_file, quality=95)
 
 # %%
@@ -160,6 +161,7 @@ wlw_matrix = torch.stack([pad, a_looks_b, b_looks_a, pad]).reshape(2, 2, -1)
 assert (wlw_matrix[0, 1] == a_looks_b).all()
 assert (wlw_matrix[1, 0] == b_looks_a).all()
 
+
 # %%
 # prompt = "Two young women, dressed in summer dresses, are walking and conversing in a vast, verdant field. The woman on the left has long, dark brown hair and is wearing a flowing, off-the-shoulder red dress with white patterns, looking towards her companion and smiling. The woman on the right has lighter, possibly reddish-blonde hair and is wearing a white sleeveless dress with small dark polka dots, also smiling and looking at her friend; both are wearing white sneakers. A narrow, grassy path is visible between rows of what appear to be young green bushes or crops, possibly berry bushes, stretching far into the background, with the rows creating a strong sense of perspective, converging towards the horizon under an overcast sky that suggests a soft, diffused light, contributing to the overall natural, serene, and friendly atmosphere of this relaxed interaction in an open agricultural landscape."
 
@@ -199,7 +201,7 @@ bias_kwargs = {
 torch.cuda.synchronize()
 gc.collect()
 torch.cuda.empty_cache()
-video, simil_masks = wan_i2v.generate(
+video, extra_data = wan_i2v.generate(
     prompt,
     img,
     bias_kwargs,
@@ -208,6 +210,12 @@ video, simil_masks = wan_i2v.generate(
     sampling_steps=sampling_steps,
     frame_num=frame_num,
 )
+
+# %%
+
+# extra_data = extra_data.copy()
+simil_masks = extra_data["simil_masks"]
+attn_weights_map = extra_data["attn_weights_map"]
 
 
 # %%
@@ -260,15 +268,37 @@ face_masks = simil_masks[0, -1].float().mean(dim=0) > 0.5
 # face_masks = simil_masks[0].float().mean(dim=[0,1]) > 0.5
 # face_masks = simil_masks[0].float().mean(dim=[0,1]) * 255
 
-face_masks = (
-    F.interpolate(face_masks.unsqueeze(1).float(), size=(frame_num, h, w), mode="nearest")
-    .bool()
-    .squeeze(1)
-)
+
+def unscale(tensor):
+    # tensor shape: (..., T, H, W)
+    batch_dims = tensor.shape[:-3]
+
+    T, H, W = tensor.shape[-3:]
+    tensor = tensor.view(-1, 1, T, H, W)
+
+    interpolated_tensor = F.interpolate(tensor, size=(frame_num, h, w), mode="nearest")
+
+    output_shape = batch_dims + (frame_num, h, w)
+    interpolated_tensor = interpolated_tensor.view(output_shape)
+
+    return interpolated_tensor
+
+
+face_masks = unscale(face_masks.float()).bool()
+
+attn_weights_map = attn_weights_map.copy()
+for inds, attn_weights in attn_weights_map.items():
+    *_, last_attn_weights = attn_weights
+    # remove batch dim
+    last_attn_weights = last_attn_weights.squeeze(1)
+    print(last_attn_weights.shape)
+    attn_weights_map[inds] = unscale(last_attn_weights)
 
 
 # %%
-def produce_debug_video(video, save_file, wlw, face_masks, fps=16):
+
+
+def write_debug_video_masks(video, save_file, wlw, face_masks, fps=16):
     _, h, w, _ = video.shape
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
     writer = cv2.VideoWriter(save_file, fourcc, fps, (w, h))
@@ -296,14 +326,60 @@ def produce_debug_video(video, save_file, wlw, face_masks, fps=16):
     writer.release()
 
 
+def write_debug_video_attn(video, save_file, attn_weights, fps=16):
+    def _build_attn_cmap(attn):
+        attn_uint8 = (attn * 255).astype(np.uint8)
+        return cv2.applyColorMap(attn_uint8, cv2.COLORMAP_JET)
+
+    _, h, w, _ = video.shape
+    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+    writer = cv2.VideoWriter(save_file, fourcc, fps, (w, h))
+    alpha = 0.35  # 35% opacity
+
+    attn_weights = attn_weights / 0.06
+
+    for frame, attn in zip(video, attn_weights, strict=True):
+        frame = np.ascontiguousarray(frame.numpy())
+        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+
+        # ab_attn = np.ascontiguousarray(ab_attn.numpy())
+        attn = np.ascontiguousarray(attn.numpy())
+        # a_attn, b_attn = ab_attn
+        # print(a_attn.max(), b_attn.max())
+        # attn = np.maximum(a_attn, b_attn)
+        # attn = a_attn
+        # attn = b_attn
+        attn_cmap = _build_attn_cmap(attn)
+        frame = cv2.addWeighted(attn_cmap, alpha, frame, 1 - alpha, 0)
+
+        writer.write(frame)
+
+    writer.release()
+
+
 # %%
-produce_debug_video(
+
+Path("debug_video").mkdir(exist_ok=True)
+
+write_debug_video_masks(
     video_norm,
-    "debug_example.mp4",
+    "debug_video/people_masks.mp4",
     wlw_matrix[[0, 1], [1, 0], :].transpose(0, 1),
     face_masks.transpose(0, 1),
     fps=4,
 )
+
+for ab, ab_attn_weights in attn_weights_map.items():
+    a, b = ab
+    for i in range(2):
+        # attn_weights = ab_attn_weights[i]
+        write_debug_video_attn(
+            video_norm,
+            f"debug_video/attn{ab[i]}_{a}_looks_{b}.mp4",
+            # attn_weights.transpose(0, 1),
+            ab_attn_weights[i],
+            fps=4,
+        )
 
 # %%
 video_file = cache_video(
