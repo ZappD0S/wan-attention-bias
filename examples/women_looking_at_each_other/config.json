@@ -1,0 +1,25 @@
+{
+    "prompt": "Two smiling young women in summer dresses and white sneakers walk and converse in a vast, green field of uniform crop rows receding into the distance. The woman on the left wears a red, off-the-shoulder dress, while the woman on the right wears a white polka-dot dress. An overcast sky provides soft, diffused light over the serene agricultural landscape.",
+    "characters": [
+        {
+            "id": 0,
+            "descr": "the woman on the left wearing a red, off-the-shoulder dress",
+            "bbox": [ ]
+        },
+        {
+            "id": 1,
+            "descr": "the woman on the right wearing a white polka-dot dress",
+            "bbox": [ ]
+        }
+    ],
+    "wlw": [
+        {
+            "pair": [ 0, 1 ],
+            "time_intervals": [ [ 0.0, 0.5 ] ]
+        },
+        {
+            "pair": [ 1, 0 ],
+            "time_intervals": [ [ 0.5, 1.0 ] ]
+        }
+    ]
+}
