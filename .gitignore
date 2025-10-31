@@ -1,8 +1,7 @@
-.venv/
+.venv
 .ruff_cache/
 .ipynb_checkpoints/
-weights/
+weights
 *.mp4
 *.avi
 old/
-
