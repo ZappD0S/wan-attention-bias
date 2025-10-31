@@ -1,4 +1,5 @@
 # %%
+import datetime
 import gc
 import json
 import warnings
@@ -10,7 +11,9 @@ import torch
 import torch.nn.functional as F
 from matplotlib import pyplot as plt
 from PIL import Image
-from torchvision import transforms
+
+from torchvision import tv_tensors
+from torchvision.transforms import v2 as transforms
 from wan.configs.wan_i2v_14B import i2v_14B
 from wan.regional_prompt import WanI2V
 from wan.utils.utils import cache_video
@@ -18,6 +21,7 @@ from wan.utils.utils import cache_video
 warnings.filterwarnings("ignore", category=FutureWarning, message=".*torch.cuda.amp.autocast.*")
 
 # %%
+
 wan_i2v = WanI2V(
     config=i2v_14B,
     checkpoint_dir="./weights/Wan2.1-I2V-14B-480P/",
@@ -26,50 +30,45 @@ wan_i2v = WanI2V(
 )
 
 # %%
-img_file = Path("examples/women_looking_at_each_other/original.jpg")
-# img_file = Path("examples/girl_looking_at_guy.jpg")
+
+PROMPT_CONFIG = "examples/women_looking_at_each_other"
+
+base_path = Path(PROMPT_CONFIG)
+img_file = base_path / "original.jpg"
 img = Image.open(img_file).convert("RGB")
+original_size = img.size  # (width, height)
+
+with open(base_path / "config.json") as f:
+    config = json.load(f)
+
+char_data = sorted(config["characters"], key=lambda x: x.pop("id"))
+
+bboxes = [c["bbox"] for c in char_data]
+bboxes = torch.tensor(bboxes, dtype=torch.float)
+bboxes = tv_tensors.BoundingBoxes(
+    bboxes,
+    format=config["bbox_format"],
+    canvas_size=(original_size[1], original_size[0]),  # (height, width)
+)
+
+format_converter = transforms.ConvertBoundingBoxFormat("XYXY")
+bboxes = format_converter(bboxes)
 
 target_size = (480, 832)
-
 transform = transforms.Compose(
-    [transforms.Resize(min(target_size)), transforms.CenterCrop(target_size)]
+    [
+        transforms.Resize(min(target_size)),
+        transforms.CenterCrop(target_size),
+    ]
 )
-img = transform(img)
-
-# transformed_img_file = img_file.with_stem(img_file.stem + "_transformed")
-transformed_img_file = img_file.with_stem("transformed")
-img.save(transformed_img_file, quality=95)
+transformed_img, transformed_bboxes = transform(img, bboxes)
 
 # %%
 
-with open(transformed_img_file.with_suffix(".json")) as f:
-    annotations = json.load(f)
+img_bgr = cv2.cvtColor(np.array(transformed_img), cv2.COLOR_RGB2BGR)
 
-face_bboxes_dict = {
-    shape["label"]: shape["points"]
-    for shape in annotations["shapes"]
-    if shape["shape_type"] == "rectangle"
-}
-
-people_bboxes = []
-
-for shape in annotations["shapes"]:
-    if shape["shape_type"] != "rectangle":
-        continue
-
-    xy1, xy2 = shape["points"]
-    bbox = [round(x) for x in xy1 + xy2]
-    people_bboxes.append(bbox)
-
-
-# %%
-img_bgr = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
-
-
-for idx, bbox in enumerate(people_bboxes):
-    # x1, y1, x2, y2 = map(round, bbox)
-    x1, y1, x2, y2 = bbox
+for idx, bbox in enumerate(transformed_bboxes):
+    x1, y1, x2, y2 = map(round, bbox.tolist())
 
     cv2.rectangle(img_bgr, (x1, y1), (x2, y2), color=(0, 255, 0), thickness=2)
     cv2.putText(
@@ -86,13 +85,13 @@ for idx, bbox in enumerate(people_bboxes):
 img_arr = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
 
 # Display in Jupyter notebook
-# plt.figure(figsize=(8, 8))
 plt.imshow(img_arr)
 plt.axis("off")
 plt.show()
 
-
 # %%
+
+
 def create_bbox_mask(bbox, image_size):
     """
     Creates a boolean mask for a bounding box.
@@ -108,10 +107,11 @@ def create_bbox_mask(bbox, image_size):
     return mask
 
 
-w, h = img.size
-face_masks = torch.stack([create_bbox_mask(bbox, (h, w)) for bbox in people_bboxes])
+w, h = transformed_img.size
+face_masks = torch.stack([create_bbox_mask(bbox, (h, w)) for bbox in transformed_bboxes])
 
 # %%
+
 colors = [
     [0, 0, 255],  # Red
     [0, 255, 0],  # Green
@@ -119,7 +119,7 @@ colors = [
     [255, 255, 0],  # Cyan
 ]
 
-img_bgr = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
+img_bgr = cv2.cvtColor(np.array(transformed_img), cv2.COLOR_RGB2BGR)
 
 overlay = img_bgr.copy()
 
@@ -136,13 +136,19 @@ plt.show()
 
 # %%
 frame_num = 81  # default
-pad = torch.zeros(frame_num, dtype=bool)
 
-a_looks_b = torch.zeros(frame_num, dtype=bool)
-a_looks_b[:40] = True
+n_characters = len(bboxes)
+wlw_matrix = np.zeros([n_characters, n_characters, frame_num], dtype=bool)
 
-b_looks_a = torch.zeros(frame_num, dtype=bool)
-b_looks_a[40:] = True
+for pair_data in config["wlw"]:
+    i, j = pair_data["pair"]
+
+    for t0, t1 in pair_data["time_intervals"]:
+        assert (0 <= t0) and (t1 <= 1)
+        start, end = [int(t * frame_num) for t in (t0, t1)]
+        wlw_matrix[i, j, start:end] = True
+
+wlw_matrix = torch.from_numpy(wlw_matrix)
 
 #           ┌───────── Observed ─────────┐
 #           │         A            B     │
@@ -157,27 +163,16 @@ b_looks_a[40:] = True
 # └─────────┴────────────────────────────┘
 
 
-wlw_matrix = torch.stack([pad, a_looks_b, b_looks_a, pad]).reshape(2, 2, -1)
-assert (wlw_matrix[0, 1] == a_looks_b).all()
-assert (wlw_matrix[1, 0] == b_looks_a).all()
-
-
 # %%
-# prompt = "Two young women, dressed in summer dresses, are walking and conversing in a vast, verdant field. The woman on the left has long, dark brown hair and is wearing a flowing, off-the-shoulder red dress with white patterns, looking towards her companion and smiling. The woman on the right has lighter, possibly reddish-blonde hair and is wearing a white sleeveless dress with small dark polka dots, also smiling and looking at her friend; both are wearing white sneakers. A narrow, grassy path is visible between rows of what appear to be young green bushes or crops, possibly berry bushes, stretching far into the background, with the rows creating a strong sense of perspective, converging towards the horizon under an overcast sky that suggests a soft, diffused light, contributing to the overall natural, serene, and friendly atmosphere of this relaxed interaction in an open agricultural landscape."
 
-prompt = "Two smiling young women in summer dresses and white sneakers walk and converse in a vast, green field of uniform crop rows receding into the distance. The woman on the left wears a red, off-the-shoulder dress, while the woman on the right wears a white polka-dot dress. An overcast sky provides soft, diffused light over the serene agricultural landscape."
 negative_prompt = "Bright tones, overexposed, static, blurred details, subtitles, style, works, paintings, images, static, overall gray, worst quality, low quality, JPEG compression residue, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn faces, deformed, disfigured, misshapen limbs, fused fingers, still picture, messy background, three legs, many people in the background, walking backwards"
-
-descr_list = [
-    "the woman on the left wearing a red, off-the-shoulder dress",
-    "the woman on the right wearing a white polka-dot dress",
-]
-
-# link_list = ["is looking at", "is not looking at"]
-link_text = "is looking at"
+prompt = config["prompt"]
+descr_list = [c["descr"] for c in config["characters"]]
+link_text = config["link_text"]
 
 sampling_steps = 40
 
+# TODO: maybe put this in the config file as well?
 timestep_bias_schedule = torch.zeros(sampling_steps, dtype=bool)
 # timestep_bias_schedule[sampling_steps // 2 :] = True
 timestep_bias_schedule[:] = True
@@ -203,7 +198,7 @@ gc.collect()
 torch.cuda.empty_cache()
 video, extra_data = wan_i2v.generate(
     prompt,
-    img,
+    transformed_img,
     bias_kwargs,
     max_area=target_size[0] * target_size[1],
     n_prompt=negative_prompt,
@@ -291,7 +286,6 @@ for inds, attn_weights in attn_weights_map.items():
     *_, last_attn_weights = attn_weights
     # remove batch dim
     last_attn_weights = last_attn_weights.squeeze(1)
-    print(last_attn_weights.shape)
     attn_weights_map[inds] = unscale(last_attn_weights)
 
 
@@ -301,7 +295,7 @@ for inds, attn_weights in attn_weights_map.items():
 def write_debug_video_masks(video, save_file, wlw, face_masks, fps=16):
     _, h, w, _ = video.shape
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-    writer = cv2.VideoWriter(save_file, fourcc, fps, (w, h))
+    writer = cv2.VideoWriter(str(save_file), fourcc, fps, (w, h))
 
     RED = (0, 0, 255)
     BLUE = (255, 0, 0)
@@ -333,7 +327,7 @@ def write_debug_video_attn(video, save_file, attn_weights, fps=16):
 
     _, h, w, _ = video.shape
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-    writer = cv2.VideoWriter(save_file, fourcc, fps, (w, h))
+    writer = cv2.VideoWriter(str(save_file), fourcc, fps, (w, h))
     alpha = 0.35  # 35% opacity
 
     attn_weights = attn_weights / 0.06
@@ -342,13 +336,7 @@ def write_debug_video_attn(video, save_file, attn_weights, fps=16):
         frame = np.ascontiguousarray(frame.numpy())
         frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
 
-        # ab_attn = np.ascontiguousarray(ab_attn.numpy())
         attn = np.ascontiguousarray(attn.numpy())
-        # a_attn, b_attn = ab_attn
-        # print(a_attn.max(), b_attn.max())
-        # attn = np.maximum(a_attn, b_attn)
-        # attn = a_attn
-        # attn = b_attn
         attn_cmap = _build_attn_cmap(attn)
         frame = cv2.addWeighted(attn_cmap, alpha, frame, 1 - alpha, 0)
 
@@ -359,11 +347,13 @@ def write_debug_video_attn(video, save_file, attn_weights, fps=16):
 
 # %%
 
-Path("debug_video").mkdir(exist_ok=True)
+now = datetime.datetime.now()
+output_dir = base_path / "output" / now.strftime(r"%Y-%m-%d_%H-%M-%S")
+output_dir.mkdir(parents=True, exist_ok=True)
 
 write_debug_video_masks(
     video_norm,
-    "debug_video/people_masks.mp4",
+    output_dir / "people_masks.mp4",
     wlw_matrix[[0, 1], [1, 0], :].transpose(0, 1),
     face_masks.transpose(0, 1),
     fps=4,
@@ -372,16 +362,15 @@ write_debug_video_masks(
 for ab, ab_attn_weights in attn_weights_map.items():
     a, b = ab
     for i in range(2):
-        # attn_weights = ab_attn_weights[i]
         write_debug_video_attn(
             video_norm,
-            f"debug_video/attn{ab[i]}_{a}_looks_{b}.mp4",
-            # attn_weights.transpose(0, 1),
+            output_dir / f"attn{ab[i]}_{a}_looks_{b}.mp4",
             ab_attn_weights[i],
             fps=4,
         )
 
 # %%
+
 video_file = cache_video(
     tensor=video.unsqueeze(0),
     save_file="example.mp4",
