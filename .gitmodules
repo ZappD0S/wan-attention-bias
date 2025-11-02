@@ -1,3 +1,4 @@
 [submodule "wan2.1"]
 	path = wan2.1
-	url = git@github.com:Wan-Video/Wan2.1.git
+	url = git@github.com:ZappD0S/Wan2.1.git
+	branch = dev-v2
