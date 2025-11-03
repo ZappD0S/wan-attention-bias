@@ -11,7 +11,6 @@ import torch
 import torch.nn.functional as F
 from matplotlib import pyplot as plt
 from PIL import Image
-
 from torchvision import tv_tensors
 from torchvision.transforms import v2 as transforms
 from wan.configs.wan_i2v_14B import i2v_14B
@@ -41,13 +40,14 @@ original_size = img.size  # (width, height)
 with open(base_path / "config.json") as f:
     config = json.load(f)
 
-char_data = sorted(config["characters"], key=lambda x: x.pop("id"))
+bbox_format = config["characters"]["bbox_format"]
+char_data = sorted(config["characters"]["list"], key=lambda x: x.pop("id"))
 
 bboxes = [c["bbox"] for c in char_data]
 bboxes = torch.tensor(bboxes, dtype=torch.float)
 bboxes = tv_tensors.BoundingBoxes(
     bboxes,
-    format=config["bbox_format"],
+    format=bbox_format,
     canvas_size=(original_size[1], original_size[0]),  # (height, width)
 )
 
@@ -139,13 +139,22 @@ frame_num = 81  # default
 
 n_characters = len(bboxes)
 wlw_matrix = np.zeros([n_characters, n_characters, frame_num], dtype=bool)
+descr_list = [c["descr"] for c in char_data]
+control_prompts = {}
 
 for pair_data in config["wlw"]:
     i, j = pair_data["pair"]
+    prompt_template = pair_data["prompt_template"]
+    prompt = prompt_template.format(descr_list[i], descr_list[j])
+
+    control_prompts[(i, j)] = {
+        "descr_list": [descr_list[i], descr_list[j]],
+        "prompt": prompt,
+    }
 
     for t0, t1 in pair_data["time_intervals"]:
         assert (0 <= t0) and (t1 <= 1)
-        start, end = [int(t * frame_num) for t in (t0, t1)]
+        start, end = [round(t * frame_num) for t in (t0, t1)]
         wlw_matrix[i, j, start:end] = True
 
 wlw_matrix = torch.from_numpy(wlw_matrix)
@@ -166,9 +175,7 @@ wlw_matrix = torch.from_numpy(wlw_matrix)
 # %%
 
 negative_prompt = "Bright tones, overexposed, static, blurred details, subtitles, style, works, paintings, images, static, overall gray, worst quality, low quality, JPEG compression residue, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn faces, deformed, disfigured, misshapen limbs, fused fingers, still picture, messy background, three legs, many people in the background, walking backwards"
-prompt = config["prompt"]
-descr_list = [c["descr"] for c in config["characters"]]
-link_text = config["link_text"]
+base_prompt = config["base_prompt"]
 
 sampling_steps = 40
 
@@ -184,8 +191,7 @@ blocks_bias_schedule = torch.zeros(num_layers, dtype=bool)
 blocks_bias_schedule[:] = True
 
 bias_kwargs = {
-    "descr_list": descr_list,
-    "link_text": link_text,
+    "control_prompts": control_prompts,
     "timestep_bias_schedule": timestep_bias_schedule,
     "blocks_bias_schedule": blocks_bias_schedule,
     "face_masks": face_masks,
@@ -197,7 +203,7 @@ torch.cuda.synchronize()
 gc.collect()
 torch.cuda.empty_cache()
 video, extra_data = wan_i2v.generate(
-    prompt,
+    base_prompt,
     transformed_img,
     bias_kwargs,
     max_area=target_size[0] * target_size[1],
@@ -208,7 +214,6 @@ video, extra_data = wan_i2v.generate(
 
 # %%
 
-# extra_data = extra_data.copy()
 simil_masks = extra_data["simil_masks"]
 attn_weights_map = extra_data["attn_weights_map"]
 
