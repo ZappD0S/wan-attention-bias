@@ -5,3 +5,5 @@ weights
 *.mp4
 *.avi
 old/
+**/output/
+

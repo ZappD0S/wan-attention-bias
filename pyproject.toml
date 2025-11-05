@@ -128,7 +128,7 @@ members = [
 ]
 
 [tool.uv.sources]
-wan = { workspace = true }
+wan = { workspace = true, editable = true }
 
 [tool.ruff]
 line-length = 100

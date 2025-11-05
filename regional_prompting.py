@@ -2,7 +2,6 @@
 import datetime
 import gc
 import json
-import warnings
 from pathlib import Path
 
 import cv2
@@ -17,8 +16,6 @@ from wan.configs.wan_i2v_14B import i2v_14B
 from wan.regional_prompt import WanI2V
 from wan.utils.utils import cache_video
 
-warnings.filterwarnings("ignore", category=FutureWarning, message=".*torch.cuda.amp.autocast.*")
-
 # %%
 
 wan_i2v = WanI2V(
@@ -30,10 +27,10 @@ wan_i2v = WanI2V(
 
 # %%
 
-PROMPT_CONFIG = "examples/women_looking_at_each_other"
+PROMPT_CONFIG = "examples/2animals"
 
 base_path = Path(PROMPT_CONFIG)
-img_file = base_path / "original.jpg"
+img_file = base_path / "original.png"
 img = Image.open(img_file).convert("RGB")
 original_size = img.size  # (width, height)
 
@@ -62,6 +59,9 @@ transform = transforms.Compose(
     ]
 )
 transformed_img, transformed_bboxes = transform(img, bboxes)
+output_dir = base_path / "output"
+output_dir.mkdir(exist_ok=True)
+transformed_img.save(output_dir / "resized.png")
 
 # %%
 
@@ -139,12 +139,12 @@ frame_num = 81  # default
 
 n_characters = len(bboxes)
 wlw_matrix = np.zeros([n_characters, n_characters, frame_num], dtype=bool)
-descr_list = [c["descr"] for c in char_data]
+descr_list = [c["descr"].strip() for c in char_data]
 control_prompts = {}
 
 for pair_data in config["wlw"]:
     i, j = pair_data["pair"]
-    prompt_template = pair_data["prompt_template"]
+    prompt_template = pair_data["prompt_template"].strip()
     prompt = prompt_template.format(descr_list[i], descr_list[j])
 
     control_prompts[(i, j)] = {
@@ -196,7 +196,7 @@ bias_kwargs = {
     "blocks_bias_schedule": blocks_bias_schedule,
     "face_masks": face_masks,
     "wlw_matrix": wlw_matrix,
-    "beta": 0.3,
+    "beta": 1.0,
 }
 
 torch.cuda.synchronize()
@@ -353,12 +353,12 @@ def write_debug_video_attn(video, save_file, attn_weights, fps=16):
 # %%
 
 now = datetime.datetime.now()
-output_dir = base_path / "output" / now.strftime(r"%Y-%m-%d_%H-%M-%S")
-output_dir.mkdir(parents=True, exist_ok=True)
+video_output_dir = output_dir / now.strftime(r"%Y-%m-%d_%H-%M-%S")
+video_output_dir.mkdir()
 
 write_debug_video_masks(
     video_norm,
-    output_dir / "people_masks.mp4",
+    video_output_dir / "people_masks.mp4",
     wlw_matrix[[0, 1], [1, 0], :].transpose(0, 1),
     face_masks.transpose(0, 1),
     fps=4,
@@ -369,7 +369,7 @@ for ab, ab_attn_weights in attn_weights_map.items():
     for i in range(2):
         write_debug_video_attn(
             video_norm,
-            output_dir / f"attn{ab[i]}_{a}_looks_{b}.mp4",
+            video_output_dir / f"attn{ab[i]}_{a}_looks_{b}.mp4",
             ab_attn_weights[i],
             fps=4,
         )

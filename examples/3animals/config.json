@@ -1,0 +1,40 @@
+{
+    "base_prompt": "", 
+    "characters": {
+        "bbox_format": "XYWH",
+        "list": [
+            {
+                "id": 0,
+                "descr": "rooster",
+                "bbox": []
+            },
+            {
+                "id": 1,
+                "descr": "cat",
+                "bbox": []
+            },
+	    {
+                "id": 2,
+                "descr": "dog",
+                "bbox": []
+            }
+        ]
+    },
+    "wlw": [
+        {
+            "prompt_template": "The {} looks at the {}.",
+            "pair": [0, 1],
+            "time_intervals": [[0.0, 0.5]]
+        },
+	{
+            "prompt_template": "The {} looks at the {}.",
+            "pair": [0, 1],
+            "time_intervals": [[0.5, 1.0]]
+        },
+	{
+            "prompt_template": "The {} looks at the {}.",
+            "pair": [1, 2],
+            "time_intervals": [[0.0, 1.0]]
+        }
+    ]
+}

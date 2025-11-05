@@ -1,0 +1,25 @@
+{
+    "base_prompt": "", 
+    "characters": {
+        "bbox_format": "XYWH",
+        "list": [
+            {
+                "id": 0,
+                "descr": "rabbit",
+                "bbox": [110, 59, 534, 898]
+            },
+            {
+                "id": 1,
+                "descr": "turtle",
+                "bbox": [696, 436, 776, 530]
+            }
+        ]
+    },
+    "wlw": [
+        {
+            "prompt_template": "The {} is looking at the {}.",
+            "pair": [0, 1],
+            "time_intervals": [[0.0, 1.0]]
+        }
+    ]
+}
