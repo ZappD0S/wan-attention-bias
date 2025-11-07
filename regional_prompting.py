@@ -38,7 +38,10 @@ with open(base_path / "config.json") as f:
     config = json.load(f)
 
 bbox_format = config["characters"]["bbox_format"]
-char_data = sorted(config["characters"]["list"], key=lambda x: x.pop("id"))
+char_data = sorted(config["characters"]["list"], key=lambda c: c["id"])
+
+for c in char_data:
+    del c["id"]
 
 bboxes = [c["bbox"] for c in char_data]
 bboxes = torch.tensor(bboxes, dtype=torch.float)
@@ -112,7 +115,7 @@ face_masks = torch.stack([create_bbox_mask(bbox, (h, w)) for bbox in transformed
 
 # %%
 
-colors = [
+COLORS = [
     [0, 0, 255],  # Red
     [0, 255, 0],  # Green
     [255, 0, 0],  # Blue
@@ -124,7 +127,7 @@ img_bgr = cv2.cvtColor(np.array(transformed_img), cv2.COLOR_RGB2BGR)
 overlay = img_bgr.copy()
 
 for i, mask in enumerate(face_masks.numpy()):
-    color = colors[i % len(colors)]
+    color = COLORS[i % len(COLORS)]
     overlay[mask] = color
 
 alpha = 0.6  # Transparency factor
@@ -143,19 +146,20 @@ descr_list = [c["descr"].strip() for c in char_data]
 control_prompts = {}
 
 for pair_data in config["wlw"]:
-    i, j = pair_data["pair"]
+    inds = tuple(pair_data["pair"])
     prompt_template = pair_data["prompt_template"].strip()
-    prompt = prompt_template.format(descr_list[i], descr_list[j])
+    pair_descrs = tuple(descr_list[i] for i in inds)
+    prompt = prompt_template.format(*pair_descrs)
 
-    control_prompts[(i, j)] = {
-        "descr_list": [descr_list[i], descr_list[j]],
+    control_prompts[inds] = {
+        "descr_list": pair_descrs,
         "prompt": prompt,
     }
 
-    for t0, t1 in pair_data["time_intervals"]:
-        assert (0 <= t0) and (t1 <= 1)
-        start, end = [round(t * frame_num) for t in (t0, t1)]
-        wlw_matrix[i, j, start:end] = True
+    for intv in pair_data["time_intervals"]:
+        assert (0.0 <= intv[0]) and (intv[1] <= 1.0)
+        intv_inds = (round(t * frame_num) for t in intv)
+        wlw_matrix[inds + (slice(*intv_inds),)] = True
 
 wlw_matrix = torch.from_numpy(wlw_matrix)
 
@@ -296,14 +300,13 @@ for inds, attn_weights in attn_weights_map.items():
 
 # %%
 
+GREY = [128, 128, 128]
+
 
 def write_debug_video_masks(video, save_file, wlw, face_masks, fps=16):
     _, h, w, _ = video.shape
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
     writer = cv2.VideoWriter(str(save_file), fourcc, fps, (w, h))
-
-    RED = (0, 0, 255)
-    BLUE = (255, 0, 0)
 
     for frame, frame_wlw, frame_face_masks in zip(video, wlw, face_masks, strict=True):
         frame = np.ascontiguousarray(frame.numpy())
@@ -311,14 +314,25 @@ def write_debug_video_masks(video, save_file, wlw, face_masks, fps=16):
 
         bboxes = [create_mask_from_bbox(mask) for mask in frame_face_masks]
 
-        for bbox, is_looking in zip(bboxes, frame_wlw):
-            cv2.rectangle(
-                frame,
-                [bbox[0], bbox[1]],
-                [bbox[2], bbox[3]],
-                RED if is_looking else BLUE,
-                thickness=2,
-            )
+        for bbox, frame_lw in zip(bboxes, frame_wlw, strict=True):
+            for i, is_looking in enumerate(frame_lw):
+                if is_looking:
+                    cv2.rectangle(
+                        frame,
+                        [bbox[0], bbox[1]],
+                        [bbox[2], bbox[3]],
+                        COLORS[i],
+                        thickness=2,
+                    )
+                    break
+            else:
+                cv2.rectangle(
+                    frame,
+                    [bbox[0], bbox[1]],
+                    [bbox[2], bbox[3]],
+                    GREY,
+                    thickness=2,
+                )
 
         writer.write(frame)
 
@@ -335,7 +349,7 @@ def write_debug_video_attn(video, save_file, attn_weights, fps=16):
     writer = cv2.VideoWriter(str(save_file), fourcc, fps, (w, h))
     alpha = 0.35  # 35% opacity
 
-    attn_weights = attn_weights / 0.06
+    attn_weights = attn_weights / attn_weights.max()
 
     for frame, attn in zip(video, attn_weights, strict=True):
         frame = np.ascontiguousarray(frame.numpy())
@@ -359,7 +373,7 @@ video_output_dir.mkdir()
 write_debug_video_masks(
     video_norm,
     video_output_dir / "people_masks.mp4",
-    wlw_matrix[[0, 1], [1, 0], :].transpose(0, 1),
+    wlw_matrix.permute(2, 0, 1),
     face_masks.transpose(0, 1),
     fps=4,
 )
