@@ -16,6 +16,8 @@ from wan.configs.wan_i2v_14B import i2v_14B
 from wan.regional_prompt import WanI2V
 from wan.utils.utils import cache_video
 
+from utils import create_bbox_from_mask, create_mask_from_bbox
+
 # %%
 
 wan_i2v = WanI2V(
@@ -27,7 +29,7 @@ wan_i2v = WanI2V(
 
 # %%
 
-PROMPT_CONFIG = "examples/2animals"
+PROMPT_CONFIG = "examples/dogs_no_interaction"
 
 base_path = Path(PROMPT_CONFIG)
 img_file = base_path / "original.png"
@@ -38,27 +40,38 @@ with open(base_path / "config.json") as f:
     config = json.load(f)
 
 bbox_format = config["characters"]["bbox_format"]
-char_data = sorted(config["characters"]["list"], key=lambda x: x.pop("id"))
+char_data = sorted(config["characters"]["list"], key=lambda c: c["id"])
+
+for c in char_data:
+    del c["id"]
 
 bboxes = [c["bbox"] for c in char_data]
-bboxes = torch.tensor(bboxes, dtype=torch.float)
-bboxes = tv_tensors.BoundingBoxes(
-    bboxes,
-    format=bbox_format,
-    canvas_size=(original_size[1], original_size[0]),  # (height, width)
-)
 
-format_converter = transforms.ConvertBoundingBoxFormat("XYXY")
-bboxes = format_converter(bboxes)
+
+def rescale_img_and_bboxes(img, bboxes, target_size):
+    bboxes = torch.tensor(bboxes, dtype=torch.float)
+    bboxes = tv_tensors.BoundingBoxes(  # type: ignore
+        bboxes,
+        format=bbox_format,
+        canvas_size=(original_size[1], original_size[0]),  # (height, width)
+    )
+
+    format_converter = transforms.ConvertBoundingBoxFormat("XYXY")
+    bboxes = format_converter(bboxes)
+
+    transform = transforms.Compose(
+        [
+            transforms.Resize(min(target_size)),
+            transforms.CenterCrop(target_size),
+        ]
+    )
+    transformed_img, transformed_bboxes = transform(img, bboxes)
+    transformed_bboxes = [bbox.tolist() for bbox in transformed_bboxes]
+    return transformed_img, transformed_bboxes
+
 
 target_size = (480, 832)
-transform = transforms.Compose(
-    [
-        transforms.Resize(min(target_size)),
-        transforms.CenterCrop(target_size),
-    ]
-)
-transformed_img, transformed_bboxes = transform(img, bboxes)
+transformed_img, transformed_bboxes = rescale_img_and_bboxes(img, bboxes, target_size)
 output_dir = base_path / "output"
 output_dir.mkdir(exist_ok=True)
 transformed_img.save(output_dir / "resized.png")
@@ -89,30 +102,13 @@ plt.imshow(img_arr)
 plt.axis("off")
 plt.show()
 
-# %%
-
-
-def create_bbox_mask(bbox, image_size):
-    """
-    Creates a boolean mask for a bounding box.
-    """
-    left, top, right, bottom = bbox
-    height, width = image_size
-
-    y_coords, x_coords = torch.meshgrid(torch.arange(height), torch.arange(width), indexing="ij")
-
-    # this looks counter-inutitive, but with meshgrid the origin is the top-left corner
-    mask = (y_coords >= top) & (y_coords < bottom) & (x_coords >= left) & (x_coords < right)
-
-    return mask
-
 
 w, h = transformed_img.size
-face_masks = torch.stack([create_bbox_mask(bbox, (h, w)) for bbox in transformed_bboxes])
+face_masks = torch.stack([create_mask_from_bbox(bbox, (h, w)) for bbox in transformed_bboxes])
 
 # %%
 
-colors = [
+COLORS = [
     [0, 0, 255],  # Red
     [0, 255, 0],  # Green
     [255, 0, 0],  # Blue
@@ -124,7 +120,7 @@ img_bgr = cv2.cvtColor(np.array(transformed_img), cv2.COLOR_RGB2BGR)
 overlay = img_bgr.copy()
 
 for i, mask in enumerate(face_masks.numpy()):
-    color = colors[i % len(colors)]
+    color = COLORS[i % len(COLORS)]
     overlay[mask] = color
 
 alpha = 0.6  # Transparency factor
@@ -143,19 +139,27 @@ descr_list = [c["descr"].strip() for c in char_data]
 control_prompts = {}
 
 for pair_data in config["wlw"]:
-    i, j = pair_data["pair"]
+    inds = tuple(pair_data["pair"])
     prompt_template = pair_data["prompt_template"].strip()
-    prompt = prompt_template.format(descr_list[i], descr_list[j])
+    pair_descrs = tuple(descr_list[i] for i in inds)
+    prompt = prompt_template.format(*pair_descrs)
 
-    control_prompts[(i, j)] = {
-        "descr_list": [descr_list[i], descr_list[j]],
+    control_prompts[inds] = {
+        "descr_list": pair_descrs,
         "prompt": prompt,
     }
 
-    for t0, t1 in pair_data["time_intervals"]:
-        assert (0 <= t0) and (t1 <= 1)
-        start, end = [round(t * frame_num) for t in (t0, t1)]
-        wlw_matrix[i, j, start:end] = True
+    time_intervals = pair_data["time_intervals"]
+
+    if not time_intervals:
+        raise ValueError
+
+    for intv in time_intervals:
+        assert (0.0 <= intv[0]) and (intv[1] <= 1.0)
+        intv_inds = (round(t * frame_num) for t in intv)
+
+        idx = (inds * 2 if len(inds) == 1 else inds) + (slice(*intv_inds),)
+        wlw_matrix[idx] = True
 
 wlw_matrix = torch.from_numpy(wlw_matrix)
 
@@ -180,13 +184,13 @@ base_prompt = config["base_prompt"]
 sampling_steps = 40
 
 # TODO: maybe put this in the config file as well?
-timestep_bias_schedule = torch.zeros(sampling_steps, dtype=bool)
+timestep_bias_schedule = torch.zeros(sampling_steps, dtype=torch.bool)
 # timestep_bias_schedule[sampling_steps // 2 :] = True
 timestep_bias_schedule[:] = True
 # timestep_bias_schedule[10:30] = True
 
 num_layers = wan_i2v.model.num_layers
-blocks_bias_schedule = torch.zeros(num_layers, dtype=bool)
+blocks_bias_schedule = torch.zeros(num_layers, dtype=torch.bool)
 # blocks_bias_schedule[:max(1, int(num_layers * 3 / 4))] = True
 blocks_bias_schedule[:] = True
 
@@ -202,7 +206,7 @@ bias_kwargs = {
 torch.cuda.synchronize()
 gc.collect()
 torch.cuda.empty_cache()
-video, extra_data = wan_i2v.generate(
+video, extra_data = wan_i2v.generate(  # type: ignore
     base_prompt,
     transformed_img,
     bias_kwargs,
@@ -219,31 +223,8 @@ attn_weights_map = extra_data["attn_weights_map"]
 
 
 # %%
-def create_mask_from_bbox(mask):
-    """
-    Finds the single bounding box that most closely matches a binary mask.
-    """
-    if isinstance(mask, torch.Tensor):
-        mask = mask.numpy().astype(np.uint8)
-    elif not isinstance(mask, np.ndarray):
-        raise TypeError("Input mask must be a numpy array or a torch tensor.")
-
-    if mask.dtype != np.uint8:
-        mask = mask.astype(np.uint8)
-
-    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-    if not contours:
-        return None
-
-    largest_contour = max(contours, key=cv2.contourArea)
-
-    x, y, w, h = cv2.boundingRect(largest_contour)
-
-    return (x, y, x + w, y + h)
 
 
-# %%
 def normalize_tensor(tensor: torch.Tensor, value_range: tuple = (-1, 1)) -> torch.Tensor:
     tensor = tensor.clamp(min(value_range), max(value_range))
 
@@ -296,29 +277,39 @@ for inds, attn_weights in attn_weights_map.items():
 
 # %%
 
+GREY = [128, 128, 128]
+
 
 def write_debug_video_masks(video, save_file, wlw, face_masks, fps=16):
     _, h, w, _ = video.shape
-    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+    fourcc = cv2.VideoWriter_fourcc(*"mp4v")  # type: ignore
     writer = cv2.VideoWriter(str(save_file), fourcc, fps, (w, h))
-
-    RED = (0, 0, 255)
-    BLUE = (255, 0, 0)
 
     for frame, frame_wlw, frame_face_masks in zip(video, wlw, face_masks, strict=True):
         frame = np.ascontiguousarray(frame.numpy())
         frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
 
-        bboxes = [create_mask_from_bbox(mask) for mask in frame_face_masks]
+        bboxes = [create_bbox_from_mask(mask) for mask in frame_face_masks]
 
-        for bbox, is_looking in zip(bboxes, frame_wlw):
-            cv2.rectangle(
-                frame,
-                [bbox[0], bbox[1]],
-                [bbox[2], bbox[3]],
-                RED if is_looking else BLUE,
-                thickness=2,
-            )
+        for bbox, frame_lw in zip(bboxes, frame_wlw, strict=True):
+            for i, is_looking in enumerate(frame_lw):
+                if is_looking:
+                    cv2.rectangle(
+                        frame,
+                        [bbox[0], bbox[1]],
+                        [bbox[2], bbox[3]],
+                        COLORS[i],
+                        thickness=2,
+                    )
+                    break
+            else:
+                cv2.rectangle(
+                    frame,
+                    [bbox[0], bbox[1]],
+                    [bbox[2], bbox[3]],
+                    GREY,
+                    thickness=2,
+                )
 
         writer.write(frame)
 
@@ -331,11 +322,11 @@ def write_debug_video_attn(video, save_file, attn_weights, fps=16):
         return cv2.applyColorMap(attn_uint8, cv2.COLORMAP_JET)
 
     _, h, w, _ = video.shape
-    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+    fourcc = cv2.VideoWriter_fourcc(*"mp4v")  # type: ignore
     writer = cv2.VideoWriter(str(save_file), fourcc, fps, (w, h))
     alpha = 0.35  # 35% opacity
 
-    attn_weights = attn_weights / 0.06
+    attn_weights = attn_weights / attn_weights.max()
 
     for frame, attn in zip(video, attn_weights, strict=True):
         frame = np.ascontiguousarray(frame.numpy())
@@ -359,20 +350,11 @@ video_output_dir.mkdir()
 write_debug_video_masks(
     video_norm,
     video_output_dir / "people_masks.mp4",
-    wlw_matrix[[0, 1], [1, 0], :].transpose(0, 1),
+    wlw_matrix.permute(2, 0, 1),
     face_masks.transpose(0, 1),
     fps=4,
 )
 
-for ab, ab_attn_weights in attn_weights_map.items():
-    a, b = ab
-    for i in range(2):
-        write_debug_video_attn(
-            video_norm,
-            video_output_dir / f"attn{ab[i]}_{a}_looks_{b}.mp4",
-            ab_attn_weights[i],
-            fps=4,
-        )
 
 # %%
 

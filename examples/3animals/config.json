@@ -1,39 +1,39 @@
 {
-    "base_prompt": "", 
+    "base_prompt": "A chicken, a cat and a dog.",
     "characters": {
         "bbox_format": "XYWH",
         "list": [
             {
                 "id": 0,
-                "descr": "rooster",
-                "bbox": []
+                "descr": "chicken",
+                "bbox": [49, 62, 470, 949]
             },
             {
                 "id": 1,
                 "descr": "cat",
-                "bbox": []
+                "bbox": [503, 188, 465, 823]
             },
 	    {
                 "id": 2,
                 "descr": "dog",
-                "bbox": []
+                "bbox": [974, 181, 484, 827]
             }
         ]
     },
     "wlw": [
         {
-            "prompt_template": "The {} looks at the {}.",
-            "pair": [0, 1],
+            "prompt_template": "The {} looks at the {} without moving.",
+            "pair": [1, 0],
             "time_intervals": [[0.0, 0.5]]
         },
 	{
-            "prompt_template": "The {} looks at the {}.",
-            "pair": [0, 1],
+            "prompt_template": "The {} looks at the {} without moving.",
+            "pair": [1, 2],
             "time_intervals": [[0.5, 1.0]]
         },
 	{
-            "prompt_template": "The {} looks at the {}.",
-            "pair": [1, 2],
+            "prompt_template": "The {} looks at the {} without moving.",
+            "pair": [2, 1],
             "time_intervals": [[0.0, 1.0]]
         }
     ]
