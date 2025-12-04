@@ -1,0 +1,16 @@
+I need a batch of 10 prompts for generating images that depict scenes with multiple ‘characters', which may also include inanimate objects. The background should be simple or neutral so that the focus remains on the characters. All characters should be similar to each other, or even identical, and fully in focus. Each image should contain between two and three characters, with two being the most common.
+
+I will use these images to generate videos in which the characters perform different actions independently. Therefore, for each prompt I also need a second prompt that describes each character performing its action independently (for example, 'the cat jumps', 'the car stops' or the 'the glass breaks'). The first prompt should only describe the characters appearance and should not include any mention of their action. The action should be described only in the second prompt.
+
+The actions must always be distinct and should be dynamic, but they should not require the characters to move significantly within the scene. Each character should perform exactly one action, and it must be something they could realistically do (for example, 'the dog flies' is not allowed). The scene must provide enough space for all characters to perform their actions without colliding or overlapping. If an action requires a certain part of the character to be visible you must declare it explicitly in the appearance prompt.
+
+
+The output must be formatted as a JSON file. Use the key "appearance_prompt" for the appearance prompt and "action_prompt" for the action prompt.
+
+Each prompt must be divided into multiple segments, where each segment is a separate string describing either part of the character’s appearance or part of the character’s action. When all segments are joined together with a single space, they must reconstruct the original full prompt.
+Each character-specific segment must make sense on its own and must clearly identify its subject; segments that rely on ambiguous references (e.g., starting with “the other …”) are not allowed. If needed, include additional connective segments to ensure the full prompt reads naturally.
+
+There must be exactly one character-specific segment for each character in the scene. For the action prompt, each character-specific segment must include that character’s action.
+
+For both prompts, provide a mask: an array of 1s and 0s indicating which segments describe individual characters (1) versus general or connective segments (0). The number of 1s in each mask must match the number of characters in the scene. Only mark segments that pertain to individual characters; do not mark introductory segments that describe all characters collectively (e.g., “there are three dogs”).
+

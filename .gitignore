@@ -6,4 +6,5 @@ weights
 *.avi
 old/
 **/output/
+image_prompt_generation/images/
 

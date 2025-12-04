@@ -1,0 +1,30 @@
+{
+    "base_prompt": "Two dogs.",
+    "characters": {
+        "bbox_format": "XYWH",
+        "list": [
+            {
+                "id": 0,
+                "descr": "dog",
+                "bbox": [140, 120, 547, 879]
+            },
+            {
+                "id": 1,
+                "descr": "dog",
+                "bbox": [839, 121, 590, 876]
+            }
+        ]
+    },
+    "wlw": [
+        {
+            "prompt_template": "The {} jumps.",
+            "pair": [0],
+            "time_intervals": [[0.0, 1.0]]
+        },
+        {
+            "prompt_template": "The {} lays down and sleeps.",
+            "pair": [1],
+            "time_intervals": [[0.0, 1.0]]
+        }
+    ]
+}
