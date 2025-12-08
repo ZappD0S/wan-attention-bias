@@ -93,6 +93,7 @@ dependencies = [
     "rich",
     "safehttpx",
     "safetensors",
+    "scikit-learn>=1.7.2",
     "semantic-version",
     "sentencepiece>=0.2.1",
     "setuptools",
