@@ -1,0 +1,482 @@
+[
+  {
+    "appearance_prompt": {
+      "segments": [
+        "A full shot of two identical, fluffy ginger cats are sitting on a plain, light-grey background.",
+        "One ginger cat is on the left, with its paws visible.",
+        "The other ginger cat is on the right, with its mouth clearly visible."
+      ],
+      "mask": [
+        0,
+        1,
+        1
+      ]
+    },
+    "action_prompt": {
+      "segments": [
+        "On a plain, light-grey background,",
+        "the ginger cat on the left stretches its front paws forward.",
+        "At the same time, the ginger cat on the right opens its mouth in a wide yawn."
+      ],
+      "mask": [
+        0,
+        1,
+        1
+      ]
+    },
+    "bboxes": [
+      [
+        170.50477600097656,
+        52.444236755371094,
+        417.32525634765625,
+        456.491455078125
+      ],
+      [
+        410.5187072753906,
+        44.23657989501953,
+        795.5247802734375,
+        455.74652099609375
+      ]
+    ],
+    "img_path": "images/0.png"
+  },
+  {
+    "appearance_prompt": {
+      "segments": [
+        "Three identical, classic wooden rocking chairs are positioned against a simple, off-white wall.",
+        "The first wooden rocking chair is in the foreground.",
+        "The second wooden rocking chair is to its left.",
+        "and the third wooden rocking chair is to its right."
+      ],
+      "mask": [
+        0,
+        1,
+        1,
+        1
+      ]
+    },
+    "action_prompt": {
+      "segments": [
+        "Against a simple, off-white wall,",
+        "the first wooden rocking chair rocks back and forth steadily.",
+        "while the second wooden rocking chair gently swivels from side to side.",
+        "The third wooden rocking chair has a leg that trembles slightly."
+      ],
+      "mask": [
+        0,
+        1,
+        1,
+        1
+      ]
+    },
+    "bboxes": [
+      [
+        26.970062255859375,
+        165.4204559326172,
+        274.5011291503906,
+        438.4786071777344
+      ],
+      [
+        293.7752685546875,
+        169.60653686523438,
+        517.9900512695312,
+        436.5378112792969
+      ],
+      [
+        559.759521484375,
+        166.15989685058594,
+        781.2572021484375,
+        438.5460205078125
+      ]
+    ],
+    "img_path": "images/1.png"
+  },
+  {
+    "appearance_prompt": {
+      "segments": [
+        "Two identical vintage table lamps with large fabric shades stand on a neutral-colored surface.",
+        "The table lamp on the left has its light bulb clearly visible.",
+        "The table lamp on the right also has its light bulb clearly visible."
+      ],
+      "mask": [
+        0,
+        1,
+        1
+      ]
+    },
+    "action_prompt": {
+      "segments": [
+        "On a neutral-colored surface,",
+        "the light of the table lamp on the left flickers erratically.",
+        "Meanwhile, the light of the table lamp on the right slowly dims and then brightens."
+      ],
+      "mask": [
+        0,
+        1,
+        1
+      ]
+    },
+    "bboxes": [
+      [
+        59.04899597167969,
+        67.35304260253906,
+        335.3414611816406,
+        465.3446960449219
+      ],
+      [
+        446.4035339355469,
+        17.542633056640625,
+        755.7318725585938,
+        470.7131652832031
+      ]
+    ],
+    "img_path": "images/2.png"
+  },
+  {
+    "appearance_prompt": {
+      "segments": [
+        "Four identical, shiny green apples are arranged in a row on a plain white background.",
+        "The first green apple has a smooth, unblemished skin.",
+        "The second green apple has its stem and a single leaf visible.",
+        "The third green apple is perfectly round.",
+        "The fourth green apple also has a single leaf attached."
+      ],
+      "mask": [
+        0,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    "action_prompt": {
+      "segments": [
+        "In a row on a plain white background,",
+        "the first green apple develops a small, dark bruise on its side.",
+        "the second green apple's stem wiggles back and forth.",
+        "a single water droplet rolls down the side of the third green apple.",
+        "and the leaf on the fourth green apple slowly curls inwards."
+      ],
+      "mask": [
+        0,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    "bboxes": [
+      [
+        23.205970764160156,
+        181.89772033691406,
+        212.3401336669922,
+        368.2337341308594
+      ],
+      [
+        229.39706420898438,
+        180.1357421875,
+        420.0377197265625,
+        370.2443542480469
+      ],
+      [
+        433.57659912109375,
+        187.95162963867188,
+        617.9281005859375,
+        370.978759765625
+      ],
+      [
+        627.4246826171875,
+        188.5550079345703,
+        816.9403076171875,
+        370.525390625
+      ]
+    ],
+    "img_path": "images/3.png"
+  },
+  {
+    "appearance_prompt": {
+      "segments": [
+        "Two identical paperback books with plain blue covers are standing upright on a simple wooden shelf.",
+        "The paperback book on the left is slightly open.",
+        "The paperback book on the right is also slightly ajar."
+      ],
+      "mask": [
+        0,
+        1,
+        1
+      ]
+    },
+    "action_prompt": {
+      "segments": [
+        "On a simple wooden shelf,",
+        "the pages of the paperback book on the left flutter as if in a light breeze.",
+        "and the cover of the paperback book on the right gently closes shut."
+      ],
+      "mask": [
+        0,
+        1,
+        1
+      ]
+    },
+    "bboxes": [
+      [
+        145.93629455566406,
+        68.02422332763672,
+        374.3859558105469,
+        446.7039489746094
+      ],
+      [
+        416.72998046875,
+        69.78072357177734,
+        662.2662353515625,
+        448.061279296875
+      ]
+    ],
+    "img_path": "images/4.png"
+  },
+  {
+    "appearance_prompt": {
+      "segments": [
+        "Three identical, orange basketballs are on a minimalist grey floor.",
+        "One basketball is in the center.",
+        "Another basketball is to the left.",
+        "The last basketball is to the right."
+      ],
+      "mask": [
+        0,
+        1,
+        1,
+        1
+      ]
+    },
+    "action_prompt": {
+      "segments": [
+        "On a minimalist grey floor,",
+        "the basketball in the center bounces high and slowly.",
+        "the basketball to the left bounces low and fast.",
+        "and the basketball to the right slowly rolls to a complete stop."
+      ],
+      "mask": [
+        0,
+        1,
+        1,
+        1
+      ]
+    },
+    "bboxes": [
+      [
+        85.67792510986328,
+        162.008056640625,
+        262.1435852050781,
+        337.0911560058594
+      ],
+      [
+        328.0160827636719,
+        161.51370239257812,
+        503.725341796875,
+        339.1377258300781
+      ],
+      [
+        589.2084350585938,
+        161.55889892578125,
+        769.69482421875,
+        338.8547668457031
+      ]
+    ],
+    "img_path": "images/5.png"
+  },
+  {
+    "appearance_prompt": {
+      "segments": [
+        "Two identical potted cacti, each with a single, closed flower bud, are set against a soft, neutral-toned backdrop.",
+        "The potted cactus on the left has its flower bud pointing upwards.",
+        "The potted cactus on the right has several prominent spines visible."
+      ],
+      "mask": [
+        0,
+        1,
+        1
+      ]
+    },
+    "action_prompt": {
+      "segments": [
+        "Against a soft, neutral-toned backdrop,",
+        "the flower on the potted cactus on the left slowly blooms open.",
+        "while one of the spines on the potted cactus on the right twitches slightly."
+      ],
+      "mask": [
+        0,
+        1,
+        1
+      ]
+    },
+    "bboxes": [
+      [
+        186.24557495117188,
+        78.66526794433594,
+        394.9642639160156,
+        470.96295166015625
+      ],
+      [
+        431.587646484375,
+        156.9219207763672,
+        637.4795532226562,
+        470.0726013183594
+      ]
+    ],
+    "img_path": "images/6.png"
+  },
+  {
+    "appearance_prompt": {
+      "segments": [
+        "Four identical white candles are lit and standing in a line on a simple, dark surface.",
+        "The first candle is on the far left.",
+        "The second candle is next to it.",
+        "The third candle is to its right.",
+        "The fourth candle is on the far right."
+      ],
+      "mask": [
+        0,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    "action_prompt": {
+      "segments": [
+        "On a simple, dark surface,",
+        "the flame of the first candle dances wildly.",
+        "the flame of the second candle burns tall and steady.",
+        "a drop of wax slowly drips down the side of the third candle.",
+        "and the fourth candle emits a small puff of smoke."
+      ],
+      "mask": [
+        0,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    "bboxes": [
+      [
+        81.51731872558594,
+        243.6795654296875,
+        171.0806121826172,
+        427.4669189453125
+      ],
+      [
+        218.0846710205078,
+        238.10177612304688,
+        302.0649108886719,
+        423.5155029296875
+      ],
+      [
+        361.20166015625,
+        233.14822387695312,
+        445.4776611328125,
+        434.42840576171875
+      ],
+      [
+        662.4488525390625,
+        235.89646911621094,
+        747.7174072265625,
+        426.09246826171875
+      ]
+    ],
+    "img_path": "images/7.png"
+  },
+  {
+    "appearance_prompt": {
+      "segments": [
+        "Two identical ceramic coffee mugs are placed on a plain, light-colored countertop.",
+        "The coffee mug on the left is filled with a dark liquid.",
+        "The coffee mug on the right has its handle clearly in view."
+      ],
+      "mask": [
+        0,
+        1,
+        1
+      ]
+    },
+    "action_prompt": {
+      "segments": [
+        "On a plain, light-colored countertop,",
+        "steam gently rises from the coffee mug on the left.",
+        "At the same time, a thin crack appears and spreads on the handle of the coffee mug on the right."
+      ],
+      "mask": [
+        0,
+        1,
+        1
+      ]
+    },
+    "bboxes": [
+      [
+        78.91693878173828,
+        117.77183532714844,
+        364.8912048339844,
+        373.5137023925781
+      ],
+      [
+        448.84600830078125,
+        116.56134796142578,
+        748.7003784179688,
+        356.96295166015625
+      ]
+    ],
+    "img_path": "images/8.png"
+  },
+  {
+    "appearance_prompt": {
+      "segments": [
+        "Three identical origami paper cranes are arranged on a simple, flat, white surface.",
+        "The origami crane in the middle has its wings slightly spread.",
+        "The origami crane on the left has its head and neck clearly defined.",
+        "The origami crane on the right is balanced on its point."
+      ],
+      "mask": [
+        0,
+        1,
+        1,
+        1
+      ]
+    },
+    "action_prompt": {
+      "segments": [
+        "On a simple, flat, white surface,",
+        "the wings of the middle origami crane flap up and down gently.",
+        "the head of the origami crane on the left bows down slowly.",
+        "and the origami crane on the right spins slowly in place."
+      ],
+      "mask": [
+        0,
+        1,
+        1,
+        1
+      ]
+    },
+    "bboxes": [
+      [
+        39.7625732421875,
+        172.6134033203125,
+        319.0685119628906,
+        315.44757080078125
+      ],
+      [
+        300.78338623046875,
+        86.9866714477539,
+        515.1752319335938,
+        323.81585693359375
+      ],
+      [
+        539.738037109375,
+        124.99128723144531,
+        800.8771362304688,
+        322.57537841796875
+      ]
+    ],
+    "img_path": "images/9.png"
+  }
+]

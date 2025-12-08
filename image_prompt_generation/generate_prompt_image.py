@@ -119,14 +119,20 @@ for i, prompt_data in enumerate(prompts_data_list):
     scores = result["scores"]
     labels = result["text_labels"]
 
+    # remove overlapping boxes
     keep_indices = torchvision.ops.nms(boxes, scores, IOU_THRESHOLD)
 
-    boxes = [box.tolist() for box in boxes[keep_indices]]
-    scores = [score.item() for score in scores[keep_indices]]
+    # keep only the len(character_segments) boxes with highest score
+    keep_indices = sorted(keep_indices, key=lambda i: scores[i])
+    keep_indices = keep_indices[-len(character_segments) :]
 
+    boxes = [boxes[i].tolist() for i in keep_indices]
+    scores = [scores[i].item() for i in keep_indices]
     labels = [labels[i] for i in keep_indices]
 
     img_with_boxes = draw_bboxes(image, boxes, labels, scores)
+
+    assert len(boxes) == len(character_segments), f"wrong number of boxes for #{i}"
     img_with_boxes.save(debug_img_dir / f"output_with_boxes_{i}.png")
 
     def center_y_coord(box):
