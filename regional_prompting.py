@@ -16,7 +16,8 @@ from wan.configs.wan_i2v_14B import i2v_14B
 from wan.regional_prompt import WanI2V
 from wan.utils.utils import cache_video
 
-from utils import create_bbox_from_mask, create_mask_from_bbox
+from utils import create_mask_from_bbox
+from debug_utils import write_video_with_masks
 
 # %%
 
@@ -206,6 +207,7 @@ bias_kwargs = {
 torch.cuda.synchronize()
 gc.collect()
 torch.cuda.empty_cache()
+video: torch.Tensor
 video, extra_data = wan_i2v.generate(  # type: ignore
     base_prompt,
     transformed_img,
@@ -277,77 +279,11 @@ for inds, attn_weights in attn_weights_map.items():
 
 # %%
 
-GREY = [128, 128, 128]
-
-
-def write_debug_video_masks(video, save_file, wlw, face_masks, fps=16):
-    _, h, w, _ = video.shape
-    fourcc = cv2.VideoWriter_fourcc(*"mp4v")  # type: ignore
-    writer = cv2.VideoWriter(str(save_file), fourcc, fps, (w, h))
-
-    for frame, frame_wlw, frame_face_masks in zip(video, wlw, face_masks, strict=True):
-        frame = np.ascontiguousarray(frame.numpy())
-        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-
-        bboxes = [create_bbox_from_mask(mask) for mask in frame_face_masks]
-
-        for bbox, frame_lw in zip(bboxes, frame_wlw, strict=True):
-            for i, is_looking in enumerate(frame_lw):
-                if is_looking:
-                    cv2.rectangle(
-                        frame,
-                        [bbox[0], bbox[1]],
-                        [bbox[2], bbox[3]],
-                        COLORS[i],
-                        thickness=2,
-                    )
-                    break
-            else:
-                cv2.rectangle(
-                    frame,
-                    [bbox[0], bbox[1]],
-                    [bbox[2], bbox[3]],
-                    GREY,
-                    thickness=2,
-                )
-
-        writer.write(frame)
-
-    writer.release()
-
-
-def write_debug_video_attn(video, save_file, attn_weights, fps=16):
-    def _build_attn_cmap(attn):
-        attn_uint8 = (attn * 255).astype(np.uint8)
-        return cv2.applyColorMap(attn_uint8, cv2.COLORMAP_JET)
-
-    _, h, w, _ = video.shape
-    fourcc = cv2.VideoWriter_fourcc(*"mp4v")  # type: ignore
-    writer = cv2.VideoWriter(str(save_file), fourcc, fps, (w, h))
-    alpha = 0.35  # 35% opacity
-
-    attn_weights = attn_weights / attn_weights.max()
-
-    for frame, attn in zip(video, attn_weights, strict=True):
-        frame = np.ascontiguousarray(frame.numpy())
-        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-
-        attn = np.ascontiguousarray(attn.numpy())
-        attn_cmap = _build_attn_cmap(attn)
-        frame = cv2.addWeighted(attn_cmap, alpha, frame, 1 - alpha, 0)
-
-        writer.write(frame)
-
-    writer.release()
-
-
-# %%
-
 now = datetime.datetime.now()
 video_output_dir = output_dir / now.strftime(r"%Y-%m-%d_%H-%M-%S")
 video_output_dir.mkdir()
 
-write_debug_video_masks(
+write_video_with_masks(
     video_norm,
     video_output_dir / "people_masks.mp4",
     wlw_matrix.permute(2, 0, 1),
