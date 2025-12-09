@@ -21,8 +21,15 @@ module load arch/a100
 module load cuda/12.8.0
 module load ffmpeg/6.1.1-cuda
 
-PROMPTS_FILE="./prompts.json"
-OUTPUT_DIR="$SCRATCH/todo/output"
+PROMPTS_FILE="./image_prompt_generation/prompts_modified.json"
+OUTPUT_DIR="$SCRATCH/attn_bias/output_videos/"
 mkdir -p $OUTPUT_DIR
 
-uv run python -m multi_sample_inference.multi_sample_inference --prompts-file "$PROMPTS_FILE" --output-path "$OUTPUT_DIR"
+CHECKPOINT_PATH="$SCRATCH/.weights/"
+mkdir -p $CHECKPOINT_PATH
+
+# TODO: do we need to create jobs?
+uv run python -m multi_sample_inference.multi_sample_inference \
+  --prompts-file "$PROMPTS_FILE" \
+  --output-path "$OUTPUT_DIR" \
+  --checkpoint-path $CHECKPOINT_PATH
