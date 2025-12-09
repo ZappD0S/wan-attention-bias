@@ -1,6 +1,7 @@
 import argparse
-import datetime
+import base64
 import gc
+import hashlib
 import json
 from pathlib import Path
 
@@ -19,6 +20,17 @@ from utils import create_mask_from_bbox
 sampling_steps = 40
 frame_num = 81  # default
 target_size = (480, 832)
+
+
+def get_folder_name(config: dict, length=6) -> str:
+    encoded = json.dumps(config, sort_keys=True).encode()
+
+    # use .digest() instead of .hexdigest() to get raw binary data
+    digest = hashlib.md5(encoded).digest()
+    b64_bytes = base64.urlsafe_b64encode(digest)
+    folder_name = b64_bytes.decode().rstrip("=")
+
+    return folder_name[:length]
 
 
 def run_inference(
@@ -127,16 +139,27 @@ def main():
         character_segments = infer_data["character_segments"]
 
         for config in ParameterGrid(param_grid):
-            now = datetime.datetime.now()
-            output_path = args.output_path / now.strftime(r"%Y-%m-%d_%H-%M-%S")
-            output_path.mkdir()
+            folder_name = get_folder_name(config)
+            output_path = args.output_path / folder_name
+            output_path.mkdir(exist_ok=True)
+            config_path = output_path / "config.json"
+            video_path = output_path / "video.mp4"
+
+            if config_path.exists() and video_path.exists():
+                print(f"The video for the prompt '{prompt}' the was already generated. Skipping...")
+                continue
+
             video, extra_data = run_inference(
                 wan_i2v, prompt, img, character_segments, masks, config
             )
             video = (video * 0.5 + 0.5).clamp(0, 1)
             video = rearrange(video, "C T H W -> T H W C")
             video = video.cpu().numpy()
-            export_to_video(list(video), output_path / "video.mp4", fps=16)
+
+            export_to_video(list(video), video_path, fps=16)
+            with config_path.open("w") as f:
+                json.dump(config, f)
+
             # TODO: create also debug video?
             simil_masks = extra_data["simil_masks"]
 
