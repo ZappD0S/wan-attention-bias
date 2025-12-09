@@ -6,14 +6,15 @@
 #SBATCH --account=xvh@a100
 #SBATCH --constraint=a100
 
-#SBATCH --job-name=video_processing_worker
+#SBATCH --job-name=multi_sample_inference
 #SBATCH --output=logs/worker_%A_%a.out  # %A=Job ID, %a=Task ID
 #SBATCH --error=logs/worker_%A_%a.err
 
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=8
+#SBATCH --cpus-per-task=24
 #SBATCH --gpus-per-task=1
+#SBATCH --hint=nomultithread
 
 # Load necessary modules
 module purge
@@ -28,8 +29,10 @@ mkdir -p $OUTPUT_DIR
 CHECKPOINT_PATH="$SCRATCH/.weights/"
 mkdir -p $CHECKPOINT_PATH
 
+source .venv/bin/activate
+
 # TODO: do we need to create jobs?
-uv run python -m multi_sample_inference.multi_sample_inference \
+python -m multi_sample_inference.multi_sample_inference \
   --prompts-file "$PROMPTS_FILE" \
   --output-path "$OUTPUT_DIR" \
   --checkpoint-path $CHECKPOINT_PATH
