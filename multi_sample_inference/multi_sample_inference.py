@@ -123,6 +123,7 @@ def main():
     with open(args.prompts_file) as f:
         prompts_data_list = json.load(f)
 
+    # The point of this function is just to do the necessary checks in advance, before the inference
     infer_data_list = generate_inference_data(prompts_data_list, args.prompts_file.parent)
 
     wan_i2v = WanI2V(
@@ -139,7 +140,9 @@ def main():
         character_segments = infer_data["character_segments"]
 
         for config in ParameterGrid(param_grid):
-            folder_name = get_folder_name(prompt_data | config)
+            config["prompt"] = prompt_data
+
+            folder_name = get_folder_name(config)
             output_path = args.output_path / folder_name
             output_path.mkdir(exist_ok=True)
             config_path = output_path / "config.json"
