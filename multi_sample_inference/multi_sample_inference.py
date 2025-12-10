@@ -12,10 +12,10 @@ from diffusers.utils.loading_utils import load_image
 from PIL import Image
 from sklearn.model_selection import ParameterGrid
 from wan.configs.wan_i2v_14B import i2v_14B
-from einops import rearrange
 from wan.regional_prompt import WanI2V
 
-from utils import create_mask_from_bbox
+from utils import create_mask_from_bbox, normalize_video_tensor
+from debug_utils import write_video_masks
 
 sampling_steps = 40
 frame_num = 81  # default
@@ -89,7 +89,9 @@ def generate_inference_data(prompts_data_list, img_dir):
     output = []
     for i, prompt_data in enumerate(prompts_data_list):
         bboxes = prompt_data["bboxes"]
-        masks = torch.stack([create_mask_from_bbox(bbox, target_size) for bbox in bboxes])
+        masks = torch.stack(
+            [torch.from_numpy(create_mask_from_bbox(bbox, target_size)) for bbox in bboxes]
+        )
 
         action_prompt_data = prompt_data["action_prompt"]
         segments = action_prompt_data["segments"]
@@ -155,16 +157,20 @@ def main():
             video, extra_data = run_inference(
                 wan_i2v, prompt, img, character_segments, masks, config
             )
-            video = (video * 0.5 + 0.5).clamp(0, 1)
-            video = rearrange(video, "C T H W -> T H W C")
-            video = video.cpu().numpy()
+            video_norm = normalize_video_tensor(video.cpu().numpy())
 
-            export_to_video(list(video), video_path, fps=16)
+            export_to_video(list(video_norm), video_path, fps=16)
             with config_path.open("w") as f:
-                json.dump(config, f)
+                json.dump(config, f, indent=2)
 
             # TODO: create also debug video?
-            simil_masks = extra_data["simil_masks"]
+            # simil_masks = extra_data["simil_masks"]
+            # write_video_masks(
+            #     video_norm,
+            #     output_path / "video_with_masks.mp4",
+            #     face_masks.transpose(0, 1),
+            #     fps=4,
+            # )
 
 
 if __name__ == "__main__":
