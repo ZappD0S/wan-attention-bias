@@ -132,14 +132,14 @@ def main():
         t5_cpu=args.t5_cpu,
     )
 
-    for infer_data in infer_data_list:
+    for prompt_data, infer_data in zip(prompts_data_list, infer_data_list):
         img = infer_data["img"]
         masks = infer_data["masks"]
         prompt = infer_data["prompt"]
         character_segments = infer_data["character_segments"]
 
         for config in ParameterGrid(param_grid):
-            folder_name = get_folder_name(config)
+            folder_name = get_folder_name(prompt_data | config)
             output_path = args.output_path / folder_name
             output_path.mkdir(exist_ok=True)
             config_path = output_path / "config.json"
