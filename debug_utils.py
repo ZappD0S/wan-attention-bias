@@ -12,13 +12,40 @@ COLORS = [
 GREY = [128, 128, 128]
 
 
-def write_video_with_masks(video, save_file, wlw, face_masks, fps=16):
+def write_video_masks(video: np.ndarray, save_file, face_masks, fps=16):
     _, h, w, _ = video.shape
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")  # type: ignore
     writer = cv2.VideoWriter(str(save_file), fourcc, fps, (w, h))
 
-    for frame, frame_wlw, frame_face_masks in zip(video, wlw, face_masks, strict=True):
-        frame = np.ascontiguousarray(frame.numpy())
+    video_frames = [(frame * 255).astype(np.uint8) for frame in video]
+    for frame, frame_face_masks in zip(video_frames, face_masks, strict=True):
+        frame = np.ascontiguousarray(frame)
+        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+
+        bboxes = [create_bbox_from_mask(mask) for mask in frame_face_masks]
+
+        for i, bbox in enumerate(bboxes):
+            cv2.rectangle(
+                frame,
+                [bbox[0], bbox[1]],
+                [bbox[2], bbox[3]],
+                COLORS[i],
+                thickness=2,
+            )
+
+        writer.write(frame)
+
+    writer.release()
+
+
+def write_video_wlw_masks(video: np.ndarray, save_file, wlw, face_masks, fps=16):
+    _, h, w, _ = video.shape
+    fourcc = cv2.VideoWriter_fourcc(*"mp4v")  # type: ignore
+    writer = cv2.VideoWriter(str(save_file), fourcc, fps, (w, h))
+
+    video_frames = [(frame * 255).astype(np.uint8) for frame in video]
+    for frame, frame_wlw, frame_face_masks in zip(video_frames, wlw, face_masks, strict=True):
+        frame = np.ascontiguousarray(frame)
         frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
 
         bboxes = [create_bbox_from_mask(mask) for mask in frame_face_masks]
@@ -61,7 +88,7 @@ def write_debug_video_attn(video, save_file, attn_weights, fps=16):
     attn_weights = attn_weights / attn_weights.max()
 
     for frame, attn in zip(video, attn_weights, strict=True):
-        frame = np.ascontiguousarray(frame.numpy())
+        frame = np.ascontiguousarray(frame)
         frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
 
         attn = np.ascontiguousarray(attn.numpy())

@@ -37,7 +37,7 @@ debug_img_dir.mkdir(exist_ok=True)
 
 def draw_bboxes(img: Image.Image, boxes, labels, scores):
     img = img.copy()
-    draw = ImageDraw.Draw(image)
+    draw = ImageDraw.Draw(img)
     try:
         font = ImageFont.truetype("arial.ttf", 15)
     except IOError:
