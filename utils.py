@@ -1,19 +1,17 @@
 import numpy as np
 import cv2
 import torch
+from einops import rearrange
 
 
 def create_mask_from_bbox(bbox, image_size):
-    """
-    Creates a boolean mask for a bounding box.
-    """
     left, top, right, bottom = bbox
     height, width = image_size
 
-    y_coords, x_coords = torch.meshgrid(torch.arange(height), torch.arange(width), indexing="ij")
+    mask = np.zeros((height, width), dtype=bool)
 
-    # this looks counter-inutitive, but with meshgrid the origin is the top-left corner
-    mask = (y_coords >= top) & (y_coords < bottom) & (x_coords >= left) & (x_coords < right)
+    # cast to int to ensure valid slice indices
+    mask[int(top) : int(bottom), int(left) : int(right)] = True
 
     return mask
 
@@ -40,3 +38,13 @@ def create_bbox_from_mask(mask):
     x, y, w, h = cv2.boundingRect(largest_contour)
 
     return (x, y, x + w, y + h)
+
+
+def normalize_video_tensor(video: np.ndarray, value_range: tuple = (-1, 1)) -> np.ndarray:
+    min_val, max_val = value_range
+    video = np.clip(video, min_val, max_val)
+
+    video = (video - min_val) / (max_val - min_val)
+    video = rearrange(video, "C T H W -> T H W C")
+
+    return video

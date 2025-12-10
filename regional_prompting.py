@@ -16,8 +16,8 @@ from wan.configs.wan_i2v_14B import i2v_14B
 from wan.regional_prompt import WanI2V
 from wan.utils.utils import cache_video
 
-from utils import create_mask_from_bbox
-from debug_utils import write_video_with_masks
+from utils import create_mask_from_bbox, normalize_video_tensor
+from debug_utils import write_video_wlw_masks
 
 # %%
 
@@ -105,7 +105,9 @@ plt.show()
 
 
 w, h = transformed_img.size
-face_masks = torch.stack([create_mask_from_bbox(bbox, (h, w)) for bbox in transformed_bboxes])
+face_masks = torch.stack(
+    [torch.from_numpy(create_mask_from_bbox(bbox, (h, w))) for bbox in transformed_bboxes]
+)
 
 # %%
 
@@ -227,19 +229,7 @@ attn_weights_map = extra_data["attn_weights_map"]
 # %%
 
 
-def normalize_tensor(tensor: torch.Tensor, value_range: tuple = (-1, 1)) -> torch.Tensor:
-    tensor = tensor.clamp(min(value_range), max(value_range))
-
-    min_val, max_val = value_range
-    tensor = (tensor - min_val) / (max_val - min_val)
-
-    # (C, T, H, W) -> (T, H, W, C)
-    tensor = tensor.permute(1, 2, 3, 0)
-
-    return (tensor * 255).type(torch.uint8)
-
-
-video_norm = normalize_tensor(video.cpu())
+video_norm = normalize_video_tensor(video.cpu().numpy())
 
 
 # %%
@@ -283,7 +273,7 @@ now = datetime.datetime.now()
 video_output_dir = output_dir / now.strftime(r"%Y-%m-%d_%H-%M-%S")
 video_output_dir.mkdir()
 
-write_video_with_masks(
+write_video_wlw_masks(
     video_norm,
     video_output_dir / "people_masks.mp4",
     wlw_matrix.permute(2, 0, 1),
