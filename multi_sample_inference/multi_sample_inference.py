@@ -43,13 +43,8 @@ def run_inference(
 ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
     num_layers = wan_i2v.model.num_layers
 
-    if config["beta"] > 0.0:
-        timestep_bias_schedule = torch.ones(SAMPLING_STEPS, dtype=torch.bool)
-        blocks_bias_schedule = torch.ones(num_layers, dtype=torch.bool)
-    else:
-        timestep_bias_schedule = torch.zeros(SAMPLING_STEPS, dtype=torch.bool)
-        blocks_bias_schedule = torch.zeros(num_layers, dtype=torch.bool)
-
+    timestep_bias_schedule = torch.ones(SAMPLING_STEPS, dtype=torch.bool)
+    blocks_bias_schedule = torch.ones(num_layers, dtype=torch.bool)
     control_prompts = {
         (i,): {"prompt": seg, "descr_list": []} for i, seg in enumerate(character_segments)
     }
@@ -65,8 +60,8 @@ def run_inference(
         "blocks_bias_schedule": blocks_bias_schedule,
         "face_masks": masks,
         "wlw_matrix": wlw_matrix,
-        "beta": config["beta"],
-    }
+    } | config
+
     torch.cuda.synchronize()
     gc.collect()
     torch.cuda.empty_cache()
@@ -119,7 +114,16 @@ def main():
 
     args = parser.parse_args()
 
-    param_grid = {"beta": np.linspace(0.0, 1.0, 5).tolist()}
+    param_grid = [
+        {
+            "bias_method": "regional_prompting",
+            "beta": np.linspace(0.0, 1.0, 5).tolist(),
+        },
+        {
+            "bias_method": "ediff-i",
+            "strength": [3.0, 5.0],
+        },
+    ]
 
     with open(args.prompts_file) as f:
         prompts_data_list = json.load(f)
