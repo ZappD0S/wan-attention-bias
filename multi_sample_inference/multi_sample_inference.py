@@ -116,11 +116,11 @@ def main():
 
     param_grid = [
         {
-            "bias_method": "regional_prompting",
+            "bias_method": ["regional_prompting"],
             "beta": np.linspace(0.0, 1.0, 5).tolist(),
         },
         {
-            "bias_method": "ediff-i",
+            "bias_method": ["ediff-i"],
             "strength": [3.0, 5.0],
         },
     ]
