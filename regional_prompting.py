@@ -17,7 +17,7 @@ from wan.regional_prompt import WanI2V
 from wan.utils.utils import cache_video
 
 from utils import create_mask_from_bbox, normalize_video_tensor
-from debug_utils import write_video_wlw_masks
+from debug_utils import write_video_wlw_masks, unscale
 
 # %%
 
@@ -242,29 +242,14 @@ face_masks = simil_masks[0, -1].float().mean(dim=0) > 0.5
 # face_masks = simil_masks[0].float().mean(dim=[0,1]) * 255
 
 
-def unscale(tensor):
-    # tensor shape: (..., T, H, W)
-    batch_dims = tensor.shape[:-3]
-
-    T, H, W = tensor.shape[-3:]
-    tensor = tensor.view(-1, 1, T, H, W)
-
-    interpolated_tensor = F.interpolate(tensor, size=(frame_num, h, w), mode="nearest")
-
-    output_shape = batch_dims + (frame_num, h, w)
-    interpolated_tensor = interpolated_tensor.view(output_shape)
-
-    return interpolated_tensor
-
-
-face_masks = unscale(face_masks.float()).bool()
+face_masks = unscale(face_masks.float(), (frame_num, h, w)).bool()
 
 attn_weights_map = attn_weights_map.copy()
 for inds, attn_weights in attn_weights_map.items():
     *_, last_attn_weights = attn_weights
     # remove batch dim
     last_attn_weights = last_attn_weights.squeeze(1)
-    attn_weights_map[inds] = unscale(last_attn_weights)
+    attn_weights_map[inds] = unscale(last_attn_weights, (frame_num, h, w))
 
 
 # %%

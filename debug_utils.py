@@ -1,15 +1,69 @@
-import numpy as np
 import cv2
+import numpy as np
+from PIL import Image, ImageDraw
+import torch
+import torch.nn.functional as F
+
 from utils import create_bbox_from_mask
 
 COLORS = [
-    [0, 0, 255],  # Red
-    [0, 255, 0],  # Green
-    [255, 0, 0],  # Blue
-    [255, 255, 0],  # Cyan
+    (0, 0, 255),  # Red
+    (0, 255, 0),  # Green
+    (255, 0, 0),  # Blue
+    (255, 255, 0),  # Cyan
 ]
 
-GREY = [128, 128, 128]
+GREY = (128, 128, 128)
+
+Bbox = tuple[float, float, float, float]
+
+
+def draw_boxes(img: Image.Image, boxes: list[Bbox]):
+    img = img.copy()
+    draw = ImageDraw.Draw(img)
+
+    for i, box in enumerate(boxes):
+        color = COLORS[i % len(COLORS)]
+        box = [round(x, 2) for x in box]
+        draw.rectangle(box, outline=color, width=2)
+
+    return img
+
+
+def draw_masks(img: Image.Image, masks: list[np.ndarray | torch.Tensor], alpha=0.6) -> Image.Image:
+    img_bgr = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
+
+    overlay = img_bgr.copy()
+
+    for i, mask in enumerate(masks):
+        color = COLORS[i % len(COLORS)]
+
+        if isinstance(mask, torch.Tensor):
+            mask = mask.cpu().numpy()
+
+        # ensure mask is boolean
+        mask = mask.astype(bool)
+        overlay[mask] = color
+
+    img_with_masks = cv2.addWeighted(overlay, alpha, img_bgr, 1 - alpha, 0)
+    img_with_masks = cv2.cvtColor(img_with_masks, cv2.COLOR_BGR2RGB)
+
+    return Image.fromarray(img_with_masks)
+
+
+def unscale(tensor: torch.Tensor, target_size: tuple[int, int, int]) -> torch.Tensor:
+    # tensor shape: (..., T, H, W)
+    batch_dims = tensor.shape[:-3]
+
+    T, H, W = tensor.shape[-3:]
+    tensor = tensor.view(-1, 1, T, H, W)
+
+    interpolated_tensor = F.interpolate(tensor, size=target_size, mode="nearest")
+
+    output_shape = batch_dims + target_size
+    interpolated_tensor = interpolated_tensor.view(output_shape)
+
+    return interpolated_tensor
 
 
 def write_video_masks(video: np.ndarray, save_file, face_masks, fps=16):
