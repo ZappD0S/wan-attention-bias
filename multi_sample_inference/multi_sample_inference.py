@@ -15,11 +15,11 @@ from wan.configs.wan_i2v_14B import i2v_14B
 from wan.regional_prompt import WanI2V
 
 from utils import create_mask_from_bbox, normalize_video_tensor
-from debug_utils import write_video_masks
+from debug_utils import write_video_masks, draw_boxes, draw_masks, unscale
 
-sampling_steps = 40
-frame_num = 81  # default
-target_size = (480, 832)
+SAMPLING_STEPS = 40
+FRAME_NUM = 81  # default
+TARGET_SIZE = (480, 832)
 
 
 def get_folder_name(config: dict, length=6) -> str:
@@ -44,10 +44,10 @@ def run_inference(
     num_layers = wan_i2v.model.num_layers
 
     if config["beta"] > 0.0:
-        timestep_bias_schedule = torch.ones(sampling_steps, dtype=torch.bool)
+        timestep_bias_schedule = torch.ones(SAMPLING_STEPS, dtype=torch.bool)
         blocks_bias_schedule = torch.ones(num_layers, dtype=torch.bool)
     else:
-        timestep_bias_schedule = torch.zeros(sampling_steps, dtype=torch.bool)
+        timestep_bias_schedule = torch.zeros(SAMPLING_STEPS, dtype=torch.bool)
         blocks_bias_schedule = torch.zeros(num_layers, dtype=torch.bool)
 
     control_prompts = {
@@ -55,9 +55,8 @@ def run_inference(
     }
 
     n_characters = len(character_segments)
-    wlw_matrix = np.zeros([n_characters, n_characters], dtype=bool)
-    wlw_matrix = np.eye(n_characters, n_characters)
-    wlw_matrix = np.repeat(wlw_matrix[..., np.newaxis], frame_num, axis=-1)
+    wlw_matrix = np.eye(n_characters, n_characters, dtype=bool)
+    wlw_matrix = np.repeat(wlw_matrix[..., np.newaxis], FRAME_NUM, axis=-1)
     wlw_matrix = torch.from_numpy(wlw_matrix)
 
     bias_kwargs = {
@@ -77,9 +76,9 @@ def run_inference(
         prompt,
         img,
         bias_kwargs,
-        max_area=target_size[0] * target_size[1],
-        sampling_steps=sampling_steps,
-        frame_num=frame_num,
+        max_area=TARGET_SIZE[0] * TARGET_SIZE[1],
+        sampling_steps=SAMPLING_STEPS,
+        frame_num=FRAME_NUM,
     )
 
     return video, extra_data
@@ -90,7 +89,7 @@ def generate_inference_data(prompts_data_list, img_dir):
     for i, prompt_data in enumerate(prompts_data_list):
         bboxes = prompt_data["bboxes"]
         masks = torch.stack(
-            [torch.from_numpy(create_mask_from_bbox(bbox, target_size)) for bbox in bboxes]
+            [torch.from_numpy(create_mask_from_bbox(bbox, TARGET_SIZE)) for bbox in bboxes]
         )
 
         action_prompt_data = prompt_data["action_prompt"]
@@ -102,7 +101,7 @@ def generate_inference_data(prompts_data_list, img_dir):
 
         img_path = str(img_dir / prompt_data["img_path"])
         img = load_image(img_path)
-        assert img.size[::-1] == target_size
+        assert img.size[::-1] == TARGET_SIZE
 
         output.append(
             {"img": img, "masks": masks, "prompt": prompt, "character_segments": character_segments}
@@ -149,10 +148,18 @@ def main():
             output_path.mkdir(exist_ok=True)
             config_path = output_path / "config.json"
             video_path = output_path / "video.mp4"
+            debug_path = output_path / "debug"
+            debug_path.mkdir(exist_ok=True)
 
             if config_path.exists() and video_path.exists():
                 print(f"The video for the prompt '{prompt}' the was already generated. Skipping...")
                 continue
+
+            img_with_boxes = draw_boxes(img, prompt_data["bboxes"])
+            img_with_boxes.save(debug_path / "img_with_boxes.png")
+
+            img_with_masks = draw_masks(img, masks)
+            img_with_masks.save(debug_path / "img_with_masks.png")
 
             video, extra_data = run_inference(
                 wan_i2v, prompt, img, character_segments, masks, config
@@ -163,14 +170,19 @@ def main():
             with config_path.open("w") as f:
                 json.dump(config, f, indent=2)
 
-            # TODO: create also debug video?
-            # simil_masks = extra_data["simil_masks"]
-            # write_video_masks(
-            #     video_norm,
-            #     output_path / "video_with_masks.mp4",
-            #     face_masks.transpose(0, 1),
-            #     fps=4,
-            # )
+            simil_masks = extra_data["simil_masks"]
+
+            # TODO: is this the best way to do it?
+            face_masks = simil_masks[0, -1].float().mean(dim=0) > 0.5
+
+            h, w = video.shape[-2:]
+            face_masks = unscale(face_masks.float(), (FRAME_NUM, h, w)).bool()
+            write_video_masks(
+                video_norm,
+                output_path / "video_with_masks.mp4",
+                face_masks.transpose(0, 1).cpu().numpy(),
+                fps=16,
+            )
 
 
 if __name__ == "__main__":
