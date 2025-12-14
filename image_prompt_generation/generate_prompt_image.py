@@ -110,7 +110,7 @@ for i, prompt_data in enumerate(prompts_data_list):
         outputs,
         inputs.input_ids,
         threshold=0.29,
-        text_threshold=0.2,
+        text_threshold=0.15,
         target_sizes=[image.size[::-1]],
     )
     result = results[0]
