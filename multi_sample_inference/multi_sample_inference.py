@@ -148,8 +148,10 @@ def main():
             config["prompt"] = prompt_data
 
             folder_name = get_folder_name(config)
+
             output_path = args.output_path / folder_name
             output_path.mkdir(exist_ok=True)
+
             config_path = output_path / "config.json"
             video_path = output_path / "video.mp4"
             debug_path = output_path / "debug"
