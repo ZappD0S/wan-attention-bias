@@ -7,4 +7,5 @@ weights
 *.avi
 old/
 **/output/
+**/debug/
 
