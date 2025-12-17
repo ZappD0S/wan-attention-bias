@@ -1,0 +1,53 @@
+{
+  "beta": 0.0,
+  "bias_method": "regional_prompting",
+  "prompt": {
+    "appearance_prompt": {
+      "segments": [
+        "Against a seamless white backdrop, two dogs sit side by side, specifically",
+        "a golden retriever with a glossy coat",
+        "positioned on the left and",
+        "a golden retriever with a glossy coat",
+        "positioned on the right."
+      ],
+      "mask": [
+        0,
+        1,
+        0,
+        1,
+        0
+      ]
+    },
+    "action_prompt": {
+      "segments": [
+        "Without moving from their spots,",
+        "the golden retriever barks loudly",
+        "on the left side, while",
+        "the golden retriever pants with its tongue out",
+        "on the right side."
+      ],
+      "mask": [
+        0,
+        1,
+        0,
+        1,
+        0
+      ]
+    },
+    "bboxes": [
+      [
+        190.27249145507812,
+        86.17919158935547,
+        432.224853515625,
+        459.8087463378906
+      ],
+      [
+        428.0212097167969,
+        70.51643371582031,
+        708.33837890625,
+        457.60504150390625
+      ]
+    ],
+    "img_path": "images/0.png"
+  }
+}
