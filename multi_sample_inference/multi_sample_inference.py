@@ -1,7 +1,5 @@
 import argparse
-import base64
 import gc
-import hashlib
 import json
 from pathlib import Path
 
@@ -17,20 +15,11 @@ from wan.regional_prompt import WanI2V
 from utils import create_mask_from_bbox, normalize_video_tensor
 from debug_utils import write_video_masks, draw_boxes, draw_masks, unscale
 
+from .utils import get_folder_name
+
 SAMPLING_STEPS = 40
 FRAME_NUM = 81  # default
 TARGET_SIZE = (480, 832)
-
-
-def get_folder_name(config: dict, length=6) -> str:
-    encoded = json.dumps(config, sort_keys=True).encode()
-
-    # use .digest() instead of .hexdigest() to get raw binary data
-    digest = hashlib.md5(encoded).digest()
-    b64_bytes = base64.urlsafe_b64encode(digest)
-    folder_name = b64_bytes.decode().rstrip("=")
-
-    return folder_name[:length]
 
 
 def run_inference(
@@ -114,16 +103,8 @@ def main():
 
     args = parser.parse_args()
 
-    param_grid = [
-        {
-            "bias_method": ["regional_prompting"],
-            "beta": np.linspace(0.0, 1.0, 5).tolist(),
-        },
-        {
-            "bias_method": ["ediff-i"],
-            "strength": [3.0, 5.0],
-        },
-    ]
+    with open("param_grid.json") as f:
+        param_grid = json.load(f)
 
     with open(args.prompts_file) as f:
         prompts_data_list = json.load(f)
