@@ -12,6 +12,7 @@ import torchvision
 
 # %%
 IOU_THRESHOLD = 0.5
+OUTPUT_FILE = Path("prompts_modified.json")
 
 os.environ["HF_HOME"] = "../weights/"
 
@@ -21,14 +22,21 @@ pipe = FluxPipeline.from_pretrained(
     device_map="balanced",
 )
 
-with open("prompts.json") as f:
-    prompts_data_list = json.load(f)
+prompts_data_list = []
 
-model_id = "IDEA-Research/grounding-dino-base"
+for prompt_file_path in Path.cwd().glob("*.json"):
+    # skip output file (if it exists)
+    if prompt_file_path == OUTPUT_FILE:
+        continue
+
+    with prompt_file_path.open() as f:
+        prompts_data_list += json.load(f)
+
+MODEL_ID = "IDEA-Research/grounding-dino-base"
 device = Accelerator().device
 
-gd_processor = AutoProcessor.from_pretrained(model_id)
-gd_model = AutoModelForZeroShotObjectDetection.from_pretrained(model_id).to(device)
+gd_processor = AutoProcessor.from_pretrained(MODEL_ID)
+gd_model = AutoModelForZeroShotObjectDetection.from_pretrained(MODEL_ID).to(device)
 img_dir = Path("./images")
 img_dir.mkdir(exist_ok=True)
 debug_img_dir = img_dir / "debug"
@@ -143,5 +151,5 @@ for i, prompt_data in enumerate(prompts_data_list):
     prompt_data["img_path"] = str(img_path)
 
 
-with open("prompts_modified.json", "w") as f:
+with open(OUTPUT_FILE, "w") as f:
     prompts_data_list = json.dump(prompts_data_list, f, indent=2)

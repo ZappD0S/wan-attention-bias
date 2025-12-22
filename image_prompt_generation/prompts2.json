@@ -1,0 +1,492 @@
+[
+  {
+    "appearance_prompt": {
+      "segments": [
+        "On the left side,",
+        "a shiny metallic robot stands with mechanical arms",
+        "and on the right side,",
+        "an identical shiny metallic robot stands with mechanical arms",
+        "against a white laboratory wall."
+      ],
+      "mask": [0, 1, 0, 1, 0]
+    },
+    "action_prompts": {
+      "default": {
+        "segments": [
+          "On the left,",
+          "the shiny metallic robot is typing on a holographic keyboard",
+          "while on the right,",
+          "the shiny metallic robot is rotating its head to scan the room."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "first_action": {
+        "segments": [
+          "On the left,",
+          "the shiny metallic robot is typing on a holographic keyboard",
+          "and on the right,",
+          "the shiny metallic robot is also typing on a holographic keyboard."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "second_action": {
+        "segments": [
+          "On the left,",
+          "the shiny metallic robot is rotating its head to scan the room",
+          "and on the right,",
+          "the shiny metallic robot is likewise rotating its head to scan the room."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "no_locative": {
+        "segments": [
+          "A shiny metallic robot is typing on a holographic keyboard",
+          "while",
+          "an identical shiny metallic robot is rotating its head to scan the room."
+        ],
+        "mask": [1, 0, 1]
+      }
+    }
+  },
+  {
+    "appearance_prompt": {
+      "segments": [
+        "In the foreground,",
+        "a golden retriever sits with fluffy ears",
+        "and next to it,",
+        "another golden retriever sits with fluffy ears",
+        "on a green grassy field."
+      ],
+      "mask": [0, 1, 0, 1, 0]
+    },
+    "action_prompts": {
+      "default": {
+        "segments": [
+          "On the left,",
+          "the golden retriever is panting happily with its tongue out",
+          "whereas on the right,",
+          "the golden retriever is scratching its ear with a hind leg."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "first_action": {
+        "segments": [
+          "On the left,",
+          "the golden retriever is panting happily with its tongue out",
+          "and on the right,",
+          "the golden retriever is also panting happily with its tongue out."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "second_action": {
+        "segments": [
+          "On the left,",
+          "the golden retriever is scratching its ear with a hind leg",
+          "and on the right,",
+          "the golden retriever is also scratching its ear with a hind leg."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "no_locative": {
+        "segments": [
+          "A golden retriever is panting happily with its tongue out",
+          "and",
+          "a similar golden retriever is scratching its ear with a hind leg."
+        ],
+        "mask": [1, 0, 1]
+      }
+    }
+  },
+  {
+    "appearance_prompt": {
+      "segments": [
+        "To the left,",
+        "an astronaut in a white suit stands facing forward",
+        "and to the right,",
+        "another astronaut in a white suit stands facing forward",
+        "inside a grey space station corridor."
+      ],
+      "mask": [0, 1, 0, 1, 0]
+    },
+    "action_prompts": {
+      "default": {
+        "segments": [
+          "On the left side,",
+          "the astronaut is checking a wrist-mounted computer",
+          "while on the right side,",
+          "the astronaut is giving a thumbs-up gesture."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "first_action": {
+        "segments": [
+          "On the left side,",
+          "the astronaut is checking a wrist-mounted computer",
+          "and on the right side,",
+          "the astronaut is also checking a wrist-mounted computer."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "second_action": {
+        "segments": [
+          "On the left side,",
+          "the astronaut is giving a thumbs-up gesture",
+          "and on the right side,",
+          "the astronaut is also giving a thumbs-up gesture."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "no_locative": {
+        "segments": [
+          "An astronaut is checking a wrist-mounted computer",
+          "and",
+          "another astronaut is giving a thumbs-up gesture."
+        ],
+        "mask": [1, 0, 1]
+      }
+    }
+  },
+  {
+    "appearance_prompt": {
+      "segments": [
+        "At the left of the frame,",
+        "a chubby panda sits holding a bamboo stalk",
+        "and at the right,",
+        "another chubby panda sits holding a bamboo stalk",
+        "against a blurred forest background."
+      ],
+      "mask": [0, 1, 0, 1, 0]
+    },
+    "action_prompts": {
+      "default": {
+        "segments": [
+          "On the left,",
+          "the chubby panda is chewing on the bamboo stalk",
+          "but on the right,",
+          "the chubby panda is yawning widely."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "first_action": {
+        "segments": [
+          "On the left,",
+          "the chubby panda is chewing on the bamboo stalk",
+          "and on the right,",
+          "the chubby panda is also chewing on the bamboo stalk."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "second_action": {
+        "segments": [
+          "On the left,",
+          "the chubby panda is yawning widely",
+          "and on the right,",
+          "the chubby panda is also yawning widely."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "no_locative": {
+        "segments": [
+          "A chubby panda is chewing on the bamboo stalk",
+          "while",
+          "a similar chubby panda is yawning widely."
+        ],
+        "mask": [1, 0, 1]
+      }
+    }
+  },
+  {
+    "appearance_prompt": {
+      "segments": [
+        "Standing on the left,",
+        "a medieval knight wears full plate armor",
+        "and standing on the right,",
+        "an identical medieval knight wears full plate armor",
+        "in front of a stone castle wall."
+      ],
+      "mask": [0, 1, 0, 1, 0]
+    },
+    "action_prompts": {
+      "default": {
+        "segments": [
+          "On the left,",
+          "the medieval knight is polishing his sword with a cloth",
+          "while on the right,",
+          "the medieval knight is adjusting his helmet visor."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "first_action": {
+        "segments": [
+          "On the left,",
+          "the medieval knight is polishing his sword with a cloth",
+          "and on the right,",
+          "the medieval knight is also polishing his sword with a cloth."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "second_action": {
+        "segments": [
+          "On the left,",
+          "the medieval knight is adjusting his helmet visor",
+          "and on the right,",
+          "the medieval knight is also adjusting his helmet visor."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "no_locative": {
+        "segments": [
+          "A medieval knight is polishing his sword with a cloth",
+          "and",
+          "another medieval knight is adjusting his helmet visor."
+        ],
+        "mask": [1, 0, 1]
+      }
+    }
+  },
+  {
+    "appearance_prompt": {
+      "segments": [
+        "Located on the left,",
+        "a green alien with large black eyes stands",
+        "and located on the right,",
+        "another green alien with large black eyes stands",
+        "on a dusty red planetary surface."
+      ],
+      "mask": [0, 1, 0, 1, 0]
+    },
+    "action_prompts": {
+      "default": {
+        "segments": [
+          "On the left,",
+          "the green alien is blinking slowly",
+          "while on the right,",
+          "the green alien is wiggling its antennae."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "first_action": {
+        "segments": [
+          "On the left,",
+          "the green alien is blinking slowly",
+          "and on the right,",
+          "the green alien is also blinking slowly."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "second_action": {
+        "segments": [
+          "On the left,",
+          "the green alien is wiggling its antennae",
+          "and on the right,",
+          "the green alien is also wiggling its antennae."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "no_locative": {
+        "segments": [
+          "A green alien is blinking slowly",
+          "and",
+          "a similar green alien is wiggling its antennae."
+        ],
+        "mask": [1, 0, 1]
+      }
+    }
+  },
+  {
+    "appearance_prompt": {
+      "segments": [
+        "On the left,",
+        "a chef in a white uniform stands holding a whisk",
+        "and on the right,",
+        "another chef in a white uniform stands holding a whisk",
+        "in a stainless steel kitchen."
+      ],
+      "mask": [0, 1, 0, 1, 0]
+    },
+    "action_prompts": {
+      "default": {
+        "segments": [
+          "On the left,",
+          "the chef is stirring a bowl vigorously",
+          "while on the right,",
+          "the chef is tasting sauce from a spoon."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "first_action": {
+        "segments": [
+          "On the left,",
+          "the chef is stirring a bowl vigorously",
+          "and on the right,",
+          "the chef is also stirring a bowl vigorously."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "second_action": {
+        "segments": [
+          "On the left,",
+          "the chef is tasting sauce from a spoon",
+          "and on the right,",
+          "the chef is also tasting sauce from a spoon."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "no_locative": {
+        "segments": [
+          "A chef is stirring a bowl vigorously",
+          "and",
+          "another chef is tasting sauce from a spoon."
+        ],
+        "mask": [1, 0, 1]
+      }
+    }
+  },
+  {
+    "appearance_prompt": {
+      "segments": [
+        "To the left,",
+        "a cartoonish blue ghost floats with translucent arms",
+        "and to the right,",
+        "an identical cartoonish blue ghost floats with translucent arms",
+        "against a dark purple void."
+      ],
+      "mask": [0, 1, 0, 1, 0]
+    },
+    "action_prompts": {
+      "default": {
+        "segments": [
+          "On the left,",
+          "the blue ghost is covering its eyes with its hands",
+          "whereas on the right,",
+          "the blue ghost is spinning slowly in the air."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "first_action": {
+        "segments": [
+          "On the left,",
+          "the blue ghost is covering its eyes with its hands",
+          "and on the right,",
+          "the blue ghost is also covering its eyes with its hands."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "second_action": {
+        "segments": [
+          "On the left,",
+          "the blue ghost is spinning slowly in the air",
+          "and on the right,",
+          "the blue ghost is also spinning slowly in the air."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "no_locative": {
+        "segments": [
+          "A blue ghost is covering its eyes with its hands",
+          "while",
+          "another blue ghost is spinning slowly in the air."
+        ],
+        "mask": [1, 0, 1]
+      }
+    }
+  },
+  {
+    "appearance_prompt": {
+      "segments": [
+        "On the left side of the room,",
+        "a businessman in a navy suit sits",
+        "and on the right side,",
+        "another businessman in a navy suit sits",
+        "against a beige office wall."
+      ],
+      "mask": [0, 1, 0, 1, 0]
+    },
+    "action_prompts": {
+      "default": {
+        "segments": [
+          "On the left,",
+          "the businessman is checking the time on his watch",
+          "while on the right,",
+          "the businessman is straightening his red tie."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "first_action": {
+        "segments": [
+          "On the left,",
+          "the businessman is checking the time on his watch",
+          "and on the right,",
+          "the businessman is also checking the time on his watch."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "second_action": {
+        "segments": [
+          "On the left,",
+          "the businessman is straightening his red tie",
+          "and on the right,",
+          "the businessman is likewise straightening his red tie."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "no_locative": {
+        "segments": [
+          "A businessman is checking the time on his watch",
+          "and",
+          "a similar businessman is straightening his red tie."
+        ],
+        "mask": [1, 0, 1]
+      }
+    }
+  },
+  {
+    "appearance_prompt": {
+      "segments": [
+        "In the left area,",
+        "a colorful macaw parrot sits on a wooden perch",
+        "and in the right area,",
+        "another colorful macaw parrot sits on a wooden perch",
+        "with a blurred jungle background."
+      ],
+      "mask": [0, 1, 0, 1, 0]
+    },
+    "action_prompts": {
+      "default": {
+        "segments": [
+          "On the left,",
+          "the macaw parrot is bobbing its head rhythmically",
+          "while on the right,",
+          "the macaw parrot is preening its wing feathers."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "first_action": {
+        "segments": [
+          "On the left,",
+          "the macaw parrot is bobbing its head rhythmically",
+          "and on the right,",
+          "the macaw parrot is also bobbing its head rhythmically."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "second_action": {
+        "segments": [
+          "On the left,",
+          "the macaw parrot is preening its wing feathers",
+          "and on the right,",
+          "the macaw parrot is also preening its wing feathers."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "no_locative": {
+        "segments": [
+          "A colorful macaw parrot is bobbing its head rhythmically",
+          "and",
+          "another colorful macaw parrot is preening its wing feathers."
+        ],
+        "mask": [1, 0, 1]
+      }
+    }
+  }
+]

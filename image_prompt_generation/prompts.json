@@ -2,341 +2,491 @@
   {
     "appearance_prompt": {
       "segments": [
-        "Against a seamless white backdrop, two dogs sit side by side, specifically",
-        "a golden retriever with a glossy coat",
-        "positioned on the left and",
-        "a golden retriever with a glossy coat",
-        "positioned on the right."
+        "On the left side,",
+        "a golden retriever with a glossy coat sits",
+        "and on the right side,",
+        "another golden retriever with a glossy coat sits",
+        "against a seamless white backdrop."
       ],
-      "mask": [
-        0,
-        1,
-        0,
-        1,
-        0
-      ]
+      "mask": [0, 1, 0, 1, 0]
     },
-    "action_prompt": {
-      "segments": [
-        "Without moving from their spots,",
-        "the golden retriever barks loudly",
-        "on the left side, while",
-        "the golden retriever pants with its tongue out",
-        "on the right side."
-      ],
-      "mask": [
-        0,
-        1,
-        0,
-        1,
-        0
-      ]
+    "action_prompts": {
+      "default": {
+        "segments": [
+          "On the left,",
+          "the golden retriever is barking loudly",
+          "while on the right,",
+          "the golden retriever is panting with its tongue out."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "first_action": {
+        "segments": [
+          "On the left,",
+          "the golden retriever is barking loudly",
+          "and on the right,",
+          "the golden retriever is also barking loudly."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "second_action": {
+        "segments": [
+          "On the left,",
+          "the golden retriever is panting with its tongue out",
+          "and on the right,",
+          "the golden retriever is also panting with its tongue out."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "no_locative": {
+        "segments": [
+          "A golden retriever is barking loudly",
+          "and",
+          "a similar golden retriever is panting with its tongue out."
+        ],
+        "mask": [1, 0, 1]
+      }
     }
   },
   {
     "appearance_prompt": {
       "segments": [
-        "A studio shot reveals two vintage timepieces, featuring",
-        "a red twin-bell alarm clock",
-        "standing on the left and",
-        "a red twin-bell alarm clock",
-        "standing on the right against a grey background."
+        "Standing on the left,",
+        "a red twin-bell alarm clock is positioned",
+        "and standing on the right,",
+        "an identical red twin-bell alarm clock is positioned",
+        "against a grey background."
       ],
-      "mask": [
-        0,
-        1,
-        0,
-        1,
-        0
-      ]
+      "mask": [0, 1, 0, 1, 0]
     },
-    "action_prompt": {
-      "segments": [
-        "Suddenly,",
-        "the red twin-bell alarm clock rings with vibrating bells",
-        "on the left, whereas",
-        "the red twin-bell alarm clock's hands spin rapidly",
-        "on the right."
-      ],
-      "mask": [
-        0,
-        1,
-        0,
-        1,
-        0
-      ]
+    "action_prompts": {
+      "default": {
+        "segments": [
+          "On the left,",
+          "the red twin-bell alarm clock is ringing with vibrating bells",
+          "whereas on the right,",
+          "the red twin-bell alarm clock is spinning its hands rapidly."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "first_action": {
+        "segments": [
+          "On the left,",
+          "the red twin-bell alarm clock is ringing with vibrating bells",
+          "and on the right,",
+          "the red twin-bell alarm clock is also ringing with vibrating bells."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "second_action": {
+        "segments": [
+          "On the left,",
+          "the red twin-bell alarm clock is spinning its hands rapidly",
+          "and on the right,",
+          "the red twin-bell alarm clock is likewise spinning its hands rapidly."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "no_locative": {
+        "segments": [
+          "A red twin-bell alarm clock is ringing with vibrating bells",
+          "while",
+          "another red twin-bell alarm clock is spinning its hands rapidly."
+        ],
+        "mask": [1, 0, 1]
+      }
     }
   },
   {
     "appearance_prompt": {
       "segments": [
-        "Two identical kitchen appliances rest on a wooden counter, showing",
-        "a silver toaster holding two slices of white bread",
-        "placed on the left and",
-        "a silver toaster holding two slices of white bread",
-        "placed on the right."
+        "Placed on the left,",
+        "a silver toaster holds two slices of white bread",
+        "and placed on the right,",
+        "another silver toaster holds two slices of white bread",
+        "on a wooden counter."
       ],
-      "mask": [
-        0,
-        1,
-        0,
-        1,
-        0
-      ]
+      "mask": [0, 1, 0, 1, 0]
     },
-    "action_prompt": {
-      "segments": [
-        "In the scene,",
-        "the silver toaster ejects the toast upward",
-        "on the left side, while simultaneously",
-        "the silver toaster's heating elements glow bright red",
-        "on the right side."
-      ],
-      "mask": [
-        0,
-        1,
-        0,
-        1,
-        0
-      ]
+    "action_prompts": {
+      "default": {
+        "segments": [
+          "On the left,",
+          "the silver toaster is ejecting the toast upward",
+          "while on the right,",
+          "the silver toaster is glowing bright red inside."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "first_action": {
+        "segments": [
+          "On the left,",
+          "the silver toaster is ejecting the toast upward",
+          "and on the right,",
+          "the silver toaster is also ejecting the toast upward."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "second_action": {
+        "segments": [
+          "On the left,",
+          "the silver toaster is glowing bright red inside",
+          "and on the right,",
+          "the silver toaster is also glowing bright red inside."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "no_locative": {
+        "segments": [
+          "A silver toaster is ejecting the toast upward",
+          "and",
+          "a similar silver toaster is glowing bright red inside."
+        ],
+        "mask": [1, 0, 1]
+      }
     }
   },
   {
     "appearance_prompt": {
       "segments": [
-        "A close-up view depicts",
-        "a clear incandescent light bulb",
-        "screwed into a base on the left and",
-        "a clear incandescent light bulb",
-        "screwed into a base on the right, both against a dark background."
+        "Screwed into a base on the left,",
+        "a clear incandescent light bulb stands",
+        "and screwed into a base on the right,",
+        "another clear incandescent light bulb stands",
+        "against a dark background."
       ],
-      "mask": [
-        0,
-        1,
-        0,
-        1,
-        0
-      ]
+      "mask": [0, 1, 0, 1, 0]
     },
-    "action_prompt": {
-      "segments": [
-        "Moments later,",
-        "the clear incandescent light bulb lights up brightly",
-        "on the left, while",
-        "the clear incandescent light bulb shatters into pieces",
-        "on the right."
-      ],
-      "mask": [
-        0,
-        1,
-        0,
-        1,
-        0
-      ]
+    "action_prompts": {
+      "default": {
+        "segments": [
+          "On the left,",
+          "the clear incandescent light bulb is lighting up brightly",
+          "while on the right,",
+          "the clear incandescent light bulb is shattering into pieces."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "first_action": {
+        "segments": [
+          "On the left,",
+          "the clear incandescent light bulb is lighting up brightly",
+          "and on the right,",
+          "the clear incandescent light bulb is also lighting up brightly."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "second_action": {
+        "segments": [
+          "On the left,",
+          "the clear incandescent light bulb is shattering into pieces",
+          "and on the right,",
+          "the clear incandescent light bulb is also shattering into pieces."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "no_locative": {
+        "segments": [
+          "A clear incandescent light bulb is lighting up brightly",
+          "and",
+          "another clear incandescent light bulb is shattering into pieces."
+        ],
+        "mask": [1, 0, 1]
+      }
     }
   },
   {
     "appearance_prompt": {
       "segments": [
-        "Two toys stand ready for action, including",
-        "a tin wind-up robot with square eyes",
-        "located on the left and",
-        "a tin wind-up robot with square eyes",
-        "located on the right against a neutral blue wall."
+        "Located on the left,",
+        "a tin wind-up robot with square eyes stands",
+        "and located on the right,",
+        "an identical tin wind-up robot with square eyes stands",
+        "against a neutral blue wall."
       ],
-      "mask": [
-        0,
-        1,
-        0,
-        1,
-        0
-      ]
+      "mask": [0, 1, 0, 1, 0]
     },
-    "action_prompt": {
-      "segments": [
-        "Mechanically,",
-        "the tin wind-up robot rotates its head 360 degrees",
-        "on the left, and",
-        "the tin wind-up robot raises its arms up and down",
-        "on the right."
-      ],
-      "mask": [
-        0,
-        1,
-        0,
-        1,
-        0
-      ]
+    "action_prompts": {
+      "default": {
+        "segments": [
+          "On the left,",
+          "the tin wind-up robot is rotating its head 360 degrees",
+          "and on the right,",
+          "the tin wind-up robot is raising its arms up and down."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "first_action": {
+        "segments": [
+          "On the left,",
+          "the tin wind-up robot is rotating its head 360 degrees",
+          "and on the right,",
+          "the tin wind-up robot is also rotating its head 360 degrees."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "second_action": {
+        "segments": [
+          "On the left,",
+          "the tin wind-up robot is raising its arms up and down",
+          "and on the right,",
+          "the tin wind-up robot is also raising its arms up and down."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "no_locative": {
+        "segments": [
+          "A tin wind-up robot is rotating its head 360 degrees",
+          "while",
+          "another tin wind-up robot is raising its arms up and down."
+        ],
+        "mask": [1, 0, 1]
+      }
     }
   },
   {
     "appearance_prompt": {
       "segments": [
-        "On a marble table sit two beverages, specifically",
-        "a sealed red soda can with condensation",
-        "on the left side and",
-        "a sealed red soda can with condensation",
-        "on the right side."
+        "On the left side of the marble table,",
+        "a sealed red soda can sits with condensation",
+        "and on the right side,",
+        "another sealed red soda can sits with condensation",
+        "in a studio setting."
       ],
-      "mask": [
-        0,
-        1,
-        0,
-        1,
-        0
-      ]
+      "mask": [0, 1, 0, 1, 0]
     },
-    "action_prompt": {
-      "segments": [
-        "Action unfolds as",
-        "the sealed red soda can crumples inward",
-        "on the left, while",
-        "the sealed red soda can pops its tab open with a spray",
-        "on the right."
-      ],
-      "mask": [
-        0,
-        1,
-        0,
-        1,
-        0
-      ]
+    "action_prompts": {
+      "default": {
+        "segments": [
+          "On the left,",
+          "the sealed red soda can is crumpling inward",
+          "while on the right,",
+          "the sealed red soda can is popping its tab open with a spray."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "first_action": {
+        "segments": [
+          "On the left,",
+          "the sealed red soda can is crumpling inward",
+          "and on the right,",
+          "the sealed red soda can is also crumpling inward."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "second_action": {
+        "segments": [
+          "On the left,",
+          "the sealed red soda can is popping its tab open with a spray",
+          "and on the right,",
+          "the sealed red soda can is likewise popping its tab open with a spray."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "no_locative": {
+        "segments": [
+          "A sealed red soda can is crumpling inward",
+          "and",
+          "a similar sealed red soda can is popping its tab open with a spray."
+        ],
+        "mask": [1, 0, 1]
+      }
     }
   },
   {
     "appearance_prompt": {
       "segments": [
-        "Two pieces of photography equipment are displayed, with",
-        "a black DSLR camera facing forward",
-        "set on the left and",
-        "a black DSLR camera facing forward",
-        "set on the right on a plain surface."
+        "Set on the left,",
+        "a black DSLR camera sits facing forward",
+        "and set on the right,",
+        "another black DSLR camera sits facing forward",
+        "on a plain surface."
       ],
-      "mask": [
-        0,
-        1,
-        0,
-        1,
-        0
-      ]
+      "mask": [0, 1, 0, 1, 0]
     },
-    "action_prompt": {
-      "segments": [
-        "Capturing the moment,",
-        "the black DSLR camera triggers a bright flash",
-        "on the left side, and",
-        "the black DSLR camera extends its zoom lens outward",
-        "on the right side."
-      ],
-      "mask": [
-        0,
-        1,
-        0,
-        1,
-        0
-      ]
+    "action_prompts": {
+      "default": {
+        "segments": [
+          "On the left,",
+          "the black DSLR camera is triggering a bright flash",
+          "while on the right,",
+          "the black DSLR camera is extending its zoom lens outward."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "first_action": {
+        "segments": [
+          "On the left,",
+          "the black DSLR camera is triggering a bright flash",
+          "and on the right,",
+          "the black DSLR camera is also triggering a bright flash."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "second_action": {
+        "segments": [
+          "On the left,",
+          "the black DSLR camera is extending its zoom lens outward",
+          "and on the right,",
+          "the black DSLR camera is likewise extending its zoom lens outward."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "no_locative": {
+        "segments": [
+          "A black DSLR camera is triggering a bright flash",
+          "and",
+          "a similar black DSLR camera is extending its zoom lens outward."
+        ],
+        "mask": [1, 0, 1]
+      }
     }
   },
   {
     "appearance_prompt": {
       "segments": [
-        "A peaceful garden scene features",
-        "a green potted fern",
-        "resting on the left and",
-        "a green potted fern",
-        "resting on the right against a blurred background."
+        "Resting on the left,",
+        "a green potted fern sits",
+        "and resting on the right,",
+        "another green potted fern sits",
+        "against a blurred garden background."
       ],
-      "mask": [
-        0,
-        1,
-        0,
-        1,
-        0
-      ]
+      "mask": [0, 1, 0, 1, 0]
     },
-    "action_prompt": {
-      "segments": [
-        "Disturbing the stillness,",
-        "the green potted fern sways violently in a wind gust",
-        "on the left, while",
-        "the green potted fern drops a single frond to the ground",
-        "on the right."
-      ],
-      "mask": [
-        0,
-        1,
-        0,
-        1,
-        0
-      ]
+    "action_prompts": {
+      "default": {
+        "segments": [
+          "On the left,",
+          "the green potted fern is swaying violently in a wind gust",
+          "but on the right,",
+          "the green potted fern is dropping a single frond to the ground."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "first_action": {
+        "segments": [
+          "On the left,",
+          "the green potted fern is swaying violently in a wind gust",
+          "and on the right,",
+          "the green potted fern is also swaying violently in a wind gust."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "second_action": {
+        "segments": [
+          "On the left,",
+          "the green potted fern is dropping a single frond to the ground",
+          "and on the right,",
+          "the green potted fern is also dropping a single frond to the ground."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "no_locative": {
+        "segments": [
+          "A green potted fern is swaying violently in a wind gust",
+          "while",
+          "a similar green potted fern is dropping a single frond to the ground."
+        ],
+        "mask": [1, 0, 1]
+      }
     }
   },
   {
     "appearance_prompt": {
       "segments": [
-        "Two hardcover volumes are placed vertically, depicting",
-        "a thick blue magic book with gold trim",
-        "standing on the left and",
-        "a thick blue magic book with gold trim",
-        "standing on the right."
+        "Standing vertically on the left,",
+        "a thick blue magic book with gold trim is displayed",
+        "and standing vertically on the right,",
+        "an identical thick blue magic book with gold trim is displayed",
+        "against a neutral backdrop."
       ],
-      "mask": [
-        0,
-        1,
-        0,
-        1,
-        0
-      ]
+      "mask": [0, 1, 0, 1, 0]
     },
-    "action_prompt": {
-      "segments": [
-        "Magically,",
-        "the thick blue magic book opens its cover by itself",
-        "on the left, whereas",
-        "the thick blue magic book flutters its pages rapidly",
-        "on the right."
-      ],
-      "mask": [
-        0,
-        1,
-        0,
-        1,
-        0
-      ]
+    "action_prompts": {
+      "default": {
+        "segments": [
+          "On the left,",
+          "the thick blue magic book is opening its cover by itself",
+          "whereas on the right,",
+          "the thick blue magic book is fluttering its pages rapidly."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "first_action": {
+        "segments": [
+          "On the left,",
+          "the thick blue magic book is opening its cover by itself",
+          "and on the right,",
+          "the thick blue magic book is also opening its cover by itself."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "second_action": {
+        "segments": [
+          "On the left,",
+          "the thick blue magic book is fluttering its pages rapidly",
+          "and on the right,",
+          "the thick blue magic book is likewise fluttering its pages rapidly."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "no_locative": {
+        "segments": [
+          "A thick blue magic book is opening its cover by itself",
+          "and",
+          "another thick blue magic book is fluttering its pages rapidly."
+        ],
+        "mask": [1, 0, 1]
+      }
     }
   },
   {
     "appearance_prompt": {
       "segments": [
-        "A macro shot presents two unlit wax items, showing",
-        "a white pillar candle with a fresh wick",
-        "positioned on the left and",
-        "a white pillar candle with a fresh wick",
-        "positioned on the right against black."
+        "Positioned on the left,",
+        "a white pillar candle with a fresh wick stands",
+        "and positioned on the right,",
+        "another white pillar candle with a fresh wick stands",
+        "against a black background."
       ],
-      "mask": [
-        0,
-        1,
-        0,
-        1,
-        0
-      ]
+      "mask": [0, 1, 0, 1, 0]
     },
-    "action_prompt": {
-      "segments": [
-        "In the darkness,",
-        "the white pillar candle ignites with a warm flame",
-        "on the left, and",
-        "the white pillar candle emits a thin trail of gray smoke",
-        "on the right."
-      ],
-      "mask": [
-        0,
-        1,
-        0,
-        1,
-        0
-      ]
+    "action_prompts": {
+      "default": {
+        "segments": [
+          "On the left,",
+          "the white pillar candle is igniting with a warm flame",
+          "while on the right,",
+          "the white pillar candle is emitting a thin trail of gray smoke."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "first_action": {
+        "segments": [
+          "On the left,",
+          "the white pillar candle is igniting with a warm flame",
+          "and on the right,",
+          "the white pillar candle is also igniting with a warm flame."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "second_action": {
+        "segments": [
+          "On the left,",
+          "the white pillar candle is emitting a thin trail of gray smoke",
+          "and on the right,",
+          "the white pillar candle is also emitting a thin trail of gray smoke."
+        ],
+        "mask": [0, 1, 0, 1]
+      },
+      "no_locative": {
+        "segments": [
+          "A white pillar candle is igniting with a warm flame",
+          "and",
+          "a similar white pillar candle is emitting a thin trail of gray smoke."
+        ],
+        "mask": [1, 0, 1]
+      }
     }
   }
 ]

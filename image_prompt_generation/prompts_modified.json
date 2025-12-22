@@ -2,6 +2,1786 @@
   {
     "appearance_prompt": {
       "segments": [
+        "On the left side,",
+        "a golden retriever with a glossy coat sits",
+        "and on the right side,",
+        "another golden retriever with a glossy coat sits",
+        "against a seamless white backdrop."
+      ],
+      "mask": [
+        0,
+        1,
+        0,
+        1,
+        0
+      ]
+    },
+    "action_prompts": {
+      "default": {
+        "segments": [
+          "On the left,",
+          "the golden retriever is barking loudly",
+          "while on the right,",
+          "the golden retriever is panting with its tongue out."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "first_action": {
+        "segments": [
+          "On the left,",
+          "the golden retriever is barking loudly",
+          "and on the right,",
+          "the golden retriever is also barking loudly."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "second_action": {
+        "segments": [
+          "On the left,",
+          "the golden retriever is panting with its tongue out",
+          "and on the right,",
+          "the golden retriever is also panting with its tongue out."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "no_locative": {
+        "segments": [
+          "A golden retriever is barking loudly",
+          "and",
+          "a similar golden retriever is panting with its tongue out."
+        ],
+        "mask": [
+          1,
+          0,
+          1
+        ]
+      }
+    },
+    "bboxes": [
+      [
+        43.4727783203125,
+        41.9632682800293,
+        372.61981201171875,
+        474.137939453125
+      ],
+      [
+        484.4936828613281,
+        34.49104690551758,
+        796.5234375,
+        471.7186584472656
+      ]
+    ],
+    "img_path": "images/0.png"
+  },
+  {
+    "appearance_prompt": {
+      "segments": [
+        "Standing on the left,",
+        "a red twin-bell alarm clock is positioned",
+        "and standing on the right,",
+        "an identical red twin-bell alarm clock is positioned",
+        "against a grey background."
+      ],
+      "mask": [
+        0,
+        1,
+        0,
+        1,
+        0
+      ]
+    },
+    "action_prompts": {
+      "default": {
+        "segments": [
+          "On the left,",
+          "the red twin-bell alarm clock is ringing with vibrating bells",
+          "whereas on the right,",
+          "the red twin-bell alarm clock is spinning its hands rapidly."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "first_action": {
+        "segments": [
+          "On the left,",
+          "the red twin-bell alarm clock is ringing with vibrating bells",
+          "and on the right,",
+          "the red twin-bell alarm clock is also ringing with vibrating bells."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "second_action": {
+        "segments": [
+          "On the left,",
+          "the red twin-bell alarm clock is spinning its hands rapidly",
+          "and on the right,",
+          "the red twin-bell alarm clock is likewise spinning its hands rapidly."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "no_locative": {
+        "segments": [
+          "A red twin-bell alarm clock is ringing with vibrating bells",
+          "while",
+          "another red twin-bell alarm clock is spinning its hands rapidly."
+        ],
+        "mask": [
+          1,
+          0,
+          1
+        ]
+      }
+    },
+    "bboxes": [
+      [
+        126.76129150390625,
+        102.83979797363281,
+        364.7767028808594,
+        435.26385498046875
+      ],
+      [
+        455.27166748046875,
+        100.95906066894531,
+        692.7666625976562,
+        436.0556335449219
+      ]
+    ],
+    "img_path": "images/1.png"
+  },
+  {
+    "appearance_prompt": {
+      "segments": [
+        "Placed on the left,",
+        "a silver toaster holds two slices of white bread",
+        "and placed on the right,",
+        "another silver toaster holds two slices of white bread",
+        "on a wooden counter."
+      ],
+      "mask": [
+        0,
+        1,
+        0,
+        1,
+        0
+      ]
+    },
+    "action_prompts": {
+      "default": {
+        "segments": [
+          "On the left,",
+          "the silver toaster is ejecting the toast upward",
+          "while on the right,",
+          "the silver toaster is glowing bright red inside."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "first_action": {
+        "segments": [
+          "On the left,",
+          "the silver toaster is ejecting the toast upward",
+          "and on the right,",
+          "the silver toaster is also ejecting the toast upward."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "second_action": {
+        "segments": [
+          "On the left,",
+          "the silver toaster is glowing bright red inside",
+          "and on the right,",
+          "the silver toaster is also glowing bright red inside."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "no_locative": {
+        "segments": [
+          "A silver toaster is ejecting the toast upward",
+          "and",
+          "a similar silver toaster is glowing bright red inside."
+        ],
+        "mask": [
+          1,
+          0,
+          1
+        ]
+      }
+    },
+    "bboxes": [
+      [
+        52.337554931640625,
+        178.27664184570312,
+        405.3697204589844,
+        384.6439208984375
+      ],
+      [
+        450.438232421875,
+        189.06777954101562,
+        790.3400268554688,
+        390.9606628417969
+      ]
+    ],
+    "img_path": "images/2.png"
+  },
+  {
+    "appearance_prompt": {
+      "segments": [
+        "Screwed into a base on the left,",
+        "a clear incandescent light bulb stands",
+        "and screwed into a base on the right,",
+        "another clear incandescent light bulb stands",
+        "against a dark background."
+      ],
+      "mask": [
+        0,
+        1,
+        0,
+        1,
+        0
+      ]
+    },
+    "action_prompts": {
+      "default": {
+        "segments": [
+          "On the left,",
+          "the clear incandescent light bulb is lighting up brightly",
+          "while on the right,",
+          "the clear incandescent light bulb is shattering into pieces."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "first_action": {
+        "segments": [
+          "On the left,",
+          "the clear incandescent light bulb is lighting up brightly",
+          "and on the right,",
+          "the clear incandescent light bulb is also lighting up brightly."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "second_action": {
+        "segments": [
+          "On the left,",
+          "the clear incandescent light bulb is shattering into pieces",
+          "and on the right,",
+          "the clear incandescent light bulb is also shattering into pieces."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "no_locative": {
+        "segments": [
+          "A clear incandescent light bulb is lighting up brightly",
+          "and",
+          "another clear incandescent light bulb is shattering into pieces."
+        ],
+        "mask": [
+          1,
+          0,
+          1
+        ]
+      }
+    },
+    "bboxes": [
+      [
+        155.8804168701172,
+        59.322853088378906,
+        335.0041809082031,
+        459.8046569824219
+      ],
+      [
+        498.95172119140625,
+        59.99944305419922,
+        674.108154296875,
+        460.64044189453125
+      ]
+    ],
+    "img_path": "images/3.png"
+  },
+  {
+    "appearance_prompt": {
+      "segments": [
+        "Located on the left,",
+        "a tin wind-up robot with square eyes stands",
+        "and located on the right,",
+        "an identical tin wind-up robot with square eyes stands",
+        "against a neutral blue wall."
+      ],
+      "mask": [
+        0,
+        1,
+        0,
+        1,
+        0
+      ]
+    },
+    "action_prompts": {
+      "default": {
+        "segments": [
+          "On the left,",
+          "the tin wind-up robot is rotating its head 360 degrees",
+          "and on the right,",
+          "the tin wind-up robot is raising its arms up and down."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "first_action": {
+        "segments": [
+          "On the left,",
+          "the tin wind-up robot is rotating its head 360 degrees",
+          "and on the right,",
+          "the tin wind-up robot is also rotating its head 360 degrees."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "second_action": {
+        "segments": [
+          "On the left,",
+          "the tin wind-up robot is raising its arms up and down",
+          "and on the right,",
+          "the tin wind-up robot is also raising its arms up and down."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "no_locative": {
+        "segments": [
+          "A tin wind-up robot is rotating its head 360 degrees",
+          "while",
+          "another tin wind-up robot is raising its arms up and down."
+        ],
+        "mask": [
+          1,
+          0,
+          1
+        ]
+      }
+    },
+    "bboxes": [
+      [
+        105.65030670166016,
+        37.64516830444336,
+        300.6805419921875,
+        470.8819274902344
+      ],
+      [
+        523.7672119140625,
+        36.083492279052734,
+        721.6345825195312,
+        465.554931640625
+      ]
+    ],
+    "img_path": "images/4.png"
+  },
+  {
+    "appearance_prompt": {
+      "segments": [
+        "On the left side of the marble table,",
+        "a sealed red soda can sits with condensation",
+        "and on the right side,",
+        "another sealed red soda can sits with condensation",
+        "in a studio setting."
+      ],
+      "mask": [
+        0,
+        1,
+        0,
+        1,
+        0
+      ]
+    },
+    "action_prompts": {
+      "default": {
+        "segments": [
+          "On the left,",
+          "the sealed red soda can is crumpling inward",
+          "while on the right,",
+          "the sealed red soda can is popping its tab open with a spray."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "first_action": {
+        "segments": [
+          "On the left,",
+          "the sealed red soda can is crumpling inward",
+          "and on the right,",
+          "the sealed red soda can is also crumpling inward."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "second_action": {
+        "segments": [
+          "On the left,",
+          "the sealed red soda can is popping its tab open with a spray",
+          "and on the right,",
+          "the sealed red soda can is likewise popping its tab open with a spray."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "no_locative": {
+        "segments": [
+          "A sealed red soda can is crumpling inward",
+          "and",
+          "a similar sealed red soda can is popping its tab open with a spray."
+        ],
+        "mask": [
+          1,
+          0,
+          1
+        ]
+      }
+    },
+    "bboxes": [
+      [
+        220.0015869140625,
+        123.20022583007812,
+        378.1162109375,
+        398.56634521484375
+      ],
+      [
+        445.2276916503906,
+        122.74532318115234,
+        601.0338745117188,
+        397.5343933105469
+      ]
+    ],
+    "img_path": "images/5.png"
+  },
+  {
+    "appearance_prompt": {
+      "segments": [
+        "Set on the left,",
+        "a black DSLR camera sits facing forward",
+        "and set on the right,",
+        "another black DSLR camera sits facing forward",
+        "on a plain surface."
+      ],
+      "mask": [
+        0,
+        1,
+        0,
+        1,
+        0
+      ]
+    },
+    "action_prompts": {
+      "default": {
+        "segments": [
+          "On the left,",
+          "the black DSLR camera is triggering a bright flash",
+          "while on the right,",
+          "the black DSLR camera is extending its zoom lens outward."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "first_action": {
+        "segments": [
+          "On the left,",
+          "the black DSLR camera is triggering a bright flash",
+          "and on the right,",
+          "the black DSLR camera is also triggering a bright flash."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "second_action": {
+        "segments": [
+          "On the left,",
+          "the black DSLR camera is extending its zoom lens outward",
+          "and on the right,",
+          "the black DSLR camera is likewise extending its zoom lens outward."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "no_locative": {
+        "segments": [
+          "A black DSLR camera is triggering a bright flash",
+          "and",
+          "a similar black DSLR camera is extending its zoom lens outward."
+        ],
+        "mask": [
+          1,
+          0,
+          1
+        ]
+      }
+    },
+    "bboxes": [
+      [
+        122.01333618164062,
+        187.95913696289062,
+        409.5289001464844,
+        402.0140075683594
+      ],
+      [
+        425.2756652832031,
+        189.26596069335938,
+        714.4843139648438,
+        402.2978515625
+      ]
+    ],
+    "img_path": "images/6.png"
+  },
+  {
+    "appearance_prompt": {
+      "segments": [
+        "Resting on the left,",
+        "a green potted fern sits",
+        "and resting on the right,",
+        "another green potted fern sits",
+        "against a blurred garden background."
+      ],
+      "mask": [
+        0,
+        1,
+        0,
+        1,
+        0
+      ]
+    },
+    "action_prompts": {
+      "default": {
+        "segments": [
+          "On the left,",
+          "the green potted fern is swaying violently in a wind gust",
+          "but on the right,",
+          "the green potted fern is dropping a single frond to the ground."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "first_action": {
+        "segments": [
+          "On the left,",
+          "the green potted fern is swaying violently in a wind gust",
+          "and on the right,",
+          "the green potted fern is also swaying violently in a wind gust."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "second_action": {
+        "segments": [
+          "On the left,",
+          "the green potted fern is dropping a single frond to the ground",
+          "and on the right,",
+          "the green potted fern is also dropping a single frond to the ground."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "no_locative": {
+        "segments": [
+          "A green potted fern is swaying violently in a wind gust",
+          "while",
+          "a similar green potted fern is dropping a single frond to the ground."
+        ],
+        "mask": [
+          1,
+          0,
+          1
+        ]
+      }
+    },
+    "bboxes": [
+      [
+        55.16679763793945,
+        66.97319793701172,
+        462.1976318359375,
+        470.56591796875
+      ],
+      [
+        422.1180114746094,
+        199.31788635253906,
+        769.96826171875,
+        470.1507263183594
+      ]
+    ],
+    "img_path": "images/7.png"
+  },
+  {
+    "appearance_prompt": {
+      "segments": [
+        "Standing vertically on the left,",
+        "a thick blue magic book with gold trim is displayed",
+        "and standing vertically on the right,",
+        "an identical thick blue magic book with gold trim is displayed",
+        "against a neutral backdrop."
+      ],
+      "mask": [
+        0,
+        1,
+        0,
+        1,
+        0
+      ]
+    },
+    "action_prompts": {
+      "default": {
+        "segments": [
+          "On the left,",
+          "the thick blue magic book is opening its cover by itself",
+          "whereas on the right,",
+          "the thick blue magic book is fluttering its pages rapidly."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "first_action": {
+        "segments": [
+          "On the left,",
+          "the thick blue magic book is opening its cover by itself",
+          "and on the right,",
+          "the thick blue magic book is also opening its cover by itself."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "second_action": {
+        "segments": [
+          "On the left,",
+          "the thick blue magic book is fluttering its pages rapidly",
+          "and on the right,",
+          "the thick blue magic book is likewise fluttering its pages rapidly."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "no_locative": {
+        "segments": [
+          "A thick blue magic book is opening its cover by itself",
+          "and",
+          "another thick blue magic book is fluttering its pages rapidly."
+        ],
+        "mask": [
+          1,
+          0,
+          1
+        ]
+      }
+    },
+    "bboxes": [
+      [
+        92.12928771972656,
+        34.75238800048828,
+        388.9742431640625,
+        464.2420654296875
+      ],
+      [
+        473.4474182128906,
+        32.555450439453125,
+        744.9483032226562,
+        462.6060791015625
+      ]
+    ],
+    "img_path": "images/8.png"
+  },
+  {
+    "appearance_prompt": {
+      "segments": [
+        "Positioned on the left,",
+        "a white pillar candle with a fresh wick stands",
+        "and positioned on the right,",
+        "another white pillar candle with a fresh wick stands",
+        "against a black background."
+      ],
+      "mask": [
+        0,
+        1,
+        0,
+        1,
+        0
+      ]
+    },
+    "action_prompts": {
+      "default": {
+        "segments": [
+          "On the left,",
+          "the white pillar candle is igniting with a warm flame",
+          "while on the right,",
+          "the white pillar candle is emitting a thin trail of gray smoke."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "first_action": {
+        "segments": [
+          "On the left,",
+          "the white pillar candle is igniting with a warm flame",
+          "and on the right,",
+          "the white pillar candle is also igniting with a warm flame."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "second_action": {
+        "segments": [
+          "On the left,",
+          "the white pillar candle is emitting a thin trail of gray smoke",
+          "and on the right,",
+          "the white pillar candle is also emitting a thin trail of gray smoke."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "no_locative": {
+        "segments": [
+          "A white pillar candle is igniting with a warm flame",
+          "and",
+          "a similar white pillar candle is emitting a thin trail of gray smoke."
+        ],
+        "mask": [
+          1,
+          0,
+          1
+        ]
+      }
+    },
+    "bboxes": [
+      [
+        184.31394958496094,
+        156.4601287841797,
+        357.9668273925781,
+        444.8002014160156
+      ],
+      [
+        478.53045654296875,
+        169.23756408691406,
+        651.8017578125,
+        442.7733459472656
+      ]
+    ],
+    "img_path": "images/9.png"
+  },
+  {
+    "appearance_prompt": {
+      "segments": [
+        "On the left side,",
+        "a shiny metallic robot stands with mechanical arms",
+        "and on the right side,",
+        "an identical shiny metallic robot stands with mechanical arms",
+        "against a white laboratory wall."
+      ],
+      "mask": [
+        0,
+        1,
+        0,
+        1,
+        0
+      ]
+    },
+    "action_prompts": {
+      "default": {
+        "segments": [
+          "On the left,",
+          "the shiny metallic robot is typing on a holographic keyboard",
+          "while on the right,",
+          "the shiny metallic robot is rotating its head to scan the room."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "first_action": {
+        "segments": [
+          "On the left,",
+          "the shiny metallic robot is typing on a holographic keyboard",
+          "and on the right,",
+          "the shiny metallic robot is also typing on a holographic keyboard."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "second_action": {
+        "segments": [
+          "On the left,",
+          "the shiny metallic robot is rotating its head to scan the room",
+          "and on the right,",
+          "the shiny metallic robot is likewise rotating its head to scan the room."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "no_locative": {
+        "segments": [
+          "A shiny metallic robot is typing on a holographic keyboard",
+          "while",
+          "an identical shiny metallic robot is rotating its head to scan the room."
+        ],
+        "mask": [
+          1,
+          0,
+          1
+        ]
+      }
+    },
+    "bboxes": [
+      [
+        183.2838897705078,
+        31.299762725830078,
+        359.5600280761719,
+        463.8670959472656
+      ],
+      [
+        476.5210876464844,
+        31.200756072998047,
+        646.5353393554688,
+        462.5534362792969
+      ]
+    ],
+    "img_path": "images/10.png"
+  },
+  {
+    "appearance_prompt": {
+      "segments": [
+        "In the foreground,",
+        "a golden retriever sits with fluffy ears",
+        "and next to it,",
+        "another golden retriever sits with fluffy ears",
+        "on a green grassy field."
+      ],
+      "mask": [
+        0,
+        1,
+        0,
+        1,
+        0
+      ]
+    },
+    "action_prompts": {
+      "default": {
+        "segments": [
+          "On the left,",
+          "the golden retriever is panting happily with its tongue out",
+          "whereas on the right,",
+          "the golden retriever is scratching its ear with a hind leg."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "first_action": {
+        "segments": [
+          "On the left,",
+          "the golden retriever is panting happily with its tongue out",
+          "and on the right,",
+          "the golden retriever is also panting happily with its tongue out."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "second_action": {
+        "segments": [
+          "On the left,",
+          "the golden retriever is scratching its ear with a hind leg",
+          "and on the right,",
+          "the golden retriever is also scratching its ear with a hind leg."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "no_locative": {
+        "segments": [
+          "A golden retriever is panting happily with its tongue out",
+          "and",
+          "a similar golden retriever is scratching its ear with a hind leg."
+        ],
+        "mask": [
+          1,
+          0,
+          1
+        ]
+      }
+    },
+    "bboxes": [
+      [
+        67.94910430908203,
+        49.681549072265625,
+        424.53759765625,
+        466.20745849609375
+      ],
+      [
+        413.20068359375,
+        71.73243713378906,
+        679.5672607421875,
+        446.8470458984375
+      ]
+    ],
+    "img_path": "images/11.png"
+  },
+  {
+    "appearance_prompt": {
+      "segments": [
+        "To the left,",
+        "an astronaut in a white suit stands facing forward",
+        "and to the right,",
+        "another astronaut in a white suit stands facing forward",
+        "inside a grey space station corridor."
+      ],
+      "mask": [
+        0,
+        1,
+        0,
+        1,
+        0
+      ]
+    },
+    "action_prompts": {
+      "default": {
+        "segments": [
+          "On the left side,",
+          "the astronaut is checking a wrist-mounted computer",
+          "while on the right side,",
+          "the astronaut is giving a thumbs-up gesture."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "first_action": {
+        "segments": [
+          "On the left side,",
+          "the astronaut is checking a wrist-mounted computer",
+          "and on the right side,",
+          "the astronaut is also checking a wrist-mounted computer."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "second_action": {
+        "segments": [
+          "On the left side,",
+          "the astronaut is giving a thumbs-up gesture",
+          "and on the right side,",
+          "the astronaut is also giving a thumbs-up gesture."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "no_locative": {
+        "segments": [
+          "An astronaut is checking a wrist-mounted computer",
+          "and",
+          "another astronaut is giving a thumbs-up gesture."
+        ],
+        "mask": [
+          1,
+          0,
+          1
+        ]
+      }
+    },
+    "bboxes": [
+      [
+        265.8722229003906,
+        108.98162841796875,
+        385.0392150878906,
+        442.22637939453125
+      ],
+      [
+        448.738525390625,
+        108.88613891601562,
+        578.7361450195312,
+        450.22784423828125
+      ]
+    ],
+    "img_path": "images/12.png"
+  },
+  {
+    "appearance_prompt": {
+      "segments": [
+        "At the left of the frame,",
+        "a chubby panda sits holding a bamboo stalk",
+        "and at the right,",
+        "another chubby panda sits holding a bamboo stalk",
+        "against a blurred forest background."
+      ],
+      "mask": [
+        0,
+        1,
+        0,
+        1,
+        0
+      ]
+    },
+    "action_prompts": {
+      "default": {
+        "segments": [
+          "On the left,",
+          "the chubby panda is chewing on the bamboo stalk",
+          "but on the right,",
+          "the chubby panda is yawning widely."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "first_action": {
+        "segments": [
+          "On the left,",
+          "the chubby panda is chewing on the bamboo stalk",
+          "and on the right,",
+          "the chubby panda is also chewing on the bamboo stalk."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "second_action": {
+        "segments": [
+          "On the left,",
+          "the chubby panda is yawning widely",
+          "and on the right,",
+          "the chubby panda is also yawning widely."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "no_locative": {
+        "segments": [
+          "A chubby panda is chewing on the bamboo stalk",
+          "while",
+          "a similar chubby panda is yawning widely."
+        ],
+        "mask": [
+          1,
+          0,
+          1
+        ]
+      }
+    },
+    "bboxes": [
+      [
+        64.18730163574219,
+        86.17278289794922,
+        401.7828369140625,
+        471.5899963378906
+      ],
+      [
+        418.0032958984375,
+        51.3584098815918,
+        756.695556640625,
+        452.7459411621094
+      ]
+    ],
+    "img_path": "images/13.png"
+  },
+  {
+    "appearance_prompt": {
+      "segments": [
+        "Standing on the left,",
+        "a medieval knight wears full plate armor",
+        "and standing on the right,",
+        "an identical medieval knight wears full plate armor",
+        "in front of a stone castle wall."
+      ],
+      "mask": [
+        0,
+        1,
+        0,
+        1,
+        0
+      ]
+    },
+    "action_prompts": {
+      "default": {
+        "segments": [
+          "On the left,",
+          "the medieval knight is polishing his sword with a cloth",
+          "while on the right,",
+          "the medieval knight is adjusting his helmet visor."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "first_action": {
+        "segments": [
+          "On the left,",
+          "the medieval knight is polishing his sword with a cloth",
+          "and on the right,",
+          "the medieval knight is also polishing his sword with a cloth."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "second_action": {
+        "segments": [
+          "On the left,",
+          "the medieval knight is adjusting his helmet visor",
+          "and on the right,",
+          "the medieval knight is also adjusting his helmet visor."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "no_locative": {
+        "segments": [
+          "A medieval knight is polishing his sword with a cloth",
+          "and",
+          "another medieval knight is adjusting his helmet visor."
+        ],
+        "mask": [
+          1,
+          0,
+          1
+        ]
+      }
+    },
+    "bboxes": [
+      [
+        28.53913688659668,
+        6.807875633239746,
+        381.1020812988281,
+        476.1352233886719
+      ],
+      [
+        419.03363037109375,
+        20.071006774902344,
+        779.88720703125,
+        475.6423645019531
+      ]
+    ],
+    "img_path": "images/14.png"
+  },
+  {
+    "appearance_prompt": {
+      "segments": [
+        "Located on the left,",
+        "a green alien with large black eyes stands",
+        "and located on the right,",
+        "another green alien with large black eyes stands",
+        "on a dusty red planetary surface."
+      ],
+      "mask": [
+        0,
+        1,
+        0,
+        1,
+        0
+      ]
+    },
+    "action_prompts": {
+      "default": {
+        "segments": [
+          "On the left,",
+          "the green alien is blinking slowly",
+          "while on the right,",
+          "the green alien is wiggling its antennae."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "first_action": {
+        "segments": [
+          "On the left,",
+          "the green alien is blinking slowly",
+          "and on the right,",
+          "the green alien is also blinking slowly."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "second_action": {
+        "segments": [
+          "On the left,",
+          "the green alien is wiggling its antennae",
+          "and on the right,",
+          "the green alien is also wiggling its antennae."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "no_locative": {
+        "segments": [
+          "A green alien is blinking slowly",
+          "and",
+          "a similar green alien is wiggling its antennae."
+        ],
+        "mask": [
+          1,
+          0,
+          1
+        ]
+      }
+    },
+    "bboxes": [
+      [
+        169.85130310058594,
+        84.0833740234375,
+        379.943359375,
+        457.349609375
+      ],
+      [
+        430.560791015625,
+        11.950349807739258,
+        638.4808349609375,
+        461.7800598144531
+      ]
+    ],
+    "img_path": "images/15.png"
+  },
+  {
+    "appearance_prompt": {
+      "segments": [
+        "On the left,",
+        "a chef in a white uniform stands holding a whisk",
+        "and on the right,",
+        "another chef in a white uniform stands holding a whisk",
+        "in a stainless steel kitchen."
+      ],
+      "mask": [
+        0,
+        1,
+        0,
+        1,
+        0
+      ]
+    },
+    "action_prompts": {
+      "default": {
+        "segments": [
+          "On the left,",
+          "the chef is stirring a bowl vigorously",
+          "while on the right,",
+          "the chef is tasting sauce from a spoon."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "first_action": {
+        "segments": [
+          "On the left,",
+          "the chef is stirring a bowl vigorously",
+          "and on the right,",
+          "the chef is also stirring a bowl vigorously."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "second_action": {
+        "segments": [
+          "On the left,",
+          "the chef is tasting sauce from a spoon",
+          "and on the right,",
+          "the chef is also tasting sauce from a spoon."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "no_locative": {
+        "segments": [
+          "A chef is stirring a bowl vigorously",
+          "and",
+          "another chef is tasting sauce from a spoon."
+        ],
+        "mask": [
+          1,
+          0,
+          1
+        ]
+      }
+    },
+    "bboxes": [
+      [
+        119.35010528564453,
+        29.283485412597656,
+        403.5926208496094,
+        478.8580017089844
+      ],
+      [
+        450.8434753417969,
+        12.85700798034668,
+        757.603515625,
+        477.752685546875
+      ]
+    ],
+    "img_path": "images/16.png"
+  },
+  {
+    "appearance_prompt": {
+      "segments": [
+        "To the left,",
+        "a cartoonish blue ghost floats with translucent arms",
+        "and to the right,",
+        "an identical cartoonish blue ghost floats with translucent arms",
+        "against a dark purple void."
+      ],
+      "mask": [
+        0,
+        1,
+        0,
+        1,
+        0
+      ]
+    },
+    "action_prompts": {
+      "default": {
+        "segments": [
+          "On the left,",
+          "the blue ghost is covering its eyes with its hands",
+          "whereas on the right,",
+          "the blue ghost is spinning slowly in the air."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "first_action": {
+        "segments": [
+          "On the left,",
+          "the blue ghost is covering its eyes with its hands",
+          "and on the right,",
+          "the blue ghost is also covering its eyes with its hands."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "second_action": {
+        "segments": [
+          "On the left,",
+          "the blue ghost is spinning slowly in the air",
+          "and on the right,",
+          "the blue ghost is also spinning slowly in the air."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "no_locative": {
+        "segments": [
+          "A blue ghost is covering its eyes with its hands",
+          "while",
+          "another blue ghost is spinning slowly in the air."
+        ],
+        "mask": [
+          1,
+          0,
+          1
+        ]
+      }
+    },
+    "bboxes": [
+      [
+        50.30767822265625,
+        46.669105529785156,
+        396.3924255371094,
+        411.9078369140625
+      ],
+      [
+        437.9191589355469,
+        49.08549880981445,
+        783.8333129882812,
+        407.8582763671875
+      ]
+    ],
+    "img_path": "images/17.png"
+  },
+  {
+    "appearance_prompt": {
+      "segments": [
+        "On the left side of the room,",
+        "a businessman in a navy suit sits",
+        "and on the right side,",
+        "another businessman in a navy suit sits",
+        "against a beige office wall."
+      ],
+      "mask": [
+        0,
+        1,
+        0,
+        1,
+        0
+      ]
+    },
+    "action_prompts": {
+      "default": {
+        "segments": [
+          "On the left,",
+          "the businessman is checking the time on his watch",
+          "while on the right,",
+          "the businessman is straightening his red tie."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "first_action": {
+        "segments": [
+          "On the left,",
+          "the businessman is checking the time on his watch",
+          "and on the right,",
+          "the businessman is also checking the time on his watch."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "second_action": {
+        "segments": [
+          "On the left,",
+          "the businessman is straightening his red tie",
+          "and on the right,",
+          "the businessman is likewise straightening his red tie."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "no_locative": {
+        "segments": [
+          "A businessman is checking the time on his watch",
+          "and",
+          "a similar businessman is straightening his red tie."
+        ],
+        "mask": [
+          1,
+          0,
+          1
+        ]
+      }
+    },
+    "bboxes": [
+      [
+        4.888067245483398,
+        16.263240814208984,
+        486.3541564941406,
+        477.5104064941406
+      ],
+      [
+        528.0792846679688,
+        75.46949768066406,
+        824.4226684570312,
+        476.7248229980469
+      ]
+    ],
+    "img_path": "images/18.png"
+  },
+  {
+    "appearance_prompt": {
+      "segments": [
+        "In the left area,",
+        "a colorful macaw parrot sits on a wooden perch",
+        "and in the right area,",
+        "another colorful macaw parrot sits on a wooden perch",
+        "with a blurred jungle background."
+      ],
+      "mask": [
+        0,
+        1,
+        0,
+        1,
+        0
+      ]
+    },
+    "action_prompts": {
+      "default": {
+        "segments": [
+          "On the left,",
+          "the macaw parrot is bobbing its head rhythmically",
+          "while on the right,",
+          "the macaw parrot is preening its wing feathers."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "first_action": {
+        "segments": [
+          "On the left,",
+          "the macaw parrot is bobbing its head rhythmically",
+          "and on the right,",
+          "the macaw parrot is also bobbing its head rhythmically."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "second_action": {
+        "segments": [
+          "On the left,",
+          "the macaw parrot is preening its wing feathers",
+          "and on the right,",
+          "the macaw parrot is also preening its wing feathers."
+        ],
+        "mask": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "no_locative": {
+        "segments": [
+          "A colorful macaw parrot is bobbing its head rhythmically",
+          "and",
+          "another colorful macaw parrot is preening its wing feathers."
+        ],
+        "mask": [
+          1,
+          0,
+          1
+        ]
+      }
+    },
+    "bboxes": [
+      [
+        66.42604064941406,
+        66.26557922363281,
+        322.71368408203125,
+        476.3995056152344
+      ],
+      [
+        510.1760559082031,
+        41.410301208496094,
+        731.5159301757812,
+        476.05255126953125
+      ]
+    ],
+    "img_path": "images/19.png"
+  },
+  {
+    "appearance_prompt": {
+      "segments": [
         "Against a seamless white backdrop, two dogs sit side by side, specifically",
         "a golden retriever with a glossy coat",
         "positioned on the left and",
@@ -34,19 +1814,19 @@
     },
     "bboxes": [
       [
-        190.27249145507812,
-        86.17919158935547,
-        432.224853515625,
-        459.8087463378906
+        184.96864318847656,
+        90.57877349853516,
+        433.1578063964844,
+        445.94866943359375
       ],
       [
-        428.0212097167969,
-        70.51643371582031,
-        708.33837890625,
-        457.60504150390625
+        431.3386535644531,
+        83.27732849121094,
+        618.3311767578125,
+        446.3659362792969
       ]
     ],
-    "img_path": "images/0.png"
+    "img_path": "images/20.png"
   },
   {
     "appearance_prompt": {
@@ -83,19 +1863,19 @@
     },
     "bboxes": [
       [
-        129.28866577148438,
-        103.78319549560547,
-        371.4816589355469,
-        433.99578857421875
+        142.77337646484375,
+        68.42208099365234,
+        413.7263488769531,
+        435.2528991699219
       ],
       [
-        474.70794677734375,
-        113.12730407714844,
-        714.2276000976562,
-        434.1573181152344
+        445.48724365234375,
+        67.11788177490234,
+        718.4723510742188,
+        436.0379638671875
       ]
     ],
-    "img_path": "images/1.png"
+    "img_path": "images/21.png"
   },
   {
     "appearance_prompt": {
@@ -132,19 +1912,19 @@
     },
     "bboxes": [
       [
-        59.393123626708984,
-        178.37510681152344,
-        403.44085693359375,
-        382.8454284667969
+        39.15962219238281,
+        198.1693878173828,
+        394.7681884765625,
+        422.08831787109375
       ],
       [
-        450.8798828125,
-        190.18748474121094,
-        789.45849609375,
-        390.27392578125
+        430.0584716796875,
+        200.49490356445312,
+        788.383544921875,
+        424.8669738769531
       ]
     ],
-    "img_path": "images/2.png"
+    "img_path": "images/22.png"
   },
   {
     "appearance_prompt": {
@@ -181,19 +1961,19 @@
     },
     "bboxes": [
       [
-        75.40662384033203,
-        41.1602783203125,
-        367.5809631347656,
-        478.0073547363281
+        151.60787963867188,
+        47.33027648925781,
+        389.16156005859375,
+        475.2098693847656
       ],
       [
-        464.6642150878906,
-        45.433189392089844,
-        758.9900512695312,
-        476.03790283203125
+        438.6183776855469,
+        47.236331939697266,
+        675.9788818359375,
+        472.16693115234375
       ]
     ],
-    "img_path": "images/3.png"
+    "img_path": "images/23.png"
   },
   {
     "appearance_prompt": {
@@ -230,19 +2010,19 @@
     },
     "bboxes": [
       [
-        225.8336639404297,
-        143.41409301757812,
-        417.09307861328125,
-        460.80889892578125
+        263.1926574707031,
+        101.7467041015625,
+        417.19476318359375,
+        450.5950622558594
       ],
       [
-        452.083251953125,
-        35.11625289916992,
-        679.1368408203125,
-        460.66961669921875
+        434.494140625,
+        109.33513641357422,
+        588.931640625,
+        451.4872131347656
       ]
     ],
-    "img_path": "images/4.png"
+    "img_path": "images/24.png"
   },
   {
     "appearance_prompt": {
@@ -279,19 +2059,19 @@
     },
     "bboxes": [
       [
-        219.97872924804688,
-        119.93927764892578,
-        374.12298583984375,
-        405.78662109375
+        259.03790283203125,
+        106.16857147216797,
+        412.06170654296875,
+        435.0640869140625
       ],
       [
-        426.33526611328125,
-        120.21514892578125,
-        579.1749267578125,
-        405.8408508300781
+        423.9267883300781,
+        92.83383178710938,
+        612.0125122070312,
+        432.2759704589844
       ]
     ],
-    "img_path": "images/5.png"
+    "img_path": "images/25.png"
   },
   {
     "appearance_prompt": {
@@ -328,19 +2108,19 @@
     },
     "bboxes": [
       [
-        110.91737365722656,
-        159.0063018798828,
-        410.8722229003906,
-        409.4779357910156
+        62.33319091796875,
+        117.13296508789062,
+        406.38800048828125,
+        398.0231628417969
       ],
       [
-        448.3726501464844,
-        162.60546875,
-        719.4105224609375,
-        409.7112121582031
+        456.4328308105469,
+        114.16883850097656,
+        797.61865234375,
+        394.22625732421875
       ]
     ],
-    "img_path": "images/6.png"
+    "img_path": "images/26.png"
   },
   {
     "appearance_prompt": {
@@ -377,19 +2157,19 @@
     },
     "bboxes": [
       [
-        25.61589241027832,
-        109.43344116210938,
-        469.15985107421875,
-        468.6615295410156
+        1.6672019958496094,
+        2.1950483322143555,
+        464.2063903808594,
+        467.6337890625
       ],
       [
-        447.07421875,
-        218.23101806640625,
-        766.2107543945312,
-        466.7467346191406
+        573.104736328125,
+        124.32343292236328,
+        830.139892578125,
+        466.9542236328125
       ]
     ],
-    "img_path": "images/7.png"
+    "img_path": "images/27.png"
   },
   {
     "appearance_prompt": {
@@ -426,19 +2206,19 @@
     },
     "bboxes": [
       [
-        195.51268005371094,
-        31.468534469604492,
-        407.4961242675781,
-        460.92718505859375
+        122.02288055419922,
+        34.60943603515625,
+        405.3984375,
+        451.7882080078125
       ],
       [
-        407.2535705566406,
-        28.804706573486328,
-        638.2755126953125,
-        462.16851806640625
+        464.4495849609375,
+        35.00309753417969,
+        720.0551147460938,
+        449.2107238769531
       ]
     ],
-    "img_path": "images/8.png"
+    "img_path": "images/28.png"
   },
   {
     "appearance_prompt": {
@@ -475,18 +2255,18 @@
     },
     "bboxes": [
       [
-        100.40826416015625,
-        102.71800231933594,
-        383.56903076171875,
-        447.2339172363281
+        164.77288818359375,
+        110.10643768310547,
+        436.01116943359375,
+        477.0199279785156
       ],
       [
-        454.5251770019531,
-        140.14190673828125,
-        747.101318359375,
-        440.9231872558594
+        435.7556457519531,
+        74.79081726074219,
+        639.8909912109375,
+        476.3840026855469
       ]
     ],
-    "img_path": "images/9.png"
+    "img_path": "images/29.png"
   }
 ]
