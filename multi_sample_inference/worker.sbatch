@@ -33,6 +33,7 @@ source .venv/bin/activate
 
 python -m multi_sample_inference.multi_sample_inference \
   --prompts-file "$PROMPTS_FILE" \
+  --param-grid-file "./multi_sample_inference/param_grid.json" \
   --output-path "$OUTPUT_DIR" \
   --checkpoint-path $CHECKPOINT_PATH
 

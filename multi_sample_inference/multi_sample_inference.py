@@ -72,13 +72,14 @@ def run_inference(
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--prompts-file", required=True, type=Path)
+    parser.add_argument("--param-grid-file", required=True, type=Path)
     parser.add_argument("--output-path", required=True, type=Path)
     parser.add_argument("--checkpoint-path", default=Path("./weights/"), type=Path)
     parser.add_argument("--t5-cpu", action="store_true")
 
     args = parser.parse_args()
 
-    with open("param_grid.json") as f:
+    with open(args.param_grid_file) as f:
         param_grid = json.load(f)
 
     with open(args.prompts_file) as f:
