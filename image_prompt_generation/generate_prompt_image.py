@@ -16,25 +16,24 @@ OUTPUT_FILE = Path("prompts_modified.json")
 
 os.environ["HF_HOME"] = "../weights/"
 
+prompts_data_list = []
+
+for prompt_file_path in Path.cwd().glob("*.json"):
+    # skip output file (if it exists)
+    if OUTPUT_FILE.exists() and OUTPUT_FILE.samefile(prompt_file_path):
+        continue
+
+    with prompt_file_path.open() as f:
+        prompts_data_list += json.load(f)
+
 pipe = FluxPipeline.from_pretrained(
     "black-forest-labs/FLUX.1-dev",
     torch_dtype=torch.bfloat16,
     device_map="balanced",
 )
 
-prompts_data_list = []
-
-for prompt_file_path in Path.cwd().glob("*.json"):
-    # skip output file (if it exists)
-    if prompt_file_path == OUTPUT_FILE:
-        continue
-
-    with prompt_file_path.open() as f:
-        prompts_data_list += json.load(f)
-
 MODEL_ID = "IDEA-Research/grounding-dino-base"
 device = Accelerator().device
-
 gd_processor = AutoProcessor.from_pretrained(MODEL_ID)
 gd_model = AutoModelForZeroShotObjectDetection.from_pretrained(MODEL_ID).to(device)
 img_dir = Path("./images")
