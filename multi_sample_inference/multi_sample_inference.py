@@ -2,6 +2,7 @@ import argparse
 import gc
 import json
 from pathlib import Path
+import sys
 
 import numpy as np
 import torch
@@ -68,32 +69,6 @@ def run_inference(
     return video, extra_data
 
 
-def generate_inference_data(prompts_data_list, img_dir):
-    output = []
-    for i, prompt_data in enumerate(prompts_data_list):
-        bboxes = prompt_data["bboxes"]
-        masks = torch.stack(
-            [torch.from_numpy(create_mask_from_bbox(bbox, TARGET_SIZE)) for bbox in bboxes]
-        )
-
-        action_prompt_data = prompt_data["action_prompt"]
-        segments = action_prompt_data["segments"]
-        segment_mask = action_prompt_data["mask"]
-        character_segments = [seg for is_char, seg in zip(segment_mask, segments) if is_char]
-        assert len(bboxes) == len(character_segments), f"error in prompt #{i}"
-        prompt = " ".join(segments)
-
-        img_path = str(img_dir / prompt_data["img_path"])
-        img = load_image(img_path)
-        assert img.size[::-1] == TARGET_SIZE
-
-        output.append(
-            {"img": img, "masks": masks, "prompt": prompt, "character_segments": character_segments}
-        )
-
-    return output
-
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--prompts-file", required=True, type=Path)
@@ -109,8 +84,11 @@ def main():
     with open(args.prompts_file) as f:
         prompts_data_list = json.load(f)
 
-    # The point of this function is just to do the necessary checks in advance, before the inference
-    infer_data_list = generate_inference_data(prompts_data_list, args.prompts_file.parent)
+    output_path = args.output_path
+    output_path.mkdir(exist_ok=True, parents=True)
+
+    debug_path = output_path / "debug"
+    debug_path.mkdir(exist_ok=True)
 
     wan_i2v = WanI2V(
         config=i2v_14B,
@@ -118,59 +96,105 @@ def main():
         device_id=0,
         t5_cpu=args.t5_cpu,
     )
+    generated = False
 
-    for prompt_data, infer_data in zip(prompts_data_list, infer_data_list):
-        img = infer_data["img"]
-        masks = infer_data["masks"]
-        prompt = infer_data["prompt"]
-        character_segments = infer_data["character_segments"]
+    for i, prompt_data in enumerate(prompts_data_list):
+        bboxes = prompt_data["bboxes"]
+        masks_list = [
+            torch.from_numpy(
+                create_mask_from_bbox(
+                    bbox,
+                    TARGET_SIZE,
+                )
+            )
+            for bbox in bboxes
+        ]
+        masks = torch.stack(masks_list)
+
+        img_dir = args.prompts_file.parent
+        img_path = str(img_dir / prompt_data["img_path"])
+        img = load_image(img_path)
+        assert img.size[::-1] == TARGET_SIZE
+
+        img_with_boxes = draw_boxes(img, prompt_data["bboxes"])
+        img_with_boxes.save(debug_path / "img_with_boxes.png")
+
+        img_with_masks = draw_masks(img, list(masks))
+        img_with_masks.save(debug_path / "img_with_masks.png")
 
         for config in ParameterGrid(param_grid):
-            config["prompt"] = prompt_data
+            assert config["bias_method"] in {"none", "regional_prompting", "ediff-i"}
 
-            folder_name = get_folder_name(config)
+            # iterate over actions prompts
+            for prompt_type, action_prompt_data in prompt_data["action_prompts"].items():
+                assert prompt_type in {"default", "first_action", "second_action", "no_locative"}
+                # generate only baseline for single action prompts
+                if config["bias_method"] != "none" and prompt_type in {
+                    "first_action",
+                    "second_action",
+                }:
+                    continue
 
-            output_path = args.output_path / folder_name
-            output_path.mkdir(exist_ok=True)
+                config["prompt"] = action_prompt_data | {"type": prompt_type}
 
-            config_path = output_path / "config.json"
-            video_path = output_path / "video.mp4"
-            debug_path = output_path / "debug"
-            debug_path.mkdir(exist_ok=True)
+                folder_name = get_folder_name(config)
+                action_output_path = output_path / folder_name / prompt_type
 
-            if config_path.exists() and video_path.exists():
-                print(f"The video for the prompt '{prompt}' the was already generated. Skipping...")
-                continue
+                segments = action_prompt_data["segments"]
+                prompt = " ".join(segments)
 
-            img_with_boxes = draw_boxes(img, prompt_data["bboxes"])
-            img_with_boxes.save(debug_path / "img_with_boxes.png")
+                segment_mask = action_prompt_data["mask"]
+                character_segments = [
+                    seg for is_char, seg in zip(segment_mask, segments) if is_char
+                ]
+                assert len(bboxes) == len(character_segments), f"error in prompt #{i}"
 
-            img_with_masks = draw_masks(img, masks)
-            img_with_masks.save(debug_path / "img_with_masks.png")
+                action_output_path = output_path / prompt_type
+                action_output_path.mkdir(exist_ok=True)
 
-            video, extra_data = run_inference(
-                wan_i2v, prompt, img, character_segments, masks, config
-            )
-            video_norm = normalize_video_tensor(video.cpu().numpy())
+                config_path = action_output_path / "config.json"
 
-            export_to_video(list(video_norm), video_path, fps=16)
-            with config_path.open("w") as f:
-                json.dump(config, f, indent=2)
+                with config_path.open("w") as f:
+                    json.dump(config, f, indent=2)
 
-            simil_masks = extra_data["simil_masks"]
+                repeat = config.get("repeat", 1)
+                if repeat <= 0:
+                    raise ValueError("repat parma must be positive.")
 
-            # TODO: is this the best way to do it?
-            face_masks = simil_masks[0, -1].float().mean(dim=0) > 0.5
+                for i in range(repeat):
+                    video_path = action_output_path / f"video_{i}.mp4"
 
-            h, w = video.shape[-2:]
-            face_masks = unscale(face_masks.float(), (FRAME_NUM, h, w)).bool()
-            write_video_masks(
-                video_norm,
-                output_path / "video_with_masks.mp4",
-                face_masks.transpose(0, 1).cpu().numpy(),
-                fps=16,
-            )
+                    if video_path.exists():
+                        print(
+                            f"The video for the prompt '{prompt}' the was already generated. Skipping..."
+                        )
+                        continue
+
+                    generated = True
+                    video, extra_data = run_inference(
+                        wan_i2v, prompt, img, character_segments, masks, config
+                    )
+                    video_norm = normalize_video_tensor(video.cpu().numpy())
+
+                    export_to_video(list(video_norm), video_path, fps=16)
+
+                    simil_masks = extra_data["simil_masks"]
+
+                    # TODO: is this the best way to do it?
+                    face_masks = simil_masks[0, -1].float().mean(dim=0) > 0.5
+
+                    h, w = video.shape[-2:]
+                    face_masks = unscale(face_masks.float(), (FRAME_NUM, h, w)).bool()
+                    write_video_masks(
+                        video_norm,
+                        action_output_path / "video_with_masks_{i}.mp4",
+                        face_masks.transpose(0, 1).cpu().numpy(),
+                        fps=16,
+                    )
+
+    return generated
 
 
 if __name__ == "__main__":
-    main()
+    exit_code = main()
+    sys.exit(exit_code)

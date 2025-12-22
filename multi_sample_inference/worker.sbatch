@@ -31,8 +31,18 @@ mkdir -p $CHECKPOINT_PATH
 
 source .venv/bin/activate
 
-# TODO: do we need to create jobs?
 python -m multi_sample_inference.multi_sample_inference \
   --prompts-file "$PROMPTS_FILE" \
   --output-path "$OUTPUT_DIR" \
   --checkpoint-path $CHECKPOINT_PATH
+
+EXIT_CODE=$?
+
+if [ $EXIT_CODE -eq 0]; then
+  echo "Python script finished successfully (Exit Code 0)."
+  echo "Resubmitting self..."
+  sbatch $0
+else
+  echo "Python script returned error code $EXIT_CODE."
+  echo "Stopping chain."
+fi
