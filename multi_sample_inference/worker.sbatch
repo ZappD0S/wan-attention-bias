@@ -38,11 +38,14 @@ python -m multi_sample_inference.multi_sample_inference \
 
 EXIT_CODE=$?
 
-if [ $EXIT_CODE -eq 0]; then
-  echo "Python script finished successfully (Exit Code 0)."
-  echo "Resubmitting self..."
-  sbatch $0
+if [ $EXIT_CODE -eq 0 ]; then
+  echo "STATUS: Work completed successfully. Resubmitting for more..."
+  sbatch "$0"
+elif [ $EXIT_CODE -eq 2 ]; then
+  echo "STATUS: Nothing left to do. Chain finished gracefully."
+  exit 0
 else
-  echo "Python script returned error code $EXIT_CODE."
-  echo "Stopping chain."
+  echo "STATUS: Python script failed with Exit Code $EXIT_CODE (Unhandled Exception)."
+  echo "Stopping chain to prevent infinite error loops."
+  exit $EXIT_CODE
 fi

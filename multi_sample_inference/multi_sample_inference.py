@@ -196,5 +196,8 @@ def main():
 
 
 if __name__ == "__main__":
-    exit_code = main()
-    sys.exit(exit_code)
+    generated = main()
+    if generated:
+        sys.exit(0)
+    else:
+        sys.exit(2)
