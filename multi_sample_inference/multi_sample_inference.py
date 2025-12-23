@@ -139,7 +139,13 @@ def main():
                 config["prompt"] = action_prompt_data | {"type": prompt_type}
 
                 folder_name = get_folder_name(config)
-                action_output_path = output_path / folder_name / prompt_type
+                action_output_path = output_path / folder_name
+                action_output_path.mkdir(exist_ok=True)
+
+                config_path = action_output_path / "config.json"
+
+                with config_path.open("w") as f:
+                    json.dump(config, f, indent=2)
 
                 segments = action_prompt_data["segments"]
                 prompt = " ".join(segments)
@@ -149,14 +155,6 @@ def main():
                     seg for is_char, seg in zip(segment_mask, segments) if is_char
                 ]
                 assert len(bboxes) == len(character_segments), f"error in prompt #{i}"
-
-                action_output_path = output_path / prompt_type
-                action_output_path.mkdir(exist_ok=True)
-
-                config_path = action_output_path / "config.json"
-
-                with config_path.open("w") as f:
-                    json.dump(config, f, indent=2)
 
                 repeat = config.get("repeat", 1)
                 if repeat <= 0:
