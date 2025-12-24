@@ -1,8 +1,9 @@
 import argparse
 import gc
 import json
-from pathlib import Path
+import signal
 import sys
+from pathlib import Path
 
 import numpy as np
 import torch
@@ -13,14 +14,28 @@ from sklearn.model_selection import ParameterGrid
 from wan.configs.wan_i2v_14B import i2v_14B
 from wan.regional_prompt import WanI2V
 
+from debug_utils import draw_boxes, draw_masks, unscale, write_video_masks
 from utils import create_mask_from_bbox, normalize_video_tensor
-from debug_utils import write_video_masks, draw_boxes, draw_masks, unscale
 
 from .utils import get_folder_name
 
 SAMPLING_STEPS = 40
 FRAME_NUM = 81  # default
 TARGET_SIZE = (480, 832)
+
+keep_running = True
+
+
+def handle_slurm_signal(signum, _):
+    global keep_running
+    print(f"Received signal {signum}. Finishing current item and exiting...")
+    keep_running = False
+
+
+# register the signal (SIGUSR1 is what SLURM sends in the fixed script)
+signal.signal(signal.SIGUSR1, handle_slurm_signal)
+# Also handle SIGTERM (the default SLURM kill signal)
+signal.signal(signal.SIGTERM, handle_slurm_signal)
 
 
 def run_inference(
@@ -88,16 +103,13 @@ def main():
     output_path = args.output_path
     output_path.mkdir(exist_ok=True, parents=True)
 
-    debug_path = output_path / "debug"
-    debug_path.mkdir(exist_ok=True)
-
     wan_i2v = WanI2V(
         config=i2v_14B,
         checkpoint_dir=str(args.checkpoint_path / "Wan2.1-I2V-14B-480P"),
         device_id=0,
         t5_cpu=args.t5_cpu,
     )
-    generated = False
+    still_work_to_do = False
 
     for i, prompt_data in enumerate(prompts_data_list):
         bboxes = prompt_data["bboxes"]
@@ -117,11 +129,20 @@ def main():
         img = load_image(img_path)
         assert img.size[::-1] == TARGET_SIZE
 
-        img_with_boxes = draw_boxes(img, prompt_data["bboxes"])
-        img_with_boxes.save(debug_path / "img_with_boxes.png")
+        debug_path = output_path / "debug" / f"prompt_{i}"
+        debug_path.mkdir(exist_ok=True, parents=True)
 
-        img_with_masks = draw_masks(img, list(masks))
-        img_with_masks.save(debug_path / "img_with_masks.png")
+        img_with_boxes_file = debug_path / "img_with_boxes.png"
+
+        if not img_with_boxes_file.exists():
+            img_with_boxes = draw_boxes(img, prompt_data["bboxes"])
+            img_with_boxes.save(img_with_boxes_file)
+
+        img_with_masks_file = debug_path / "img_with_masks.png"
+
+        if not img_with_masks_file.exists():
+            img_with_masks = draw_masks(img, list(masks))
+            img_with_masks.save(img_with_masks_file)
 
         for config in ParameterGrid(param_grid):
             assert config["bias_method"] in {"none", "regional_prompting", "ediff-i"}
@@ -161,6 +182,10 @@ def main():
                     raise ValueError("repat parma must be positive.")
 
                 for i in range(repeat):
+                    if not keep_running:
+                        # assume there is still work to do
+                        return True
+
                     video_path = action_output_path / f"video_{i}.mp4"
 
                     if video_path.exists():
@@ -169,7 +194,7 @@ def main():
                         )
                         continue
 
-                    generated = True
+                    still_work_to_do = True
                     video, extra_data = run_inference(
                         wan_i2v, prompt, img, character_segments, masks, config
                     )
@@ -191,12 +216,12 @@ def main():
                         fps=16,
                     )
 
-    return generated
+    return still_work_to_do
 
 
 if __name__ == "__main__":
-    generated = main()
-    if generated:
+    still_work_to_do = main()
+    if still_work_to_do:
         sys.exit(0)
     else:
         sys.exit(2)
