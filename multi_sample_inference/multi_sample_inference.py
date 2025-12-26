@@ -211,7 +211,7 @@ def main():
                     face_masks = unscale(face_masks.float(), (FRAME_NUM, h, w)).bool()
                     write_video_masks(
                         video_norm,
-                        action_output_path / "video_with_masks_{i}.mp4",
+                        action_output_path / f"video_with_masks_{i}.mp4",
                         face_masks.transpose(0, 1).cpu().numpy(),
                         fps=16,
                     )
