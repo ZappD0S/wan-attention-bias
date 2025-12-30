@@ -222,6 +222,6 @@ def main():
 if __name__ == "__main__":
     still_work_to_do = main()
     if still_work_to_do:
-        sys.exit(0)
-    else:
         sys.exit(2)
+    else:
+        sys.exit(0)
