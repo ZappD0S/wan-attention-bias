@@ -147,6 +147,12 @@ def main():
         for config in ParameterGrid(param_grid):
             assert config["bias_method"] in {"none", "regional_prompting", "ediff-i"}
 
+            # remove repeat from config, we don't want the folder name to depend on it
+            repeat = config.pop("repeat", 1)
+
+            if repeat <= 0:
+                raise ValueError("repeat must be positive.")
+
             # iterate over actions prompts
             for prompt_type, action_prompt_data in prompt_data["action_prompts"].items():
                 assert prompt_type in {"default", "first_action", "second_action", "no_locative"}
@@ -177,16 +183,12 @@ def main():
                 ]
                 assert len(bboxes) == len(character_segments), f"error in prompt #{i}"
 
-                repeat = config.get("repeat", 1)
-                if repeat <= 0:
-                    raise ValueError("repat parma must be positive.")
-
-                for i in range(repeat):
+                for repeat_idx in range(repeat):
                     if not keep_running:
                         # assume there is still work to do
                         return True
 
-                    video_path = action_output_path / f"video_{i}.mp4"
+                    video_path = action_output_path / f"video_{repeat_idx}.mp4"
 
                     if video_path.exists():
                         print(
@@ -211,7 +213,7 @@ def main():
                     face_masks = unscale(face_masks.float(), (FRAME_NUM, h, w)).bool()
                     write_video_masks(
                         video_norm,
-                        action_output_path / f"video_with_masks_{i}.mp4",
+                        action_output_path / f"video_with_masks_{repeat_idx}.mp4",
                         face_masks.transpose(0, 1).cpu().numpy(),
                         fps=16,
                     )
