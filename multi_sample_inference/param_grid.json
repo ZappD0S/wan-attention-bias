@@ -1,7 +1,7 @@
 [
   {
     "bias_method": ["none"],
-    "repeat": [10]
+    "repeat": [5]
   },
   {
     "bias_method": ["regional_prompting"],
