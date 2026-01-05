@@ -54,6 +54,7 @@ dependencies = [
     "mpmath",
     "multidict",
     "networkx",
+    "nicegui>=3.4.1",
     "numpy",
     "nvidia-cublas-cu12",
     "nvidia-cuda-cupti-cu12",
