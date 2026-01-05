@@ -3,7 +3,8 @@ import json
 from pathlib import Path
 
 from sklearn.model_selection import ParameterGrid
-from .multi_sample_inference import get_folder_name
+
+from .utils import get_folder_name
 
 
 def main():
