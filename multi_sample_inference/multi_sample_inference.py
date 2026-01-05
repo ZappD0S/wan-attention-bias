@@ -144,11 +144,11 @@ def main():
             img_with_masks = draw_masks(img, list(masks))
             img_with_masks.save(img_with_masks_file)
 
-        for config in ParameterGrid(param_grid):
-            assert config["bias_method"] in {"none", "regional_prompting", "ediff-i"}
+        for param_config in ParameterGrid(param_grid):
+            assert param_config["bias_method"] in {"none", "regional_prompting", "ediff-i"}
 
             # remove repeat from config, we don't want the folder name to depend on it
-            repeat = config.pop("repeat", 1)
+            repeat = param_config.pop("repeat", 1)
 
             if repeat <= 0:
                 raise ValueError("repeat must be positive.")
@@ -157,13 +157,16 @@ def main():
             for prompt_type, action_prompt_data in prompt_data["action_prompts"].items():
                 assert prompt_type in {"default", "first_action", "second_action", "no_locative"}
                 # generate only baseline for single action prompts
-                if config["bias_method"] != "none" and prompt_type in {
+                if param_config["bias_method"] != "none" and prompt_type in {
                     "first_action",
                     "second_action",
                 }:
                     continue
 
-                config["prompt"] = action_prompt_data | {"type": prompt_type}
+                config = {}
+                config["params"] = param_config
+                config["prompt_data"] = prompt_data
+                config["prompt_type"] = prompt_type
 
                 folder_name = get_folder_name(config)
                 action_output_path = output_path / folder_name
