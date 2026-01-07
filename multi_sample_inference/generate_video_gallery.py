@@ -78,12 +78,12 @@ def render_sidebar_link(index, target_id):
         )
 
 
-def render_group_header(index, section_id):
+def render_group_header(index):
     row_cls = (
         "w-full bg-slate-800 p-4 border-l-8 border-blue-500 "
         "items-center sticky top-0 shadow-md z-50 flex-nowrap"
     )
-    with ui.row().props(f'id="{section_id}"').classes(row_cls):
+    with ui.row().classes(row_cls):
         ui.icon("auto_awesome_motion", color="blue-500").classes("text-3xl")
         ui.label(f"Prompt Group #{index}").classes("text-2xl font-bold")
 
@@ -146,8 +146,8 @@ with ui.column().classes("p-8 w-full"):
     for gid in sorted(video_groups.keys()):
         types_dict = video_groups[gid]
 
-        with ui.element("div").classes("w-full mb-24"):
-            render_group_header(gid + 1, f"group-{gid}")
+        with ui.element("div").props(f'id="group-{gid}"').classes("w-full mb-24"):
+            render_group_header(gid + 1)
             with (
                 ui.element("div")
                 .classes("w-full bg-slate-800 rounded-lg border border-slate-700")
