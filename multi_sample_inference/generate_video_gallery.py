@@ -73,7 +73,7 @@ def render_sidebar_link(index, target_id):
         )
 
         # The Text
-        ui.label(f"Prompt #{index}").classes(
+        ui.label(f"Prompt Group #{index}").classes(
             "text-sm text-slate-300 group-hover:text-blue-400 font-medium"
         )
 
