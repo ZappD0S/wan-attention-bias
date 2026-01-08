@@ -7,21 +7,20 @@
 *   **Background:** Must be simple, neutral, or out of focus.
 *   **Independence:** Characters must never interact with each other physically.
 *   **Movement:** Actions must be dynamic but stationary (e.g., eating, typing, flashing a light).
-*   **State Physics & Causality (CRITICAL):**
-    *   **Precondition State (The "Enabling" State):** If a character or object has multiple physical states (e.g., open/closed, extended/retracted) and the action requires a specific state to function, **you must explicitly describe that state in the appearance prompt.**
-        *   *Example:* Action "triggering a flash" -> Appearance "camera with the flash unit **raised/open**".
-        *   *Example:* Action "typing" -> Appearance "laptop is **open**".
-    *   **Anti-Result State (The "Starting" State):** If the action *changes* the state of an object, the appearance prompt must describe the state *before* the change.
-        *   *Example:* Action "opening a door" -> Appearance "door is **closed**".
-        *   *Example:* Action "inflating a balloon" -> Appearance "balloon is **deflated**".
+*   **State Physics & Causality (CRITICAL UPDATES):**
+    *   **Universal Compatibility:** Since the dataset includes prompts where *both* characters perform Action X and *both* perform Action Y, **Action X and Action Y must share a compatible physical starting state.**
+        *   *Invalid:* Action X = "Opening a closed box" / Action Y = "Closing an open box" (Contradictory starting states).
+        *   *Valid:* Action X = "Typing on laptop" / Action Y = "Closing laptop" (Both start with laptop open).
+    *   **Identical Initial State:** The `appearance_prompt` must describe **both characters exactly the same way**. They must both hold the same objects in the same configuration, ready for *either* action to occur.
+    *   **Precondition State:** You must explicitly describe the state required to enable the actions.
+        *   *Example:* Actions "Taking a selfie" & "Texting" -> Appearance "Both holding a smartphone with the **screen facing them**."
 
 #### 2. The Prompt Types
 For each of the 10 scenes, generate 5 distinct prompts. **Plan Actions X and Y first**, then reverse-engineer the `appearance_prompt`.
 
 1.  **`appearance_prompt`** (Scene Setup): Describes the visual state of characters and objects *before* movement begins.
-    *   *Constraint:* **Action Readiness.** The scene is staged for the action to start immediately.
-    *   *Constraint:* **Explicit Configuration.** Describe the necessary mechanical/physical state (e.g., "holding an open book," "standing next to a closed door").
-    *   *Constraint:* **Orientation.** Ensure the relevant features (screens, buttons, ports) are facing the camera.
+    *   *Constraint:* **Symmetry.** Character A and Character B must be described with identical states/objects.
+    *   *Constraint:* **Action Readiness.** The setup must allow *either* Action X or Action Y to start immediately without a cut.
     *   *Constraint:* **Passive Verbs.** Use state verbs (holding, facing, wearing, resting).
 2.  **`default`** (Action Prompt 1): Character A performs **Action X**. Character B performs **Action Y**.
     *   *Constraint:* Distinct actions. Must use locative expressions.
@@ -46,32 +45,32 @@ Every prompt must be split into a `segments` array and a `mask` array.
 Return **only** valid JSON matching this structure exactly.
 
 **Example Logic:**
-*   *Action X:* Taking a photo with a flash (Needs: Camera, **Flash Unit Raised/Open**).
-*   *Action Y:* Reviewing a photo on the screen (Needs: Camera, **Back/Screen Visible**).
-*   *Resulting Appearance:* Left char holds a camera with the **flash pop-up open**; Right char holds a camera **turned to show the screen**.
+*   *Action X:* Eating a burger (Needs: Holding burger near face).
+*   *Action Y:* Wiping mouth with a napkin (Needs: Holding burger, holding napkin).
+*   *Required Start State:* Both characters holding a burger in one hand and a napkin in the other. (Compatible with both X and Y).
 
 ```json
 [
   {
     "appearance_prompt": {
-      "segments": ["On the left,", "a photographer holds a DSLR camera with the flash unit raised", "and on the right,", "a photographer holds a DSLR camera turned to show the back screen", "in a studio."],
+      "segments": ["On the left,", "a diner holds a large burger in one hand and a napkin in the other", "and on the right,", "a diner holds a large burger in one hand and a napkin in the other", "seated at a table."],
       "mask": [0, 1, 0, 1, 0]
     },
     "action_prompts": {
       "default": {
-        "segments": ["On the left,", "the photographer is triggering a bright flash from the camera", "while on the right,", "the photographer is scrolling through photos on the screen."],
+        "segments": ["On the left,", "the diner is taking a large bite out of the burger", "while on the right,", "the diner is wiping their mouth with the white napkin."],
         "mask": [0, 1, 0, 1]
       },
       "first_action": {
-        "segments": ["On the left,", "the photographer is triggering a bright flash from the camera", "and on the right,", "the photographer is also triggering a bright flash from a camera."],
+        "segments": ["On the left,", "the diner is taking a large bite out of the burger", "and on the right,", "the diner is also taking a large bite out of the burger."],
         "mask": [0, 1, 0, 1]
       },
       "second_action": {
-        "segments": ["On the left,", "the photographer is scrolling through photos on the screen", "and on the right,", "the photographer is also scrolling through photos on the screen."],
+        "segments": ["On the left,", "the diner is wiping their mouth with the white napkin", "and on the right,", "the diner is also wiping their mouth with the white napkin."],
         "mask": [0, 1, 0, 1]
       },
       "no_locative": {
-        "segments": ["A photographer is triggering a bright flash from a camera", "and", "a photographer is scrolling through photos on a screen."],
+        "segments": ["A diner is taking a large bite out of a burger", "and", "a diner is wiping their mouth with a white napkin."],
         "mask": [1, 0, 1]
       }
     }

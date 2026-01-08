@@ -11,7 +11,7 @@ from nicegui import app, ui
 # --- 1. CONFIGURATION & PERSISTENCE ---
 
 VIDEOS_PATH = Path("multi_sample_inference/output/")
-SCORES_FILE = Path("video_scores.json")
+SCORES_FILE = VIDEOS_PATH / "video_scores.json"
 
 app.add_static_files("/videos", VIDEOS_PATH)
 
