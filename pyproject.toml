@@ -33,6 +33,7 @@ dependencies = [
     "ftfy",
     "gradio",
     "gradio-client",
+    "great-tables>=0.20.0",
     "groovy",
     "h11",
     "hf-xet",
