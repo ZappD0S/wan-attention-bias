@@ -1,7 +1,8 @@
-from nicegui import ui
 import data_manager
+from nicegui import ui
 
 # --- UI HELPERS ---
+
 
 def render_sidebar_link(index, target_id):
     with ui.link(target=f"#{target_id}").classes(
@@ -14,6 +15,7 @@ def render_sidebar_link(index, target_id):
             "text-sm text-slate-300 group-hover:text-blue-400 font-medium"
         )
 
+
 def render_group_header(index):
     row_cls = (
         "w-full bg-slate-800 p-4 border-l-8 border-blue-500 "
@@ -23,12 +25,14 @@ def render_group_header(index):
         ui.icon("auto_awesome_motion", color="blue-500").classes("text-3xl")
         ui.label(f"Prompt Group #{index}").classes("text-2xl font-bold")
 
+
 def render_badge(k, v):
     with ui.element("div").classes(
         "bg-slate-800 border border-slate-600 rounded px-2 py-1 flex gap-1"
     ):
         ui.label(k).classes("text-[10px] text-slate-400")
         ui.label(str(v)).classes("text-[10px] text-blue-300 font-bold")
+
 
 def render_video_card(config, folder_name):
     with (
@@ -40,12 +44,12 @@ def render_video_card(config, folder_name):
         video_list = config.get("_videos", [])
 
         if video_list:
-            state = {'slide': '0'}
+            state = {"slide": "0"}
 
             @ui.refreshable
             def render_controls():
                 try:
-                    idx = int(state['slide'])
+                    idx = int(state["slide"])
                 except (ValueError, TypeError):
                     idx = 0
 
@@ -60,7 +64,9 @@ def render_video_card(config, folder_name):
                     "w-full bg-slate-900 px-4 py-3 items-center justify-between border-t border-slate-700"
                 ):
                     with ui.column().classes("gap-0"):
-                        ui.label(f"Video {idx + 1} of {len(video_list)}").classes("text-xs text-blue-400 font-bold")
+                        ui.label(f"Video {idx + 1} of {len(video_list)}").classes(
+                            "text-xs text-blue-400 font-bold"
+                        )
                         ui.label(filename).classes("text-[10px] text-slate-500 font-mono")
 
                     with ui.row().classes("items-center gap-2"):
@@ -69,25 +75,24 @@ def render_video_card(config, folder_name):
                             options=[1, 2, 3, 4, 5],
                             value=current_score,
                             on_change=lambda e, k=unique_key: data_manager.save_score(k, e.value),
-                            clearable=True
+                            clearable=True,
                         ).props(
                             'unelevated dense text-color="slate-300" color="slate-800" toggle-color="blue-600"'
                         ).classes(
-                            'text-xs rounded overflow-hidden gap-px bg-slate-700/70 border border-slate-700/70'
+                            "text-xs rounded overflow-hidden gap-px bg-slate-700/70 border border-slate-700/70"
                         )
 
             with (
-                ui.carousel(
-                    value='0',
-                    on_value_change=lambda e: render_controls.refresh()
-                )
-                .bind_value(state, 'slide')
+                ui.carousel(value="0", on_value_change=lambda e: render_controls.refresh())
+                .bind_value(state, "slide")
                 .props('height="auto" control-color="blue-500" arrows navigation')
                 .classes("w-full aspect-video bg-black")
             ):
                 for i, (url, filename, v_idx) in enumerate(video_list):
                     with ui.carousel_slide(name=str(i)).classes("p-0"):
-                         ui.video(url).props("controls muted").classes("w-full h-full object-contain")
+                        ui.video(url).props("controls muted").classes(
+                            "w-full h-full object-contain"
+                        )
 
             render_controls()
 
@@ -101,7 +106,9 @@ def render_video_card(config, folder_name):
                     render_badge(k, v)
                 render_badge("folder", folder_name)
 
+
 # --- MAIN RENDERER ---
+
 
 def render_gallery_view(video_groups):
     if not video_groups:
@@ -110,9 +117,10 @@ def render_gallery_view(video_groups):
 
     # Main container (split layout)
     with ui.row().classes("w-full h-full flex-nowrap items-start gap-0 overflow-hidden"):
-
         # --- LEFT COLUMN: NAVIGATION ---
-        with ui.column().classes("w-64 shrink-0 bg-slate-800 h-full p-4 border-r border-slate-700 flex flex-col"):
+        with ui.column().classes(
+            "w-64 shrink-0 bg-slate-800 h-full p-4 border-r border-slate-700 flex flex-col"
+        ):
             ui.label("Dataset").classes("text-xl font-bold text-blue-500 mb-6")
 
             def on_download_click():
@@ -159,7 +167,10 @@ def render_gallery_view(video_groups):
                                 with ui.tab_panel(tab_obj).classes("p-0"):
                                     try:
                                         p_data = configs[0]["prompt_data"]
-                                        if "action_prompts" in p_data and p_type in p_data["action_prompts"]:
+                                        if (
+                                            "action_prompts" in p_data
+                                            and p_type in p_data["action_prompts"]
+                                        ):
                                             segments = p_data["action_prompts"][p_type]["segments"]
                                             full_prompt = " ".join(segments)
                                         else:
@@ -167,11 +178,19 @@ def render_gallery_view(video_groups):
                                     except Exception:
                                         full_prompt = "Prompt data unavailable"
 
-                                    with ui.element("div").classes("w-full p-6 bg-slate-900/30 border-b border-slate-700"):
-                                        ui.label("Active Prompt:").classes("text-xs text-blue-400 font-bold uppercase")
-                                        ui.label(full_prompt).classes("text-lg italic text-slate-300")
+                                    with ui.element("div").classes(
+                                        "w-full p-6 bg-slate-900/30 border-b border-slate-700"
+                                    ):
+                                        ui.label("Active Prompt:").classes(
+                                            "text-xs text-blue-400 font-bold uppercase"
+                                        )
+                                        ui.label(full_prompt).classes(
+                                            "text-lg italic text-slate-300"
+                                        )
 
-                                    with ui.element("div").classes("grid grid-cols-1 md:grid-cols-2 gap-8 p-8 xl:grid-cols-3"):
+                                    with ui.element("div").classes(
+                                        "grid grid-cols-1 md:grid-cols-2 gap-8 p-8 xl:grid-cols-3"
+                                    ):
                                         for cfg in configs:
                                             folder_name = cfg["_folder_name"]
                                             render_video_card(cfg, folder_name)

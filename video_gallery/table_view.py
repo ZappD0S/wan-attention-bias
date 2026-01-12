@@ -2,6 +2,7 @@ import pandas as pd
 from great_tables import GT, html
 from nicegui import ui
 
+
 def process_data_for_table(video_groups, video_scores, selected_prompt_type):
     # (Same data processing logic as before)
     raw_data = []
@@ -15,31 +16,23 @@ def process_data_for_table(video_groups, video_scores, selected_prompt_type):
             folder = cfg.get("_folder_name", "")
 
             for _, _, v_idx in cfg.get("_videos", []):
-                raw_data.append({
-                    "gid": gid,
-                    "params": params,
-                    "score_key": f"{folder}/{v_idx}"
-                })
+                raw_data.append({"gid": gid, "params": params, "score_key": f"{folder}/{v_idx}"})
 
     if not raw_data:
         return pd.DataFrame()
 
     df = pd.DataFrame(raw_data)
-    df['score'] = df['score_key'].map(video_scores)
+    df["score"] = df["score_key"].map(video_scores)
 
-    df['Configuration'] = df['params'].apply(
+    df["Configuration"] = df["params"].apply(
         lambda p: "\n".join(
-            f"{k.replace('_', ' ')}={v}"
-            for k, v in sorted(p.items(), key=lambda item: item[0])
-        ) if p else "Default"
+            f"{k.replace('_', ' ')}={v}" for k, v in sorted(p.items(), key=lambda item: item[0])
+        )
+        if p
+        else "Default"
     )
 
-    pivot_df = df.pivot_table(
-        index="gid",
-        columns="Configuration",
-        values="score",
-        aggfunc="mean"
-    )
+    pivot_df = df.pivot_table(index="gid", columns="Configuration", values="score", aggfunc="mean")
 
     pivot_df = pivot_df.sort_index()
     pivot_df.index = "Prompt #" + (pivot_df.index + 1).astype(str)
@@ -51,18 +44,14 @@ def render_table_tab(video_groups, video_scores):
     """
     Renders the Analysis/Table Tab with a Sidebar Layout.
     """
-    all_types = sorted({
-        p_type
-        for types in video_groups.values()
-        for p_type in types.keys()
-    })
+    all_types = sorted({p_type for types in video_groups.values() for p_type in types.keys()})
 
-    state = {'p_type': all_types[0] if all_types else None}
+    state = {"p_type": all_types[0] if all_types else None}
 
     # --- UI COMPONENTS ---
 
     def set_type(p_type):
-        state['p_type'] = p_type
+        state["p_type"] = p_type
         sidebar_menu.refresh()
         table_content.refresh()
 
@@ -73,20 +62,30 @@ def render_table_tab(video_groups, video_scores):
         with ui.scroll_area().classes("w-full flex-grow"):
             with ui.column().classes("w-full gap-1"):
                 for p_type in all_types:
-                    is_active = (p_type == state['p_type'])
+                    is_active = p_type == state["p_type"]
 
-                    bg_class = "bg-blue-500/10 text-blue-400" if is_active else "text-slate-400 hover:text-slate-200 hover:bg-slate-700/50"
+                    bg_class = (
+                        "bg-blue-500/10 text-blue-400"
+                        if is_active
+                        else "text-slate-400 hover:text-slate-200 hover:bg-slate-700/50"
+                    )
                     indicator_color = "bg-blue-500" if is_active else "bg-slate-600"
 
-                    with ui.row().classes(
-                        f"w-full cursor-pointer items-center gap-2 px-3 py-1 rounded transition-colors {bg_class}"
-                    ).on("click", lambda _, pt=p_type: set_type(pt)):
-
-                        ui.element("div").classes(f"w-1.5 h-1.5 rounded-full {indicator_color} shrink-0")
+                    with (
+                        ui.row()
+                        .classes(
+                            f"w-full cursor-pointer items-center gap-2 px-3 py-1 rounded transition-colors {bg_class}"
+                        )
+                        .on("click", lambda _, pt=p_type: set_type(pt))
+                    ):
+                        ui.element("div").classes(
+                            f"w-1.5 h-1.5 rounded-full {indicator_color} shrink-0"
+                        )
                         ui.label(p_type).classes("text-sm font-medium truncate")
+
     @ui.refreshable
     def table_content():
-        current_type = state['p_type']
+        current_type = state["p_type"]
 
         if not current_type:
             ui.label("No data available.").classes("text-slate-400")
@@ -103,15 +102,14 @@ def render_table_tab(video_groups, video_scores):
         gt_tbl = (
             GT(df)
             .tab_header(
-                title=f"Results: {current_type}",
-                subtitle="Average scores per configuration"
+                title=f"Results: {current_type}", subtitle="Average scores per configuration"
             )
             .cols_align(align="center", columns=config_cols)
             .data_color(
                 columns=config_cols,
                 palette=["#ef4444", "#eab308", "#22c55e"],
                 domain=[1, 5],
-                na_color="#1e293b"
+                na_color="#1e293b",
             )
             .fmt_number(columns=config_cols, decimals=1)
             .tab_options(
@@ -122,7 +120,6 @@ def render_table_tab(video_groups, video_scores):
                 table_border_bottom_color="#334155",
                 heading_background_color="#0f172a",
                 column_labels_background_color="#334155",
-
                 # Compact Styling
                 column_labels_font_weight="bold",
                 column_labels_font_size="10px",
@@ -142,9 +139,10 @@ def render_table_tab(video_groups, video_scores):
 
     # 1. Wrapper: w-full h-full, no padding
     with ui.row().classes("w-full h-full flex-nowrap items-start gap-0 overflow-hidden"):
-
         # 2. Sidebar: Matches Gallery View perfectly
-        with ui.column().classes("w-64 shrink-0 bg-slate-800 h-full p-4 border-r border-slate-700 flex flex-col"):
+        with ui.column().classes(
+            "w-64 shrink-0 bg-slate-800 h-full p-4 border-r border-slate-700 flex flex-col"
+        ):
             ui.label("Analysis").classes("text-xl font-bold text-blue-500 mb-6")
 
             ui.label("Select Matrix").classes("text-xs font-bold text-slate-500 uppercase mb-2")

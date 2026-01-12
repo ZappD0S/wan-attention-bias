@@ -3,6 +3,7 @@ import re
 from collections import defaultdict
 from pathlib import Path
 from typing import Dict
+
 from nicegui import ui
 
 # --- CONFIGURATION ---
@@ -11,6 +12,7 @@ SCORES_FILE = VIDEOS_PATH / "video_scores.json"
 
 # --- STATE ---
 video_scores: Dict[str, int] = {}
+
 
 def load_scores():
     """Loads scores into the global video_scores dictionary."""
@@ -22,6 +24,7 @@ def load_scores():
         except Exception as e:
             print(f"Error loading scores: {e}")
 
+
 def save_score(unique_key: str, score: int):
     """Updates state and persists to JSON."""
     video_scores[unique_key] = score
@@ -31,6 +34,7 @@ def save_score(unique_key: str, score: int):
     except Exception as e:
         ui.notify(f"Failed to save score: {e}", type="negative")
 
+
 def get_group_id(target_data, registry):
     for index, existing_data in enumerate(registry):
         if target_data == existing_data:
@@ -38,11 +42,13 @@ def get_group_id(target_data, registry):
     registry.append(target_data)
     return len(registry) - 1
 
+
 def get_video_index(filename):
     match = re.search(r"video_(\d+)", filename)
     if match:
         return int(match.group(1))
     return 0
+
 
 def discover_groups(root_path: Path):
     registry = []
@@ -83,6 +89,7 @@ def discover_groups(root_path: Path):
             continue
 
     return groups
+
 
 def generate_dataset_json(groups_data):
     records = []
