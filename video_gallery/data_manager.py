@@ -7,7 +7,7 @@ from typing import Dict
 from nicegui import ui
 
 # --- CONFIGURATION ---
-VIDEOS_PATH = Path("multi_sample_inference/output/")
+VIDEOS_PATH = Path("../multi_sample_inference/output/")
 SCORES_FILE = VIDEOS_PATH / "video_scores.json"
 
 # --- STATE ---
