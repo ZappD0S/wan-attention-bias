@@ -1,15 +1,18 @@
 [
   {
     "bias_method": ["none"],
-    "repeat": [5]
+    "repeat": [5],
+    "invert": [false, true]
   },
   {
     "bias_method": ["regional_prompting"],
-    "beta": [0.25, 0.5, 0.75, 1.0]
+    "beta": [0.25, 0.5, 0.75, 1.0],
+    "invert": [false, true]
   },
   {
     "bias_method": ["ediff-i"],
-    "strength": [3.0, 5.0]
+    "strength": [3.0, 5.0],
+    "invert": [false, true]
   }
 ]
 

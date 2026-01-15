@@ -1,14 +1,13 @@
-import os
 import json
-from PIL import Image, ImageDraw, ImageFont
+import os
 from pathlib import Path
 
 import torch
-from diffusers import FluxPipeline  # type: ignore
-from transformers import AutoProcessor, AutoModelForZeroShotObjectDetection
-from accelerate import Accelerator
-
 import torchvision
+from accelerate import Accelerator
+from diffusers import FluxPipeline
+from PIL import Image, ImageDraw, ImageFont
+from transformers import AutoModelForZeroShotObjectDetection, AutoProcessor
 
 # %%
 IOU_THRESHOLD = 0.5
@@ -24,7 +23,8 @@ for prompt_file_path in Path.cwd().glob("*.json"):
         continue
 
     with prompt_file_path.open() as f:
-        prompts_data_list += json.load(f)
+        prompt_json_dict = json.load(f)
+        prompts_data_list += prompt_json_dict["dataset"]
 
 pipe = FluxPipeline.from_pretrained(
     "black-forest-labs/FLUX.1-dev",
@@ -84,10 +84,10 @@ def draw_bboxes(img: Image.Image, boxes, labels, scores):
 
 for i, prompt_data in enumerate(prompts_data_list):
     appearance_prompt_data = prompt_data["appearance_prompt"]
-    segments = appearance_prompt_data["segments"]
+    [segments] = appearance_prompt_data["segments"]
     prompt = " ".join(segments)
 
-    mask = appearance_prompt_data["mask"]
+    [mask] = appearance_prompt_data["mask"]
     character_segments = [seg for is_char_seg, seg in zip(mask, segments) if is_char_seg]
 
     seed = 42 + i
@@ -101,7 +101,7 @@ for i, prompt_data in enumerate(prompts_data_list):
         num_inference_steps=50,
         max_sequence_length=512,
         generator=generator,
-    ).images[0]  # type: ignore
+    ).images[0]
 
     img_path = img_dir / f"{i}.png"
     image.save(img_path)

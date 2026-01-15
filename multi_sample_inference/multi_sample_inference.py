@@ -20,7 +20,7 @@ from utils import create_mask_from_bbox, normalize_video_tensor
 from .utils import get_folder_name
 
 SAMPLING_STEPS = 40
-FRAME_NUM = 81  # default
+FRAME_NUM = 81
 TARGET_SIZE = (480, 832)
 
 keep_running = True
@@ -32,35 +32,37 @@ def handle_slurm_signal(signum, _):
     keep_running = False
 
 
-# register the signal (SIGUSR1 is what SLURM sends in the fixed script)
 signal.signal(signal.SIGUSR1, handle_slurm_signal)
-# Also handle SIGTERM (the default SLURM kill signal)
 signal.signal(signal.SIGTERM, handle_slurm_signal)
 
 
 def run_inference(
     wan_i2v: WanI2V,
-    prompt: str,
+    prompt_sentences: list[str],
     img: Image.Image,
-    character_segments: list[str],
+    char_segment_lists: list[list[str]],
     masks: torch.Tensor,
     config: dict,
 ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
     num_layers = wan_i2v.model.num_layers
-
     timestep_bias_schedule = torch.ones(SAMPLING_STEPS, dtype=torch.bool)
     blocks_bias_schedule = torch.ones(num_layers, dtype=torch.bool)
-    control_prompts = {
-        (i,): {"prompt": seg, "descr_list": []} for i, seg in enumerate(character_segments)
-    }
 
-    n_characters = len(character_segments)
-    wlw_matrix = np.eye(n_characters, n_characters, dtype=bool)
+    control_prompt_lists = []
+    n_char = 0
+    for char_segments in char_segment_lists:
+        control_prompts = []
+        for seg in char_segments:
+            control_prompts.append(((n_char,), {"prompt": seg, "char_descr_list": []}))
+            n_char += 1
+        control_prompt_lists.append(control_prompts)
+
+    wlw_matrix = np.eye(n_char, n_char, dtype=bool)
     wlw_matrix = np.repeat(wlw_matrix[..., np.newaxis], FRAME_NUM, axis=-1)
     wlw_matrix = torch.from_numpy(wlw_matrix)
 
     bias_kwargs = {
-        "control_prompts": control_prompts,
+        "control_prompt_lists": control_prompt_lists,
         "timestep_bias_schedule": timestep_bias_schedule,
         "blocks_bias_schedule": blocks_bias_schedule,
         "face_masks": masks,
@@ -70,18 +72,146 @@ def run_inference(
     torch.cuda.synchronize()
     gc.collect()
     torch.cuda.empty_cache()
-    video: torch.Tensor
-    extra_data: dict[str, torch.Tensor]
-    video, extra_data = wan_i2v.generate(  # type: ignore
-        prompt,
+
+    video, extra_data = wan_i2v.generate(
+        prompt_sentences,
         img,
         bias_kwargs,
         max_area=TARGET_SIZE[0] * TARGET_SIZE[1],
         sampling_steps=SAMPLING_STEPS,
         frame_num=FRAME_NUM,
     )
-
     return video, extra_data
+
+
+def save_outputs(video, extra_data, video_path, action_output_path, repeat_idx):
+    video_norm = normalize_video_tensor(video.cpu().numpy())
+    export_to_video(list(video_norm), video_path, fps=16)
+
+    simil_masks = extra_data["simil_masks"]
+    face_masks = simil_masks[0, -1].float().mean(dim=0) > 0.5
+    h, w = video.shape[-2:]
+    face_masks = unscale(face_masks.float(), (FRAME_NUM, h, w)).bool()
+
+    write_video_masks(
+        video_norm,
+        action_output_path / f"video_with_masks_{repeat_idx}.mp4",
+        face_masks.transpose(0, 1).cpu().numpy(),
+        fps=16,
+    )
+
+
+def run_repeat_loop(
+    wan_i2v, prompt_sentences, img, character_segments, masks, config, action_output_path, repeat
+):
+    global keep_running
+
+    for repeat_idx in range(repeat):
+        if not keep_running:
+            return True
+
+        video_path = action_output_path / f"video_{repeat_idx}.mp4"
+        if video_path.exists():
+            print(f"Skipping existing: {video_path.name}")
+            continue
+
+        video, extra_data = run_inference(
+            wan_i2v, prompt_sentences, img, character_segments, masks, config
+        )
+        save_outputs(video, extra_data, video_path, action_output_path, repeat_idx)
+
+    return False
+
+
+def process_action_prompts(
+    wan_i2v, prompt_data, param_config, img, masks, output_path, repeat, safeguard_suffix
+):
+    for prompt_type, action_prompt_data in prompt_data["action_prompts"].items():
+        allowed_types = param_config.get("prompt_types")
+        if allowed_types is not None and prompt_type not in allowed_types:
+            continue
+
+        config = {"params": param_config, "prompt_data": prompt_data, "prompt_type": prompt_type}
+        folder_name = get_folder_name(config)
+        action_output_path = output_path / folder_name
+        action_output_path.mkdir(exist_ok=True)
+
+        with (action_output_path / "config.json").open("w") as f:
+            json.dump(config, f, indent=2)
+
+        segment_lists = action_prompt_data["segments"]
+        prompt_sentences = [safeguard_suffix] + [" ".join(segments) for segments in segment_lists]
+
+        segment_masks = action_prompt_data["mask"]
+        character_segments = [[]] + [
+            [seg for is_char, seg in zip(mask_row, segs) if is_char]
+            for mask_row, segs in zip(segment_masks, segment_lists)
+        ]
+
+        signal_received = run_repeat_loop(
+            wan_i2v,
+            prompt_sentences,
+            img,
+            character_segments,
+            masks,
+            config,
+            action_output_path,
+            repeat,
+        )
+        if signal_received:
+            return True
+
+    return False
+
+
+def process_parameter_grid(
+    wan_i2v, prompt_data, img, masks, output_path, param_grid, safeguard_suffix
+):
+    for param_config in ParameterGrid(param_grid):
+        param_config = dict(param_config)
+        repeat = param_config.pop("repeat", 1)
+
+        current_masks = masks[::-1] if param_config.get("invert", False) else masks
+
+        signal_received = process_action_prompts(
+            wan_i2v,
+            prompt_data,
+            param_config,
+            img,
+            current_masks,
+            output_path,
+            repeat,
+            safeguard_suffix,
+        )
+        if signal_received:
+            return True
+
+    return False
+
+
+def process_prompt_entry(
+    wan_i2v, prompt_data, idx, output_path, param_grid, img_dir, safeguard_suffix
+):
+    bboxes = prompt_data["bboxes"]
+    masks = torch.stack(
+        [torch.from_numpy(create_mask_from_bbox(bbox, TARGET_SIZE)) for bbox in bboxes]
+    )
+
+    img_path = str(img_dir / prompt_data["img_path"])
+    img = load_image(img_path)
+
+    # Debug visualization
+    debug_path = output_path / "debug" / f"prompt_{idx}"
+    debug_path.mkdir(exist_ok=True, parents=True)
+
+    if not (debug_path / "img_with_boxes.png").exists():
+        draw_boxes(img, bboxes).save(debug_path / "img_with_boxes.png")
+    if not (debug_path / "img_with_masks.png").exists():
+        draw_masks(img, list(masks)).save(debug_path / "img_with_masks.png")
+
+    return process_parameter_grid(
+        wan_i2v, prompt_data, img, masks, output_path, param_grid, safeguard_suffix
+    )
 
 
 def main():
@@ -91,17 +221,15 @@ def main():
     parser.add_argument("--output-path", required=True, type=Path)
     parser.add_argument("--checkpoint-path", default=Path("./weights/"), type=Path)
     parser.add_argument("--t5-cpu", action="store_true")
-
     args = parser.parse_args()
 
     with open(args.param_grid_file) as f:
         param_grid = json.load(f)
-
     with open(args.prompts_file) as f:
-        prompts_data_list = json.load(f)
+        prompt_json_dict = json.load(f)
 
-    output_path = args.output_path
-    output_path.mkdir(exist_ok=True, parents=True)
+    args.output_path.mkdir(exist_ok=True, parents=True)
+    img_dir = args.prompts_file.parent
 
     wan_i2v = WanI2V(
         config=i2v_14B,
@@ -109,124 +237,18 @@ def main():
         device_id=0,
         t5_cpu=args.t5_cpu,
     )
-    still_work_to_do = False
 
-    for i, prompt_data in enumerate(prompts_data_list):
-        bboxes = prompt_data["bboxes"]
-        masks_list = [
-            torch.from_numpy(
-                create_mask_from_bbox(
-                    bbox,
-                    TARGET_SIZE,
-                )
-            )
-            for bbox in bboxes
-        ]
-        masks = torch.stack(masks_list)
+    safeguard_suffix = prompt_json_dict["safeguard_suffix"]
+    for i, prompt_data in enumerate(prompt_json_dict["dataset"]):
+        signal_received = process_prompt_entry(
+            wan_i2v, prompt_data, i, args.output_path, param_grid, img_dir, safeguard_suffix
+        )
+        if signal_received:
+            return True
 
-        img_dir = args.prompts_file.parent
-        img_path = str(img_dir / prompt_data["img_path"])
-        img = load_image(img_path)
-        assert img.size[::-1] == TARGET_SIZE
-
-        debug_path = output_path / "debug" / f"prompt_{i}"
-        debug_path.mkdir(exist_ok=True, parents=True)
-
-        img_with_boxes_file = debug_path / "img_with_boxes.png"
-
-        if not img_with_boxes_file.exists():
-            img_with_boxes = draw_boxes(img, prompt_data["bboxes"])
-            img_with_boxes.save(img_with_boxes_file)
-
-        img_with_masks_file = debug_path / "img_with_masks.png"
-
-        if not img_with_masks_file.exists():
-            img_with_masks = draw_masks(img, list(masks))
-            img_with_masks.save(img_with_masks_file)
-
-        for param_config in ParameterGrid(param_grid):
-            assert param_config["bias_method"] in {"none", "regional_prompting", "ediff-i"}
-
-            # remove repeat from config, we don't want the folder name to depend on it
-            repeat = param_config.pop("repeat", 1)
-
-            if repeat <= 0:
-                raise ValueError("repeat must be positive.")
-
-            # iterate over actions prompts
-            for prompt_type, action_prompt_data in prompt_data["action_prompts"].items():
-                assert prompt_type in {"default", "first_action", "second_action", "no_locative"}
-                # generate only baseline for single action prompts
-                if param_config["bias_method"] != "none" and prompt_type in {
-                    "first_action",
-                    "second_action",
-                }:
-                    continue
-
-                config = {}
-                config["params"] = param_config
-                config["prompt_data"] = prompt_data
-                config["prompt_type"] = prompt_type
-
-                folder_name = get_folder_name(config)
-                action_output_path = output_path / folder_name
-                action_output_path.mkdir(exist_ok=True)
-
-                config_path = action_output_path / "config.json"
-
-                with config_path.open("w") as f:
-                    json.dump(config, f, indent=2)
-
-                segments = action_prompt_data["segments"]
-                prompt = " ".join(segments)
-
-                segment_mask = action_prompt_data["mask"]
-                character_segments = [
-                    seg for is_char, seg in zip(segment_mask, segments) if is_char
-                ]
-                assert len(bboxes) == len(character_segments), f"error in prompt #{i}"
-
-                for repeat_idx in range(repeat):
-                    if not keep_running:
-                        # assume there is still work to do
-                        return True
-
-                    video_path = action_output_path / f"video_{repeat_idx}.mp4"
-
-                    if video_path.exists():
-                        print(
-                            f"The video for the prompt '{prompt}' the was already generated. Skipping..."
-                        )
-                        continue
-
-                    still_work_to_do = True
-                    video, extra_data = run_inference(
-                        wan_i2v, prompt, img, character_segments, masks, config
-                    )
-                    video_norm = normalize_video_tensor(video.cpu().numpy())
-
-                    export_to_video(list(video_norm), video_path, fps=16)
-
-                    simil_masks = extra_data["simil_masks"]
-
-                    # TODO: is this the best way to do it?
-                    face_masks = simil_masks[0, -1].float().mean(dim=0) > 0.5
-
-                    h, w = video.shape[-2:]
-                    face_masks = unscale(face_masks.float(), (FRAME_NUM, h, w)).bool()
-                    write_video_masks(
-                        video_norm,
-                        action_output_path / f"video_with_masks_{repeat_idx}.mp4",
-                        face_masks.transpose(0, 1).cpu().numpy(),
-                        fps=16,
-                    )
-
-    return still_work_to_do
+    return False
 
 
 if __name__ == "__main__":
-    still_work_to_do = main()
-    if still_work_to_do:
-        sys.exit(2)
-    else:
-        sys.exit(0)
+    interrupted = main()
+    sys.exit(2 if interrupted else 0)

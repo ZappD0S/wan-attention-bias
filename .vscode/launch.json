@@ -1,0 +1,20 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Python: Multi Sample Inference",
+      "type": "python",
+      "request": "launch",
+      "module": "multi_sample_inference.multi_sample_inference",
+      "args": [
+        "--prompts-file", "${workspaceFolder}/image_prompt_generation/prompts_modified.json",
+        "--param-grid-file", "${workspaceFolder}/multi_sample_inference/param_grid.json",
+        "--output-path", "${workspaceFolder}/multi_sample_inference/debug_output/",
+        "--checkpoint-path", "${workspaceFolder}/weights/"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": true
+    }
+  ]
+}
