@@ -1,5 +1,5 @@
 {
-  "safeguard_suffix": "The scene is filmed as a continuous shot with a static camera, ensuring no cuts, no new objects entering, and no limbs merging, while maintaining constant lighting and character consistency.",
+  "safeguard_suffix": "The scene is filmed as a continuous shot with a static camera, ensuring no cuts and no new characters or objects entering.",
   "dataset": [
     {
       "appearance_prompt": {
@@ -1823,3 +1823,4 @@
     }
   ]
 }
+

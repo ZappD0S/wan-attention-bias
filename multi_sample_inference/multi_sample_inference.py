@@ -139,10 +139,10 @@ def process_action_prompts(
         with (action_output_path / "config.json").open("w") as f:
             json.dump(config, f, indent=2)
 
-        segment_lists = action_prompt_data["segments"]
+        segment_lists = [[safeguard_suffix]] + action_prompt_data["segments"]
         prompt_sentences = [" ".join(segments) for segments in segment_lists]
 
-        segment_masks = action_prompt_data["mask"]
+        segment_masks = [[0]] + action_prompt_data["mask"]
         character_segments = [
             [seg for is_char, seg in zip(mask_row, segs) if is_char]
             for mask_row, segs in zip(segment_masks, segment_lists)
