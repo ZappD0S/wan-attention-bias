@@ -13,7 +13,13 @@
           ]
         ],
         "mask": [
-          [0, 1, 0, 1, 0]
+          [
+            0,
+            1,
+            0,
+            1,
+            0
+          ]
         ]
       },
       "action_prompts": {
@@ -27,7 +33,12 @@
             ]
           ],
           "mask": [
-            [0, 1, 0, 1]
+            [
+              0,
+              1,
+              0,
+              1
+            ]
           ]
         },
         "no_locative": {
@@ -39,17 +50,29 @@
             ]
           ],
           "mask": [
-            [1, 0, 1]
+            [
+              1,
+              0,
+              1
+            ]
           ]
         },
         "split_sentences": {
           "segments": [
-            ["A golden retriever is barking loudly."],
-            ["A golden retriever is panting with its tongue out."]
+            [
+              "A golden retriever is barking loudly."
+            ],
+            [
+              "A golden retriever is panting with its tongue out."
+            ]
           ],
           "mask": [
-            [1],
-            [1]
+            [
+              1
+            ],
+            [
+              1
+            ]
           ]
         }
       }
@@ -66,7 +89,13 @@
           ]
         ],
         "mask": [
-          [0, 1, 0, 1, 0]
+          [
+            0,
+            1,
+            0,
+            1,
+            0
+          ]
         ]
       },
       "action_prompts": {
@@ -80,7 +109,12 @@
             ]
           ],
           "mask": [
-            [0, 1, 0, 1]
+            [
+              0,
+              1,
+              0,
+              1
+            ]
           ]
         },
         "no_locative": {
@@ -92,17 +126,29 @@
             ]
           ],
           "mask": [
-            [1, 0, 1]
+            [
+              1,
+              0,
+              1
+            ]
           ]
         },
         "split_sentences": {
           "segments": [
-            ["The mechanical monkey toy is banging the cymbals together."],
-            ["The mechanical monkey toy is nodding its head rhythmically."]
+            [
+              "The mechanical monkey toy is banging the cymbals together."
+            ],
+            [
+              "The mechanical monkey toy is nodding its head rhythmically."
+            ]
           ],
           "mask": [
-            [1],
-            [1]
+            [
+              1
+            ],
+            [
+              1
+            ]
           ]
         }
       }
@@ -119,7 +165,13 @@
           ]
         ],
         "mask": [
-          [0, 1, 0, 1, 0]
+          [
+            0,
+            1,
+            0,
+            1,
+            0
+          ]
         ]
       },
       "action_prompts": {
@@ -133,7 +185,12 @@
             ]
           ],
           "mask": [
-            [0, 1, 0, 1]
+            [
+              0,
+              1,
+              0,
+              1
+            ]
           ]
         },
         "no_locative": {
@@ -145,17 +202,29 @@
             ]
           ],
           "mask": [
-            [1, 0, 1]
+            [
+              1,
+              0,
+              1
+            ]
           ]
         },
         "split_sentences": {
           "segments": [
-            ["The retro metal desk fan is spinning its blades rapidly."],
-            ["The retro metal desk fan is oscillating its head side to side."]
+            [
+              "The retro metal desk fan is spinning its blades rapidly."
+            ],
+            [
+              "The retro metal desk fan is oscillating its head side to side."
+            ]
           ],
           "mask": [
-            [1],
-            [1]
+            [
+              1
+            ],
+            [
+              1
+            ]
           ]
         }
       }
@@ -172,7 +241,13 @@
           ]
         ],
         "mask": [
-          [0, 1, 0, 1, 0]
+          [
+            0,
+            1,
+            0,
+            1,
+            0
+          ]
         ]
       },
       "action_prompts": {
@@ -186,7 +261,12 @@
             ]
           ],
           "mask": [
-            [0, 1, 0, 1]
+            [
+              0,
+              1,
+              0,
+              1
+            ]
           ]
         },
         "no_locative": {
@@ -198,17 +278,29 @@
             ]
           ],
           "mask": [
-            [1, 0, 1]
+            [
+              1,
+              0,
+              1
+            ]
           ]
         },
         "split_sentences": {
           "segments": [
-            ["The clear incandescent light bulb is lighting up brightly."],
-            ["The clear incandescent light bulb is shattering into pieces."]
+            [
+              "The clear incandescent light bulb is lighting up brightly."
+            ],
+            [
+              "The clear incandescent light bulb is shattering into pieces."
+            ]
           ],
           "mask": [
-            [1],
-            [1]
+            [
+              1
+            ],
+            [
+              1
+            ]
           ]
         }
       }
@@ -225,7 +317,13 @@
           ]
         ],
         "mask": [
-          [0, 1, 0, 1, 0]
+          [
+            0,
+            1,
+            0,
+            1,
+            0
+          ]
         ]
       },
       "action_prompts": {
@@ -239,7 +337,12 @@
             ]
           ],
           "mask": [
-            [0, 1, 0, 1]
+            [
+              0,
+              1,
+              0,
+              1
+            ]
           ]
         },
         "no_locative": {
@@ -251,17 +354,29 @@
             ]
           ],
           "mask": [
-            [1, 0, 1]
+            [
+              1,
+              0,
+              1
+            ]
           ]
         },
         "split_sentences": {
           "segments": [
-            ["The tin wind-up robot is rotating its head 360 degrees."],
-            ["The tin wind-up robot is raising its arms up and down."]
+            [
+              "The tin wind-up robot is rotating its head 360 degrees."
+            ],
+            [
+              "The tin wind-up robot is raising its arms up and down."
+            ]
           ],
           "mask": [
-            [1],
-            [1]
+            [
+              1
+            ],
+            [
+              1
+            ]
           ]
         }
       }
@@ -278,7 +393,13 @@
           ]
         ],
         "mask": [
-          [0, 1, 0, 1, 0]
+          [
+            0,
+            1,
+            0,
+            1,
+            0
+          ]
         ]
       },
       "action_prompts": {
@@ -292,7 +413,12 @@
             ]
           ],
           "mask": [
-            [0, 1, 0, 1]
+            [
+              0,
+              1,
+              0,
+              1
+            ]
           ]
         },
         "no_locative": {
@@ -304,17 +430,29 @@
             ]
           ],
           "mask": [
-            [1, 0, 1]
+            [
+              1,
+              0,
+              1
+            ]
           ]
         },
         "split_sentences": {
           "segments": [
-            ["The sealed red soda can is crumpling inward."],
-            ["The sealed red soda can is popping its tab open with a spray."]
+            [
+              "The sealed red soda can is crumpling inward."
+            ],
+            [
+              "The sealed red soda can is popping its tab open with a spray."
+            ]
           ],
           "mask": [
-            [1],
-            [1]
+            [
+              1
+            ],
+            [
+              1
+            ]
           ]
         }
       }
@@ -331,7 +469,13 @@
           ]
         ],
         "mask": [
-          [0, 1, 0, 1, 0]
+          [
+            0,
+            1,
+            0,
+            1,
+            0
+          ]
         ]
       },
       "action_prompts": {
@@ -345,7 +489,12 @@
             ]
           ],
           "mask": [
-            [0, 1, 0, 1]
+            [
+              0,
+              1,
+              0,
+              1
+            ]
           ]
         },
         "no_locative": {
@@ -357,17 +506,29 @@
             ]
           ],
           "mask": [
-            [1, 0, 1]
+            [
+              1,
+              0,
+              1
+            ]
           ]
         },
         "split_sentences": {
           "segments": [
-            ["The black DSLR camera is triggering a bright flash."],
-            ["The black DSLR camera is extending its zoom lens outward."]
+            [
+              "The black DSLR camera is triggering a bright flash."
+            ],
+            [
+              "The black DSLR camera is extending its zoom lens outward."
+            ]
           ],
           "mask": [
-            [1],
-            [1]
+            [
+              1
+            ],
+            [
+              1
+            ]
           ]
         }
       }
@@ -384,7 +545,13 @@
           ]
         ],
         "mask": [
-          [0, 1, 0, 1, 0]
+          [
+            0,
+            1,
+            0,
+            1,
+            0
+          ]
         ]
       },
       "action_prompts": {
@@ -398,7 +565,12 @@
             ]
           ],
           "mask": [
-            [0, 1, 0, 1]
+            [
+              0,
+              1,
+              0,
+              1
+            ]
           ]
         },
         "no_locative": {
@@ -410,17 +582,29 @@
             ]
           ],
           "mask": [
-            [1, 0, 1]
+            [
+              1,
+              0,
+              1
+            ]
           ]
         },
         "split_sentences": {
           "segments": [
-            ["The emperor penguin is flapping its flippers rapidly."],
-            ["The emperor penguin is stretching its beak upward."]
+            [
+              "The emperor penguin is flapping its flippers rapidly."
+            ],
+            [
+              "The emperor penguin is stretching its beak upward."
+            ]
           ],
           "mask": [
-            [1],
-            [1]
+            [
+              1
+            ],
+            [
+              1
+            ]
           ]
         }
       }
@@ -437,7 +621,13 @@
           ]
         ],
         "mask": [
-          [0, 1, 0, 1, 0]
+          [
+            0,
+            1,
+            0,
+            1,
+            0
+          ]
         ]
       },
       "action_prompts": {
@@ -451,7 +641,12 @@
             ]
           ],
           "mask": [
-            [0, 1, 0, 1]
+            [
+              0,
+              1,
+              0,
+              1
+            ]
           ]
         },
         "no_locative": {
@@ -463,17 +658,29 @@
             ]
           ],
           "mask": [
-            [1, 0, 1]
+            [
+              1,
+              0,
+              1
+            ]
           ]
         },
         "split_sentences": {
           "segments": [
-            ["The black traffic light housing is illuminating a bright red light."],
-            ["The black traffic light housing is illuminating a bright green light."]
+            [
+              "The black traffic light housing is illuminating a bright red light."
+            ],
+            [
+              "The black traffic light housing is illuminating a bright green light."
+            ]
           ],
           "mask": [
-            [1],
-            [1]
+            [
+              1
+            ],
+            [
+              1
+            ]
           ]
         }
       }
@@ -490,7 +697,13 @@
           ]
         ],
         "mask": [
-          [0, 1, 0, 1, 0]
+          [
+            0,
+            1,
+            0,
+            1,
+            0
+          ]
         ]
       },
       "action_prompts": {
@@ -504,7 +717,12 @@
             ]
           ],
           "mask": [
-            [0, 1, 0, 1]
+            [
+              0,
+              1,
+              0,
+              1
+            ]
           ]
         },
         "no_locative": {
@@ -516,17 +734,29 @@
             ]
           ],
           "mask": [
-            [1, 0, 1]
+            [
+              1,
+              0,
+              1
+            ]
           ]
         },
         "split_sentences": {
           "segments": [
-            ["The white pillar candle is igniting with a warm flame."],
-            ["The white pillar candle is emitting a thin trail of gray smoke."]
+            [
+              "The white pillar candle is igniting with a warm flame."
+            ],
+            [
+              "The white pillar candle is emitting a thin trail of gray smoke."
+            ]
           ],
           "mask": [
-            [1],
-            [1]
+            [
+              1
+            ],
+            [
+              1
+            ]
           ]
         }
       }

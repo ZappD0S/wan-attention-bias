@@ -13,7 +13,13 @@
           ]
         ],
         "mask": [
-          [0, 1, 0, 1, 0]
+          [
+            0,
+            1,
+            0,
+            1,
+            0
+          ]
         ]
       },
       "action_prompts": {
@@ -27,7 +33,12 @@
             ]
           ],
           "mask": [
-            [0, 1, 0, 1]
+            [
+              0,
+              1,
+              0,
+              1
+            ]
           ]
         },
         "no_locative": {
@@ -39,17 +50,29 @@
             ]
           ],
           "mask": [
-            [1, 0, 1]
+            [
+              1,
+              0,
+              1
+            ]
           ]
         },
         "split_sentences": {
           "segments": [
-            ["The shiny metallic robot is typing on the holographic console."],
-            ["The shiny metallic robot is rotating its head to scan the room."]
+            [
+              "The shiny metallic robot is typing on the holographic console."
+            ],
+            [
+              "The shiny metallic robot is rotating its head to scan the room."
+            ]
           ],
           "mask": [
-            [1],
-            [1]
+            [
+              1
+            ],
+            [
+              1
+            ]
           ]
         }
       }
@@ -66,7 +89,13 @@
           ]
         ],
         "mask": [
-          [0, 1, 0, 1, 0]
+          [
+            0,
+            1,
+            0,
+            1,
+            0
+          ]
         ]
       },
       "action_prompts": {
@@ -80,7 +109,12 @@
             ]
           ],
           "mask": [
-            [0, 1, 0, 1]
+            [
+              0,
+              1,
+              0,
+              1
+            ]
           ]
         },
         "no_locative": {
@@ -92,17 +126,29 @@
             ]
           ],
           "mask": [
-            [1, 0, 1]
+            [
+              1,
+              0,
+              1
+            ]
           ]
         },
         "split_sentences": {
           "segments": [
-            ["The golden retriever is panting happily with its tongue out."],
-            ["The golden retriever is tilting its head curiously."]
+            [
+              "The golden retriever is panting happily with its tongue out."
+            ],
+            [
+              "The golden retriever is tilting its head curiously."
+            ]
           ],
           "mask": [
-            [1],
-            [1]
+            [
+              1
+            ],
+            [
+              1
+            ]
           ]
         }
       }
@@ -111,15 +157,21 @@
       "appearance_prompt": {
         "segments": [
           [
-            "To the left,",
-            "an astronaut in a white suit stands wearing a wrist monitor",
-            "and to the right,",
-            "an astronaut in a white suit stands wearing a wrist monitor",
-            "inside a grey space station corridor."
+            "Inside a futuristic space station, on the left,",
+            "an astronaut in a white spacesuit stands",
+            "and on the right,",
+            "an identical astronaut in a white spacesuit stands",
+            "."
           ]
         ],
         "mask": [
-          [0, 1, 0, 1, 0]
+          [
+            0,
+            1,
+            0,
+            1,
+            0
+          ]
         ]
       },
       "action_prompts": {
@@ -127,35 +179,52 @@
           "segments": [
             [
               "On the left side,",
-              "the astronaut is checking the wrist monitor",
+              "the astronaut is giving a military salute",
               "while on the right side,",
-              "the astronaut is giving a thumbs-up gesture."
+              "the astronaut is waving hello."
             ]
           ],
           "mask": [
-            [0, 1, 0, 1]
+            [
+              0,
+              1,
+              0,
+              1
+            ]
           ]
         },
         "no_locative": {
           "segments": [
             [
-              "An astronaut is checking a wrist monitor",
+              "An astronaut is giving a military salute",
               "and",
-              "an astronaut is giving a thumbs-up gesture."
+              "an astronaut is waving hello."
             ]
           ],
           "mask": [
-            [1, 0, 1]
+            [
+              1,
+              0,
+              1
+            ]
           ]
         },
         "split_sentences": {
           "segments": [
-            ["The astronaut is checking the wrist monitor."],
-            ["The astronaut is giving a thumbs-up gesture."]
+            [
+              "The astronaut is giving a military salute."
+            ],
+            [
+              "The astronaut is waving hello."
+            ]
           ],
           "mask": [
-            [1],
-            [1]
+            [
+              1
+            ],
+            [
+              1
+            ]
           ]
         }
       }
@@ -172,7 +241,13 @@
           ]
         ],
         "mask": [
-          [0, 1, 0, 1, 0]
+          [
+            0,
+            1,
+            0,
+            1,
+            0
+          ]
         ]
       },
       "action_prompts": {
@@ -186,7 +261,12 @@
             ]
           ],
           "mask": [
-            [0, 1, 0, 1]
+            [
+              0,
+              1,
+              0,
+              1
+            ]
           ]
         },
         "no_locative": {
@@ -198,17 +278,29 @@
             ]
           ],
           "mask": [
-            [1, 0, 1]
+            [
+              1,
+              0,
+              1
+            ]
           ]
         },
         "split_sentences": {
           "segments": [
-            ["The chubby panda is chewing on the bamboo stalk."],
-            ["The chubby panda is yawning widely."]
+            [
+              "The chubby panda is chewing on the bamboo stalk."
+            ],
+            [
+              "The chubby panda is yawning widely."
+            ]
           ],
           "mask": [
-            [1],
-            [1]
+            [
+              1
+            ],
+            [
+              1
+            ]
           ]
         }
       }
@@ -225,7 +317,13 @@
           ]
         ],
         "mask": [
-          [0, 1, 0, 1, 0]
+          [
+            0,
+            1,
+            0,
+            1,
+            0
+          ]
         ]
       },
       "action_prompts": {
@@ -239,7 +337,12 @@
             ]
           ],
           "mask": [
-            [0, 1, 0, 1]
+            [
+              0,
+              1,
+              0,
+              1
+            ]
           ]
         },
         "no_locative": {
@@ -251,17 +354,29 @@
             ]
           ],
           "mask": [
-            [1, 0, 1]
+            [
+              1,
+              0,
+              1
+            ]
           ]
         },
         "split_sentences": {
           "segments": [
-            ["The medieval knight is polishing the sword with the cloth."],
-            ["The medieval knight is raising the sword upward."]
+            [
+              "The medieval knight is polishing the sword with the cloth."
+            ],
+            [
+              "The medieval knight is raising the sword upward."
+            ]
           ],
           "mask": [
-            [1],
-            [1]
+            [
+              1
+            ],
+            [
+              1
+            ]
           ]
         }
       }
@@ -278,7 +393,13 @@
           ]
         ],
         "mask": [
-          [0, 1, 0, 1, 0]
+          [
+            0,
+            1,
+            0,
+            1,
+            0
+          ]
         ]
       },
       "action_prompts": {
@@ -292,7 +413,12 @@
             ]
           ],
           "mask": [
-            [0, 1, 0, 1]
+            [
+              0,
+              1,
+              0,
+              1
+            ]
           ]
         },
         "no_locative": {
@@ -304,17 +430,29 @@
             ]
           ],
           "mask": [
-            [1, 0, 1]
+            [
+              1,
+              0,
+              1
+            ]
           ]
         },
         "split_sentences": {
           "segments": [
-            ["The green alien is blinking slowly."],
-            ["The green alien is wiggling its antennae."]
+            [
+              "The green alien is blinking slowly."
+            ],
+            [
+              "The green alien is wiggling its antennae."
+            ]
           ],
           "mask": [
-            [1],
-            [1]
+            [
+              1
+            ],
+            [
+              1
+            ]
           ]
         }
       }
@@ -331,7 +469,13 @@
           ]
         ],
         "mask": [
-          [0, 1, 0, 1, 0]
+          [
+            0,
+            1,
+            0,
+            1,
+            0
+          ]
         ]
       },
       "action_prompts": {
@@ -345,7 +489,12 @@
             ]
           ],
           "mask": [
-            [0, 1, 0, 1]
+            [
+              0,
+              1,
+              0,
+              1
+            ]
           ]
         },
         "no_locative": {
@@ -357,17 +506,29 @@
             ]
           ],
           "mask": [
-            [1, 0, 1]
+            [
+              1,
+              0,
+              1
+            ]
           ]
         },
         "split_sentences": {
           "segments": [
-            ["The chef is stirring the bowl vigorously."],
-            ["The chef is tasting sauce from the spoon."]
+            [
+              "The chef is stirring the bowl vigorously."
+            ],
+            [
+              "The chef is tasting sauce from the spoon."
+            ]
           ],
           "mask": [
-            [1],
-            [1]
+            [
+              1
+            ],
+            [
+              1
+            ]
           ]
         }
       }
@@ -384,7 +545,13 @@
           ]
         ],
         "mask": [
-          [0, 1, 0, 1, 0]
+          [
+            0,
+            1,
+            0,
+            1,
+            0
+          ]
         ]
       },
       "action_prompts": {
@@ -398,7 +565,12 @@
             ]
           ],
           "mask": [
-            [0, 1, 0, 1]
+            [
+              0,
+              1,
+              0,
+              1
+            ]
           ]
         },
         "no_locative": {
@@ -410,17 +582,29 @@
             ]
           ],
           "mask": [
-            [1, 0, 1]
+            [
+              1,
+              0,
+              1
+            ]
           ]
         },
         "split_sentences": {
           "segments": [
-            ["The blue ghost is covering its eyes with its hands."],
-            ["The blue ghost is spinning slowly in the air."]
+            [
+              "The blue ghost is covering its eyes with its hands."
+            ],
+            [
+              "The blue ghost is spinning slowly in the air."
+            ]
           ],
           "mask": [
-            [1],
-            [1]
+            [
+              1
+            ],
+            [
+              1
+            ]
           ]
         }
       }
@@ -437,7 +621,13 @@
           ]
         ],
         "mask": [
-          [0, 1, 0, 1, 0]
+          [
+            0,
+            1,
+            0,
+            1,
+            0
+          ]
         ]
       },
       "action_prompts": {
@@ -451,7 +641,12 @@
             ]
           ],
           "mask": [
-            [0, 1, 0, 1]
+            [
+              0,
+              1,
+              0,
+              1
+            ]
           ]
         },
         "no_locative": {
@@ -463,17 +658,29 @@
             ]
           ],
           "mask": [
-            [1, 0, 1]
+            [
+              1,
+              0,
+              1
+            ]
           ]
         },
         "split_sentences": {
           "segments": [
-            ["The businessman is checking the time on the watch."],
-            ["The businessman is straightening the red tie."]
+            [
+              "The businessman is checking the time on the watch."
+            ],
+            [
+              "The businessman is straightening the red tie."
+            ]
           ],
           "mask": [
-            [1],
-            [1]
+            [
+              1
+            ],
+            [
+              1
+            ]
           ]
         }
       }
@@ -490,7 +697,13 @@
           ]
         ],
         "mask": [
-          [0, 1, 0, 1, 0]
+          [
+            0,
+            1,
+            0,
+            1,
+            0
+          ]
         ]
       },
       "action_prompts": {
@@ -504,7 +717,12 @@
             ]
           ],
           "mask": [
-            [0, 1, 0, 1]
+            [
+              0,
+              1,
+              0,
+              1
+            ]
           ]
         },
         "no_locative": {
@@ -516,17 +734,29 @@
             ]
           ],
           "mask": [
-            [1, 0, 1]
+            [
+              1,
+              0,
+              1
+            ]
           ]
         },
         "split_sentences": {
           "segments": [
-            ["The macaw parrot is bobbing its head rhythmically."],
-            ["The macaw parrot is preening its wing feathers."]
+            [
+              "The macaw parrot is bobbing its head rhythmically."
+            ],
+            [
+              "The macaw parrot is preening its wing feathers."
+            ]
           ],
           "mask": [
-            [1],
-            [1]
+            [
+              1
+            ],
+            [
+              1
+            ]
           ]
         }
       }
