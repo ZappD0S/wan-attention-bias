@@ -140,10 +140,10 @@ def process_action_prompts(
             json.dump(config, f, indent=2)
 
         segment_lists = action_prompt_data["segments"]
-        prompt_sentences = [safeguard_suffix] + [" ".join(segments) for segments in segment_lists]
+        prompt_sentences = [" ".join(segments) for segments in segment_lists]
 
         segment_masks = action_prompt_data["mask"]
-        character_segments = [[]] + [
+        character_segments = [
             [seg for is_char, seg in zip(mask_row, segs) if is_char]
             for mask_row, segs in zip(segment_masks, segment_lists)
         ]
@@ -154,7 +154,7 @@ def process_action_prompts(
             img,
             character_segments,
             masks,
-            config,
+            param_config,
             action_output_path,
             repeat,
         )
@@ -168,7 +168,6 @@ def process_parameter_grid(
     wan_i2v, prompt_data, img, masks, output_path, param_grid, safeguard_suffix
 ):
     for param_config in ParameterGrid(param_grid):
-        param_config = dict(param_config)
         repeat = param_config.pop("repeat", 1)
 
         current_masks = masks[::-1] if param_config.get("invert", False) else masks

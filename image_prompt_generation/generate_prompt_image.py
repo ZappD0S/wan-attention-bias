@@ -16,6 +16,7 @@ OUTPUT_FILE = Path("prompts_modified.json")
 os.environ["HF_HOME"] = "../weights/"
 
 prompts_data_list = []
+safeguard_suffix = ""
 
 for prompt_file_path in Path.cwd().glob("*.json"):
     # skip output file (if it exists)
@@ -24,6 +25,10 @@ for prompt_file_path in Path.cwd().glob("*.json"):
 
     with prompt_file_path.open() as f:
         prompt_json_dict = json.load(f)
+
+        if not safeguard_suffix and "safeguard_suffix" in prompt_json_dict:
+            safeguard_suffix = prompt_json_dict["safeguard_suffix"]
+
         prompts_data_list += prompt_json_dict["dataset"]
 
 pipe = FluxPipeline.from_pretrained(
@@ -149,6 +154,8 @@ for i, prompt_data in enumerate(prompts_data_list):
     prompt_data["bboxes"] = boxes
     prompt_data["img_path"] = str(img_path)
 
+# Prepare final JSON structure
+output_data = {"safeguard_suffix": safeguard_suffix, "dataset": prompts_data_list}
 
 with open(OUTPUT_FILE, "w") as f:
-    prompts_data_list = json.dump(prompts_data_list, f, indent=2)
+    json.dump(output_data, f, indent=2)

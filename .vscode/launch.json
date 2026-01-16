@@ -3,14 +3,15 @@
   "configurations": [
     {
       "name": "Python: Multi Sample Inference",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "multi_sample_inference.multi_sample_inference",
       "args": [
         "--prompts-file", "${workspaceFolder}/image_prompt_generation/prompts_modified.json",
         "--param-grid-file", "${workspaceFolder}/multi_sample_inference/param_grid.json",
         "--output-path", "${workspaceFolder}/multi_sample_inference/debug_output/",
-        "--checkpoint-path", "${workspaceFolder}/weights/"
+        "--checkpoint-path", "${workspaceFolder}/weights/",
+        "--t5-cpu"
       ],
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
