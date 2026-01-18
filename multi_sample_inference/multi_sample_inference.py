@@ -123,9 +123,7 @@ def run_repeat_loop(
     return False
 
 
-def process_action_prompts(
-    wan_i2v, prompt_data, param_config, img, masks, output_path, repeat, safeguard_suffix
-):
+def process_action_prompts(wan_i2v, prompt_data, param_config, img, masks, output_path, repeat):
     for prompt_type, action_prompt_data in prompt_data["action_prompts"].items():
         allowed_types = param_config.get("prompt_types")
         if allowed_types is not None and prompt_type not in allowed_types:
@@ -139,6 +137,7 @@ def process_action_prompts(
         with (action_output_path / "config.json").open("w") as f:
             json.dump(config, f, indent=2)
 
+        safeguard_suffix = prompt_data["safeguard_suffix"]
         segment_lists = [[safeguard_suffix]] + action_prompt_data["segments"]
         prompt_sentences = [" ".join(segments) for segments in segment_lists]
 
@@ -164,23 +163,14 @@ def process_action_prompts(
     return False
 
 
-def process_parameter_grid(
-    wan_i2v, prompt_data, img, masks, output_path, param_grid, safeguard_suffix
-):
+def process_parameter_grid(wan_i2v, prompt_data, img, masks, output_path, param_grid):
     for param_config in ParameterGrid(param_grid):
         repeat = param_config.pop("repeat", 1)
 
-        current_masks = masks[::-1] if param_config.get("invert", False) else masks
+        current_masks = masks.flip(dims=(0,)) if param_config.get("invert", False) else masks
 
         signal_received = process_action_prompts(
-            wan_i2v,
-            prompt_data,
-            param_config,
-            img,
-            current_masks,
-            output_path,
-            repeat,
-            safeguard_suffix,
+            wan_i2v, prompt_data, param_config, img, current_masks, output_path, repeat
         )
         if signal_received:
             return True
@@ -188,9 +178,7 @@ def process_parameter_grid(
     return False
 
 
-def process_prompt_entry(
-    wan_i2v, prompt_data, idx, output_path, param_grid, img_dir, safeguard_suffix
-):
+def process_prompt_entry(wan_i2v, prompt_data, idx, output_path, param_grid, img_dir):
     bboxes = prompt_data["bboxes"]
     masks = torch.stack(
         [torch.from_numpy(create_mask_from_bbox(bbox, TARGET_SIZE)) for bbox in bboxes]
@@ -208,9 +196,7 @@ def process_prompt_entry(
     if not (debug_path / "img_with_masks.png").exists():
         draw_masks(img, list(masks)).save(debug_path / "img_with_masks.png")
 
-    return process_parameter_grid(
-        wan_i2v, prompt_data, img, masks, output_path, param_grid, safeguard_suffix
-    )
+    return process_parameter_grid(wan_i2v, prompt_data, img, masks, output_path, param_grid)
 
 
 def main():
@@ -239,8 +225,10 @@ def main():
 
     safeguard_suffix = prompt_json_dict["safeguard_suffix"]
     for i, prompt_data in enumerate(prompt_json_dict["dataset"]):
+        prompt_data["safeguard_suffix"] = safeguard_suffix
+
         signal_received = process_prompt_entry(
-            wan_i2v, prompt_data, i, args.output_path, param_grid, img_dir, safeguard_suffix
+            wan_i2v, prompt_data, i, args.output_path, param_grid, img_dir
         )
         if signal_received:
             return True
