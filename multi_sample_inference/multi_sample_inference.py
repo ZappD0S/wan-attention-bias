@@ -137,6 +137,7 @@ def process_action_prompts(wan_i2v, prompt_data, param_config, img, masks, outpu
         with (action_output_path / "config.json").open("w") as f:
             json.dump(config, f, indent=2)
 
+        print(f"Working on folder {action_output_path.name}")
         safeguard_suffix = prompt_data["safeguard_suffix"]
         segment_lists = [[safeguard_suffix]] + action_prompt_data["segments"]
         prompt_sentences = [" ".join(segments) for segments in segment_lists]
