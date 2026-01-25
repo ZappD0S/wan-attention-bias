@@ -1,11 +1,18 @@
 #!/bin/bash
 
-#SBATCH --partition=gpu_p5
 #SBATCH --gres=gpu:1
 #SBATCH --time=20:00:00
-#SBATCH --account=xvh@a100
-#SBATCH --constraint=a100
 #SBATCH --job-name=multi_sample_inference
+
+# NOTE: Hardware-specific directives (--partition, --account, --constraint)
+# are intentionally left out of this script header.
+#
+# This allows the same script to be submitted to either A100 or H100 nodes
+# without editing the file. These values must be passed via the command line
+# or a wrapper script at submission time.
+#
+# Usage Example (for H100):
+# sbatch --partition=gpu_p6 --account=xvh@h100 --constraint=h100 job.slurm
 
 #SBATCH --output=logs/worker_%A_%a.out
 #SBATCH --error=logs/worker_%A_%a.err
