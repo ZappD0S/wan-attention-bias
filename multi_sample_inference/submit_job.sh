@@ -18,4 +18,4 @@ else
 fi
 
 # Use --export=ALL to ensure NODE_ARCH is passed to the job
-sbatch --partition=$PARTITION --account=$ACCOUNT --constraint=$CONSTRAINT --export=ALL job.slurm
+sbatch --partition=$PARTITION --account=$ACCOUNT --constraint=$CONSTRAINT --export=ALL ./multi_sample_inference/job.slurm

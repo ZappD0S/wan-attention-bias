@@ -59,14 +59,14 @@ nvidia-smi || {
   exit 1
 }
 
-PROMPTS_FILE="../image_prompt_generation/prompts_modified.json"
+PROMPTS_FILE="./image_prompt_generation/prompts_modified.json"
 OUTPUT_DIR="$SCRATCH/attn_bias/output_videos/"
 mkdir -p $OUTPUT_DIR
 
 CHECKPOINT_PATH="$SCRATCH/.weights/"
 mkdir -p $CHECKPOINT_PATH
 
-source ../.venv/bin/activate || {
+source .venv/bin/activate || {
   echo "Failed to activate venv"
   exit 1
 }
@@ -74,9 +74,9 @@ source ../.venv/bin/activate || {
 echo "STATUS: Starting Python inference at $(date)"
 
 # Run in background to allow trap catching
-python -m multi_sample_inference \
+python -m multi_sample_inference.multi_sample_inference \
   --prompts-file "$PROMPTS_FILE" \
-  --param-grid-file "../multi_sample_inference/param_grid.json" \
+  --param-grid-file "./multi_sample_inference/param_grid.json" \
   --output-path "$OUTPUT_DIR" \
   --checkpoint-path $CHECKPOINT_PATH &
 
