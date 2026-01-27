@@ -14,8 +14,8 @@
 # Usage Example (for H100):
 # sbatch --partition=gpu_p6 --account=xvh@h100 --constraint=h100 job.slurm
 
-#SBATCH --output=logs/worker_%A_%a.out
-#SBATCH --error=logs/worker_%A_%a.err
+#SBATCH --output=logs/worker_%j.out
+#SBATCH --error=logs/worker_%j.err
 #SBATCH --open-mode=append
 
 #SBATCH --nodes=1
@@ -38,9 +38,26 @@ resubmit_handler() {
 # Register the handler for the USR1 signal
 trap 'resubmit_handler' USR1
 
-# Load necessary modules
 module purge
-module load arch/a100 cuda/12.8.0 ffmpeg/6.1.1-cuda
+
+if [ "$NODE_ARCH" == "a100" ]; then
+  echo "STATUS: Configuring environment for A100"
+  module load arch/a100
+elif [ "$NODE_ARCH" == "h100" ]; then
+  echo "STATUS: Configuring environment for H100"
+  module load arch/h100
+else
+  echo "ERROR: NODE_ARCH is unset or unknown ('$NODE_ARCH'). Exiting." >&2
+  exit 1
+fi
+
+module load cuda/12.8.0 ffmpeg/6.1.1-cuda
+
+echo "STATUS: Checking GPU availability via nvidia-smi..."
+nvidia-smi || {
+  echo "ERROR: nvidia-smi failed. Driver not found." >&2
+  exit 1
+}
 
 PROMPTS_FILE="../image_prompt_generation/prompts_modified.json"
 OUTPUT_DIR="$SCRATCH/attn_bias/output_videos/"
@@ -49,7 +66,10 @@ mkdir -p $OUTPUT_DIR
 CHECKPOINT_PATH="$SCRATCH/.weights/"
 mkdir -p $CHECKPOINT_PATH
 
-source ../.venv/bin/activate
+source ../.venv/bin/activate || {
+  echo "Failed to activate venv"
+  exit 1
+}
 
 echo "STATUS: Starting Python inference at $(date)"
 
