@@ -12,95 +12,22 @@ from transformers import AutoTokenizer, CLIPImageProcessor, CLIPVisionModel, UMT
 # ==========================================
 
 
-def get_prompt_embeddings(model_path, prompt, dtype=torch.bfloat16, device="cuda"):
-    print(f"--- Encoding Prompt: '{prompt}' ---")
-    tokenizer = AutoTokenizer.from_pretrained(
-        model_path, subfolder="tokenizer", local_files_only=True
-    )
-    text_encoder = UMT5EncoderModel.from_pretrained(
-        model_path,
-        subfolder="text_encoder",
-        load_in_4bit=True,
-        device_map="cpu",
-        local_files_only=True,
-    )
-
-    temp_pipe = WanPipeline.from_pretrained(
-        model_path,
-        text_encoder=text_encoder,
-        tokenizer=tokenizer,
-        transformer=None,
-        vae=None,
-        torch_dtype=dtype,
-        local_files_only=True,
-    )
-
-    with torch.no_grad():
-        prompt_embeds, _ = temp_pipe.encode_prompt(
-            prompt=prompt,
-            device=torch.device("cpu"),
-            num_videos_per_prompt=1,
-            do_classifier_free_guidance=False,
-        )
-
-    prompt_embeds = prompt_embeds.to(device, dtype=dtype)
-    del text_encoder, tokenizer, temp_pipe
-    gc.collect()
-    torch.cuda.empty_cache()
-    return prompt_embeds
-
-
-def get_image_context_embeddings(model_path, image, dtype=torch.bfloat16, device="cuda"):
+def build_wan_pipeline(model_path, shift=3.0, dtype=torch.bfloat16, device="cuda"):
     """
-    Encodes image for the Transformer's Context (Cross-Attention).
-    Output: [1, 257, 1280] (CLIP embeddings)
+    Loads the Transformer and VAE, detects mode, and sets up the scheduler.
     """
-    print("--- Encoding Image Context (CLIP) ---")
-    image_processor = CLIPImageProcessor.from_pretrained(
-        model_path, subfolder="image_processor", local_files_only=True
-    )
-    image_encoder = CLIPVisionModel.from_pretrained(
-        model_path, subfolder="image_encoder", torch_dtype=dtype, local_files_only=True
-    ).to(device)
-
-    pixel_values = image_processor(image, return_tensors="pt").pixel_values.to(
-        device=device, dtype=dtype
-    )
-
-    with torch.no_grad():
-        image_embeds = image_encoder(pixel_values).last_hidden_state
-
-    del image_encoder, image_processor
-    gc.collect()
-    torch.cuda.empty_cache()
-    return image_embeds
-
-
-# ==========================================
-# 2. PIPELINE SETUP
-# ==========================================
-
-
-def build_wan_pipeline(model_path, dtype=torch.bfloat16, device=torch.device("cuda")):
-    print("--- Building Wan 2.1 Pipeline ---")
-    is_i2v = "I2V" in model_path or "i2v" in model_path
+    print(f"--- Building Wan 2.1 Pipeline (Shift: {shift}) ---")
 
     transformer = WanTransformer3DModel.from_pretrained(
-        model_path,
-        subfolder="transformer",
-        torch_dtype=dtype,
-        low_cpu_mem_usage=True,
-        local_files_only=True,
-    ).to(device)
+        model_path, subfolder="transformer", torch_dtype=dtype
+    ).to(device)  # ty:ignore[invalid-argument-type]
 
-    vae = AutoencoderKLWan.from_pretrained(
-        model_path,
-        subfolder="vae",
-        torch_dtype=dtype,
-        low_cpu_mem_usage=True,
-        local_files_only=True,
-    ).to(device)
+    vae = AutoencoderKLWan.from_pretrained(model_path, subfolder="vae", torch_dtype=dtype).to(
+        device  # ty:ignore[invalid-argument-type]
+    )
 
+    # Auto-detect I2V based on transformer input channels
+    is_i2v = transformer.config.in_channels == 36
     PipelineClass = WanImageToVideoPipeline if is_i2v else WanPipeline
 
     pipe = PipelineClass.from_pretrained(
@@ -111,28 +38,91 @@ def build_wan_pipeline(model_path, dtype=torch.bfloat16, device=torch.device("cu
         tokenizer=None,
         image_encoder=None,
         torch_dtype=dtype,
-        local_files_only=True,
     )
 
+    # Configure Scheduler with the specific Shift
     pipe.scheduler = FlowMatchEulerDiscreteScheduler.from_config(
-        pipe.scheduler.config, num_train_timesteps=1000, shift=1.0
+        pipe.scheduler.config, num_train_timesteps=1000, shift=shift
     )
+
+    # Optimization for VAE (Slicing helps with memory)
     pipe.vae.disable_tiling()
     pipe.vae.enable_slicing()
 
     return pipe, is_i2v
 
 
+# ==========================================
+# 2. RAM-OPTIMIZED EMBEDDING HELPERS
+# ==========================================
+
+
+@torch.no_grad()
+def get_prompt_embeddings(model_path, prompt, dtype=torch.bfloat16, device="cuda"):
+    print(f"--- Encoding Prompt: '{prompt}' ---")
+    tokenizer = AutoTokenizer.from_pretrained(model_path, subfolder="tokenizer")
+    text_encoder = UMT5EncoderModel.from_pretrained(
+        model_path, subfolder="text_encoder", load_in_4bit=True, device_map="cpu"
+    )
+
+    temp_pipe = WanPipeline.from_pretrained(
+        model_path,
+        text_encoder=text_encoder,
+        tokenizer=tokenizer,
+        transformer=None,
+        vae=None,
+        torch_dtype=dtype,
+    )
+
+    prompt_embeds, _ = temp_pipe.encode_prompt(
+        prompt=prompt,
+        device=torch.device("cpu"),
+        num_videos_per_prompt=1,
+        do_classifier_free_guidance=False,
+    )
+
+    prompt_embeds = prompt_embeds.to(device, dtype=dtype)
+    del text_encoder, tokenizer, temp_pipe
+    gc.collect()
+    torch.cuda.empty_cache()
+    return prompt_embeds
+
+
+@torch.no_grad()
+def get_image_context_embeddings(model_path, image, dtype=torch.bfloat16, device="cuda"):
+    print("--- Encoding Image Context (CLIP) ---")
+    image_processor = CLIPImageProcessor.from_pretrained(model_path, subfolder="image_processor")
+    image_encoder = CLIPVisionModel.from_pretrained(
+        model_path, subfolder="image_encoder", torch_dtype=dtype
+    ).to(device)
+
+    pixel_values = image_processor(image, return_tensors="pt").pixel_values.to(
+        device=device, dtype=dtype
+    )
+    image_embeds = image_encoder(pixel_values).last_hidden_state
+
+    del image_encoder, image_processor
+    gc.collect()
+    torch.cuda.empty_cache()
+    return image_embeds
+
+
+# ==========================================
+# 3. VAE & LATENT HELPERS
+# ==========================================
+
+
 def get_vae_norm_params(pipeline):
-    mean = torch.tensor(
-        pipeline.vae.config["latents_mean"], device="cuda", dtype=pipeline.dtype
-    ).view(1, -1, 1, 1, 1)
-    std = torch.tensor(
-        pipeline.vae.config["latents_std"], device="cuda", dtype=pipeline.dtype
-    ).view(1, -1, 1, 1, 1)
+    mean = torch.tensor(pipeline.vae.config.latents_mean, device="cuda", dtype=pipeline.dtype).view(
+        1, -1, 1, 1, 1
+    )
+    std = torch.tensor(pipeline.vae.config.latents_std, device="cuda", dtype=pipeline.dtype).view(
+        1, -1, 1, 1, 1
+    )
     return mean, std
 
 
+@torch.no_grad()
 def encode_video(pipeline, video_path, num_frames=81):
     print("--- Encoding Video to Latents ---")
     video = load_video(video_path)[:num_frames]
@@ -141,69 +131,30 @@ def encode_video(pipeline, video_path, num_frames=81):
         video_tensor = video_tensor.permute(1, 0, 2, 3).unsqueeze(0)
     video_tensor = video_tensor.to(device="cuda", dtype=pipeline.dtype)
 
-    with torch.no_grad():
-        latents = pipeline.vae.encode(video_tensor).latent_dist.sample()
-        mean, std = get_vae_norm_params(pipeline)
-        latents = (latents - mean) / std
+    latents = pipeline.vae.encode(video_tensor).latent_dist.sample()
+    mean, std = get_vae_norm_params(pipeline)
+    latents = (latents - mean) / std
     return latents
 
 
 @torch.no_grad()
-def decode_latents_to_video(pipeline, latents, output_filename="output.mp4", fps=15):
-    print(f"--- Decoding Latents to {output_filename} ---")
-
-    pipeline.vae.enable_tiling()
-
-    # Denormalization is now explicitly covered
-    mean, std = get_vae_norm_params(pipeline)
-    latents = (latents * std) + mean
-
-    latents = latents.to(pipeline.device, dtype=pipeline.dtype)
-
-    video_out = pipeline.vae.decode(latents, return_dict=False)[0]
-
-    frames = pipeline.video_processor.postprocess_video(video_out, output_type="pil")[0]
-    export_to_video(frames, output_filename, fps=fps)
-    print("Done.")
-
-
-# ==========================================
-# 3. I2V CONDITIONING HELPER (Crucial Fix)
-# ==========================================
-
-
-@torch.no_grad()
 def get_i2v_conditioning(pipeline, image, num_frames, latent_shape):
-    """
-    I2V Concatenation logic:
-    Frame 0: Image Latents + Mask (1.0)
-    Frames 1-N: Zeros + Mask (0.0)
-    """
-    device = pipeline.device
-    dtype = pipeline.dtype
+    print("--- Creating I2V Concatenated Conditioning (Zero-Padded) ---")
+    device, dtype = pipeline.device, pipeline.dtype
 
-    # 1. Encode Image with VAE
     img_tensor = pipeline.video_processor.preprocess([image]).to(device, dtype=dtype)
     if img_tensor.ndim == 4:
         img_tensor = img_tensor.unsqueeze(2)
 
     img_latents = pipeline.vae.encode(img_tensor).latent_dist.sample()
-    # Wan VAE normalization
-    mean = torch.tensor(pipeline.vae.config.latents_mean, device=device, dtype=dtype).view(
-        1, -1, 1, 1, 1
-    )
-    std = torch.tensor(pipeline.vae.config.latents_std, device=device, dtype=dtype).view(
-        1, -1, 1, 1, 1
-    )
+    mean, std = get_vae_norm_params(pipeline)
     img_latents = (img_latents - mean) / std
 
-    # 2. Condition Latents (Image at frame 0, zero elsewhere)
     cond_latents = torch.zeros(
         1, 16, num_frames, latent_shape[3], latent_shape[4], device=device, dtype=dtype
     )
     cond_latents[:, :, :1, :, :] = img_latents
 
-    # 3. Mask (1.0 for conditioned frame, 0.0 for others)
     mask = torch.zeros(
         1, 4, num_frames, latent_shape[3], latent_shape[4], device=device, dtype=dtype
     )
@@ -213,7 +164,7 @@ def get_i2v_conditioning(pipeline, image, num_frames, latent_shape):
 
 
 # ==========================================
-# 4. INVERSION & GENERATION LOOPS
+# 4. CORE ODE SOLVER (Unified)
 # ==========================================
 
 
@@ -233,25 +184,19 @@ def run_ode(
     if reverse:
         timesteps = timesteps.flip(0)
 
-    # Determine if we need to concatenate based on the Transformer's expected input channels
-    # Wan T2V expects 16 channels, I2V expects 36 channels
-    expected_channels = pipeline.transformer.config.in_channels
-    is_i2v_input = expected_channels == 36
+    is_i2v_input = pipeline.transformer.config.in_channels == 36
 
     for i, t in tqdm(enumerate(timesteps[:-1]), total=len(timesteps) - 1, desc="ODE Step"):
         t_batch = t.expand(z.shape[0])
 
         if is_i2v_input:
-            # SAFETY CHECK: Ensure we actually have the tensors needed for I2V
-            if cond_latents is None or mask is None:
+            if cond_latents is not None and mask is not None:
+                model_input = torch.cat([z, cond_latents, mask], dim=1)
+            else:
                 raise ValueError(
-                    "Model expects 36 channels (I2V), but cond_latents or mask is None. "
-                    "Check if your model path contains 'I2V' and if conditioning was loaded."
+                    "The loaded Wan model is I2V, but 'cond_latents' or 'mask' was not provided."
                 )
-            # Concatenate for 36-channel input: [z(16), cond(16), mask(4)]
-            model_input = torch.cat([z, cond_latents, mask], dim=1)
         else:
-            # Standard 16-channel T2V input
             model_input = z
 
         noise_pred = pipeline.transformer(
@@ -268,24 +213,32 @@ def run_ode(
     return z
 
 
+@torch.no_grad()
+def decode_latents_to_video(pipeline, latents, output_filename, fps=15):
+    print(f"--- Decoding Latents to {output_filename} ---")
+    pipeline.vae.enable_tiling()
+    mean, std = get_vae_norm_params(pipeline)
+    latents = (latents * std) + mean
+
+    video_out = pipeline.vae.decode(latents.to(pipeline.device), return_dict=False)[0]
+    frames = pipeline.video_processor.postprocess_video(video_out, output_type="pil")[0]
+    export_to_video(frames, output_filename, fps=fps)
+
+
 # ==========================================
 # 5. EXECUTION
 # ==========================================
 
-# Use 720P model ID
 # MODEL_PATH = "../weights/Wan2.1-I2V-14B-480P-Diffusers/"
 MODEL_PATH = "../weights/Wan2.1-T2V-14B-Diffusers/"
 VIDEO_IN = "./video.mp4"
 PROMPT = "A video of two golden retrievers."
 FIRST_FRAME = "../image_prompt_generation/images/0.png"
+SHIFT = 3.0
 
 # 1. Build
 pipe, is_i2v = build_wan_pipeline(MODEL_PATH)
 mode_suffix = "i2v" if is_i2v else "t2v"
-print(f"--- Mode Detected: {mode_suffix.upper()} ---")
-
-# Use Shift=3.0 for 720p models to ensure velocity field consistency
-pipe.scheduler = FlowMatchEulerDiscreteScheduler.from_config(pipe.scheduler.config, shift=3.0)
 
 # 3. Get Embeddings & Conditionals
 prompt_embeds = get_prompt_embeddings(MODEL_PATH, PROMPT)
@@ -312,20 +265,12 @@ if is_i2v:
         pipe, input_image, num_frames=orig_latents.shape[2], latent_shape=orig_latents.shape
     )
 
-# 4. Run Inversion (Data -> Noise)
-# Using 100 steps for higher reconstruction fidelity
 inverted_noise = run_ode(
     pipe, orig_latents, prompt_embeds, clip_context, cond_latents, mask, reverse=True
 )
 
-# 5. Run Reconstruction (Noise -> Data)
 recon_latents = run_ode(
-    pipe,
-    inverted_noise,
-    prompt_embeds,
-    clip_context,
-    cond_latents,
-    mask,
+    pipe, inverted_noise, prompt_embeds, clip_context, cond_latents, mask, reverse=True
 )
 
 # 6. Memory Cleanup
