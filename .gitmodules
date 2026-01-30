@@ -2,3 +2,6 @@
 	path = wan2.1
 	url = https://github.com/ZappD0S/Wan2.1.git
 	branch = dev
+[submodule "lama"]
+	path = lama
+	url = https://github.com/advimman/lama.git
