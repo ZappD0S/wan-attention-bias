@@ -1,5 +1,5 @@
 {
-  "safeguard_suffix": "The scene is filmed as a continuous shot with a static camera, ensuring no cuts and no new characters or objects entering.",
+  "safeguard_suffix": "The scene is filmed as a continuous shot with a static camera, ensuring no cuts and no new objects entering.",
   "dataset": [
     {
       "appearance_prompt": {
@@ -58,6 +58,7 @@
           ]
         },
         "split_sentences": {
+          "general_prompt": "Two shiny metallic robots standing behind holographic consoles against a white laboratory wall.",
           "segments": [
             [
               "The shiny metallic robot is typing on the holographic console."
@@ -134,6 +135,7 @@
           ]
         },
         "split_sentences": {
+          "general_prompt": "Two golden retrievers sitting on a green grassy field.",
           "segments": [
             [
               "The golden retriever is panting happily with its tongue out."
@@ -210,6 +212,7 @@
           ]
         },
         "split_sentences": {
+          "general_prompt": "Two astronauts in white spacesuits standing inside a futuristic space station.",
           "segments": [
             [
               "The astronaut is giving a military salute."
@@ -286,6 +289,7 @@
           ]
         },
         "split_sentences": {
+          "general_prompt": "Two chubby pandas holding bamboo stalks sitting against a blurred forest background.",
           "segments": [
             [
               "The chubby panda is chewing on the bamboo stalk."
@@ -362,6 +366,7 @@
           ]
         },
         "split_sentences": {
+          "general_prompt": "Two medieval knights holding a sword and a cloth standing in front of a stone castle wall.",
           "segments": [
             [
               "The medieval knight is polishing the sword with the cloth."
@@ -438,6 +443,7 @@
           ]
         },
         "split_sentences": {
+          "general_prompt": "Two green aliens with antennae standing on a dusty red planetary surface.",
           "segments": [
             [
               "The green alien is blinking slowly."
@@ -514,6 +520,7 @@
           ]
         },
         "split_sentences": {
+          "general_prompt": "Two chefs standing behind a counter with a bowl and spoon in a stainless steel kitchen.",
           "segments": [
             [
               "The chef is stirring the bowl vigorously."
@@ -590,6 +597,7 @@
           ]
         },
         "split_sentences": {
+          "general_prompt": "Two cartoonish blue ghosts with translucent arms floating against a dark purple void.",
           "segments": [
             [
               "The blue ghost is covering its eyes with its hands."
@@ -666,6 +674,7 @@
           ]
         },
         "split_sentences": {
+          "general_prompt": "Two businessmen in suits with red ties and watches sitting against a beige office wall.",
           "segments": [
             [
               "The businessman is checking the time on the watch."
@@ -742,6 +751,7 @@
           ]
         },
         "split_sentences": {
+          "general_prompt": "Two colorful macaw parrots sitting on wooden perches with a blurred jungle background.",
           "segments": [
             [
               "The macaw parrot is bobbing its head rhythmically."

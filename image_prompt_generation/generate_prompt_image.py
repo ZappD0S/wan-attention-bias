@@ -337,7 +337,7 @@ def fill_out_characters(data_list, lama, device: torch.device):
 
         orig_img_path = Path(output["img_paths"]["original"])
 
-        output["img_paths"]["only_char"] = []
+        output["img_paths"]["single_char"] = []
         for j in range(len(bboxes)):
             removal_mask = create_removal_mask(all_masks, keep_index=j, dilation_pixels=50)
 
@@ -346,11 +346,11 @@ def fill_out_characters(data_list, lama, device: torch.device):
             removal_mask.save(debug_folder / f"mask_char_{j}.png")
 
             output_img = inpaint_image(lama, device, raw_img, removal_mask)
-            img_path = orig_img_path.parent / f"only_char_{j}.png"
+            img_path = orig_img_path.parent / f"single_char_{j}.png"
 
             output_img.save(str(img_path))
 
-            output["img_paths"]["only_char"].append(str(img_path))
+            output["img_paths"]["single_char"].append(str(img_path))
 
         outputs.append(output)
 

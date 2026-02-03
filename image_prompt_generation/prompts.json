@@ -1,5 +1,5 @@
 {
-  "safeguard_suffix": "The scene is filmed as a continuous shot with a static camera, ensuring no cuts and no new characters or objects entering.",
+  "safeguard_suffix": "The scene is filmed as a continuous shot with a static camera, ensuring no cuts and no new objects entering.",
   "dataset": [
     {
       "appearance_prompt": {
@@ -58,6 +58,7 @@
           ]
         },
         "split_sentences": {
+          "general_prompt": "Two golden retrievers with glossy coats sitting against a seamless white backdrop.",
           "segments": [
             [
               "A golden retriever is barking loudly."
@@ -134,6 +135,7 @@
           ]
         },
         "split_sentences": {
+          "general_prompt": "Two mechanical monkey toys holding brass cymbals seated against a simple wall.",
           "segments": [
             [
               "The mechanical monkey toy is banging the cymbals together."
@@ -210,6 +212,7 @@
           ]
         },
         "split_sentences": {
+          "general_prompt": "Two retro metal desk fans with stationary blades resting on a wooden table.",
           "segments": [
             [
               "The retro metal desk fan is spinning its blades rapidly."
@@ -286,6 +289,7 @@
           ]
         },
         "split_sentences": {
+          "general_prompt": "Two clear incandescent light bulbs screwed into bases against a dark background.",
           "segments": [
             [
               "The clear incandescent light bulb is lighting up brightly."
@@ -362,6 +366,7 @@
           ]
         },
         "split_sentences": {
+          "general_prompt": "Two tin wind-up robots with square eyes located against a neutral blue wall.",
           "segments": [
             [
               "The tin wind-up robot is rotating its head 360 degrees."
@@ -438,6 +443,7 @@
           ]
         },
         "split_sentences": {
+          "general_prompt": "Two sealed red soda cans with condensation sitting on a marble table.",
           "segments": [
             [
               "The sealed red soda can is crumpling inward."
@@ -514,6 +520,7 @@
           ]
         },
         "split_sentences": {
+          "general_prompt": "Two black DSLR cameras with visible flash units sitting on a plain surface.",
           "segments": [
             [
               "The black DSLR camera is triggering a bright flash."
@@ -590,6 +597,7 @@
           ]
         },
         "split_sentences": {
+          "general_prompt": "Two emperor penguins standing on the ice against a snowy background.",
           "segments": [
             [
               "The emperor penguin is flapping its flippers rapidly."
@@ -666,6 +674,7 @@
           ]
         },
         "split_sentences": {
+          "general_prompt": "Two black traffic light housings with unlit lenses mounted against a blue sky.",
           "segments": [
             [
               "The black traffic light housing is illuminating a bright red light."
@@ -742,6 +751,7 @@
           ]
         },
         "split_sentences": {
+          "general_prompt": "Two white pillar candles with blackened wicks positioned against a black background.",
           "segments": [
             [
               "The white pillar candle is igniting with a warm flame."

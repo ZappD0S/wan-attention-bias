@@ -1,5 +1,5 @@
 {
-  "safeguard_suffix": "The scene is filmed as a continuous shot with a static camera, ensuring no cuts and no new characters or objects entering.",
+  "safeguard_suffix": "The scene is filmed as a continuous shot with a static camera, ensuring no cuts and no new objects entering.",
   "dataset": [
     {
       "appearance_prompt": {
@@ -58,6 +58,7 @@
           ]
         },
         "split_sentences": {
+          "general_prompt": "Two golden retrievers with glossy coats sitting against a seamless white backdrop.",
           "segments": [
             [
               "A golden retriever is barking loudly."
@@ -92,9 +93,9 @@
       ],
       "img_paths": {
         "original": "images/0/original.png",
-        "only_char": [
-          "images/0/only_char_0.png",
-          "images/0/only_char_1.png"
+        "single_char": [
+          "images/0/single_char_0.png",
+          "images/0/single_char_1.png"
         ]
       }
     },
@@ -155,6 +156,7 @@
           ]
         },
         "split_sentences": {
+          "general_prompt": "Two mechanical monkey toys holding brass cymbals seated against a simple wall.",
           "segments": [
             [
               "The mechanical monkey toy is banging the cymbals together."
@@ -189,9 +191,9 @@
       ],
       "img_paths": {
         "original": "images/1/original.png",
-        "only_char": [
-          "images/1/only_char_0.png",
-          "images/1/only_char_1.png"
+        "single_char": [
+          "images/1/single_char_0.png",
+          "images/1/single_char_1.png"
         ]
       }
     },
@@ -252,6 +254,7 @@
           ]
         },
         "split_sentences": {
+          "general_prompt": "Two retro metal desk fans with stationary blades resting on a wooden table.",
           "segments": [
             [
               "The retro metal desk fan is spinning its blades rapidly."
@@ -286,9 +289,9 @@
       ],
       "img_paths": {
         "original": "images/2/original.png",
-        "only_char": [
-          "images/2/only_char_0.png",
-          "images/2/only_char_1.png"
+        "single_char": [
+          "images/2/single_char_0.png",
+          "images/2/single_char_1.png"
         ]
       }
     },
@@ -349,6 +352,7 @@
           ]
         },
         "split_sentences": {
+          "general_prompt": "Two clear incandescent light bulbs screwed into bases against a dark background.",
           "segments": [
             [
               "The clear incandescent light bulb is lighting up brightly."
@@ -383,9 +387,9 @@
       ],
       "img_paths": {
         "original": "images/3/original.png",
-        "only_char": [
-          "images/3/only_char_0.png",
-          "images/3/only_char_1.png"
+        "single_char": [
+          "images/3/single_char_0.png",
+          "images/3/single_char_1.png"
         ]
       }
     },
@@ -446,6 +450,7 @@
           ]
         },
         "split_sentences": {
+          "general_prompt": "Two tin wind-up robots with square eyes located against a neutral blue wall.",
           "segments": [
             [
               "The tin wind-up robot is rotating its head 360 degrees."
@@ -480,9 +485,9 @@
       ],
       "img_paths": {
         "original": "images/4/original.png",
-        "only_char": [
-          "images/4/only_char_0.png",
-          "images/4/only_char_1.png"
+        "single_char": [
+          "images/4/single_char_0.png",
+          "images/4/single_char_1.png"
         ]
       }
     },
@@ -543,6 +548,7 @@
           ]
         },
         "split_sentences": {
+          "general_prompt": "Two sealed red soda cans with condensation sitting on a marble table.",
           "segments": [
             [
               "The sealed red soda can is crumpling inward."
@@ -577,9 +583,9 @@
       ],
       "img_paths": {
         "original": "images/5/original.png",
-        "only_char": [
-          "images/5/only_char_0.png",
-          "images/5/only_char_1.png"
+        "single_char": [
+          "images/5/single_char_0.png",
+          "images/5/single_char_1.png"
         ]
       }
     },
@@ -640,6 +646,7 @@
           ]
         },
         "split_sentences": {
+          "general_prompt": "Two black DSLR cameras with visible flash units sitting on a plain surface.",
           "segments": [
             [
               "The black DSLR camera is triggering a bright flash."
@@ -674,9 +681,9 @@
       ],
       "img_paths": {
         "original": "images/6/original.png",
-        "only_char": [
-          "images/6/only_char_0.png",
-          "images/6/only_char_1.png"
+        "single_char": [
+          "images/6/single_char_0.png",
+          "images/6/single_char_1.png"
         ]
       }
     },
@@ -737,6 +744,7 @@
           ]
         },
         "split_sentences": {
+          "general_prompt": "Two emperor penguins standing on the ice against a snowy background.",
           "segments": [
             [
               "The emperor penguin is flapping its flippers rapidly."
@@ -771,9 +779,9 @@
       ],
       "img_paths": {
         "original": "images/7/original.png",
-        "only_char": [
-          "images/7/only_char_0.png",
-          "images/7/only_char_1.png"
+        "single_char": [
+          "images/7/single_char_0.png",
+          "images/7/single_char_1.png"
         ]
       }
     },
@@ -834,6 +842,7 @@
           ]
         },
         "split_sentences": {
+          "general_prompt": "Two black traffic light housings with unlit lenses mounted against a blue sky.",
           "segments": [
             [
               "The black traffic light housing is illuminating a bright red light."
@@ -868,9 +877,9 @@
       ],
       "img_paths": {
         "original": "images/8/original.png",
-        "only_char": [
-          "images/8/only_char_0.png",
-          "images/8/only_char_1.png"
+        "single_char": [
+          "images/8/single_char_0.png",
+          "images/8/single_char_1.png"
         ]
       }
     },
@@ -931,6 +940,7 @@
           ]
         },
         "split_sentences": {
+          "general_prompt": "Two white pillar candles with blackened wicks positioned against a black background.",
           "segments": [
             [
               "The white pillar candle is igniting with a warm flame."
@@ -965,9 +975,9 @@
       ],
       "img_paths": {
         "original": "images/9/original.png",
-        "only_char": [
-          "images/9/only_char_0.png",
-          "images/9/only_char_1.png"
+        "single_char": [
+          "images/9/single_char_0.png",
+          "images/9/single_char_1.png"
         ]
       }
     },
@@ -1028,6 +1038,7 @@
           ]
         },
         "split_sentences": {
+          "general_prompt": "Two shiny metallic robots standing behind holographic consoles against a white laboratory wall.",
           "segments": [
             [
               "The shiny metallic robot is typing on the holographic console."
@@ -1062,9 +1073,9 @@
       ],
       "img_paths": {
         "original": "images/10/original.png",
-        "only_char": [
-          "images/10/only_char_0.png",
-          "images/10/only_char_1.png"
+        "single_char": [
+          "images/10/single_char_0.png",
+          "images/10/single_char_1.png"
         ]
       }
     },
@@ -1125,6 +1136,7 @@
           ]
         },
         "split_sentences": {
+          "general_prompt": "Two golden retrievers sitting on a green grassy field.",
           "segments": [
             [
               "The golden retriever is panting happily with its tongue out."
@@ -1159,9 +1171,9 @@
       ],
       "img_paths": {
         "original": "images/11/original.png",
-        "only_char": [
-          "images/11/only_char_0.png",
-          "images/11/only_char_1.png"
+        "single_char": [
+          "images/11/single_char_0.png",
+          "images/11/single_char_1.png"
         ]
       }
     },
@@ -1222,6 +1234,7 @@
           ]
         },
         "split_sentences": {
+          "general_prompt": "Two astronauts in white spacesuits standing inside a futuristic space station.",
           "segments": [
             [
               "The astronaut is giving a military salute."
@@ -1256,9 +1269,9 @@
       ],
       "img_paths": {
         "original": "images/12/original.png",
-        "only_char": [
-          "images/12/only_char_0.png",
-          "images/12/only_char_1.png"
+        "single_char": [
+          "images/12/single_char_0.png",
+          "images/12/single_char_1.png"
         ]
       }
     },
@@ -1319,6 +1332,7 @@
           ]
         },
         "split_sentences": {
+          "general_prompt": "Two chubby pandas holding bamboo stalks sitting against a blurred forest background.",
           "segments": [
             [
               "The chubby panda is chewing on the bamboo stalk."
@@ -1353,9 +1367,9 @@
       ],
       "img_paths": {
         "original": "images/13/original.png",
-        "only_char": [
-          "images/13/only_char_0.png",
-          "images/13/only_char_1.png"
+        "single_char": [
+          "images/13/single_char_0.png",
+          "images/13/single_char_1.png"
         ]
       }
     },
@@ -1416,6 +1430,7 @@
           ]
         },
         "split_sentences": {
+          "general_prompt": "Two medieval knights holding a sword and a cloth standing in front of a stone castle wall.",
           "segments": [
             [
               "The medieval knight is polishing the sword with the cloth."
@@ -1450,9 +1465,9 @@
       ],
       "img_paths": {
         "original": "images/14/original.png",
-        "only_char": [
-          "images/14/only_char_0.png",
-          "images/14/only_char_1.png"
+        "single_char": [
+          "images/14/single_char_0.png",
+          "images/14/single_char_1.png"
         ]
       }
     },
@@ -1513,6 +1528,7 @@
           ]
         },
         "split_sentences": {
+          "general_prompt": "Two green aliens with antennae standing on a dusty red planetary surface.",
           "segments": [
             [
               "The green alien is blinking slowly."
@@ -1547,9 +1563,9 @@
       ],
       "img_paths": {
         "original": "images/15/original.png",
-        "only_char": [
-          "images/15/only_char_0.png",
-          "images/15/only_char_1.png"
+        "single_char": [
+          "images/15/single_char_0.png",
+          "images/15/single_char_1.png"
         ]
       }
     },
@@ -1610,6 +1626,7 @@
           ]
         },
         "split_sentences": {
+          "general_prompt": "Two chefs standing behind a counter with a bowl and spoon in a stainless steel kitchen.",
           "segments": [
             [
               "The chef is stirring the bowl vigorously."
@@ -1644,9 +1661,9 @@
       ],
       "img_paths": {
         "original": "images/16/original.png",
-        "only_char": [
-          "images/16/only_char_0.png",
-          "images/16/only_char_1.png"
+        "single_char": [
+          "images/16/single_char_0.png",
+          "images/16/single_char_1.png"
         ]
       }
     },
@@ -1707,6 +1724,7 @@
           ]
         },
         "split_sentences": {
+          "general_prompt": "Two cartoonish blue ghosts with translucent arms floating against a dark purple void.",
           "segments": [
             [
               "The blue ghost is covering its eyes with its hands."
@@ -1741,9 +1759,9 @@
       ],
       "img_paths": {
         "original": "images/17/original.png",
-        "only_char": [
-          "images/17/only_char_0.png",
-          "images/17/only_char_1.png"
+        "single_char": [
+          "images/17/single_char_0.png",
+          "images/17/single_char_1.png"
         ]
       }
     },
@@ -1804,6 +1822,7 @@
           ]
         },
         "split_sentences": {
+          "general_prompt": "Two businessmen in suits with red ties and watches sitting against a beige office wall.",
           "segments": [
             [
               "The businessman is checking the time on the watch."
@@ -1838,9 +1857,9 @@
       ],
       "img_paths": {
         "original": "images/18/original.png",
-        "only_char": [
-          "images/18/only_char_0.png",
-          "images/18/only_char_1.png"
+        "single_char": [
+          "images/18/single_char_0.png",
+          "images/18/single_char_1.png"
         ]
       }
     },
@@ -1901,6 +1920,7 @@
           ]
         },
         "split_sentences": {
+          "general_prompt": "Two colorful macaw parrots sitting on wooden perches with a blurred jungle background.",
           "segments": [
             [
               "The macaw parrot is bobbing its head rhythmically."
@@ -1935,9 +1955,9 @@
       ],
       "img_paths": {
         "original": "images/19/original.png",
-        "only_char": [
-          "images/19/only_char_0.png",
-          "images/19/only_char_1.png"
+        "single_char": [
+          "images/19/single_char_0.png",
+          "images/19/single_char_1.png"
         ]
       }
     }

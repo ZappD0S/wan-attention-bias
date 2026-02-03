@@ -27,14 +27,15 @@ For each scene, generate the `appearance_prompt` and 3 variations of action prom
     *   **Structure:** Single sentence connecting Action X and Action Y with "and".
     *   **Constraints:** Do not use spatial words (e.g., "left", "right", "center", "middle", "side", "background").
 4.  **`split_sentences`** (Action Prompt 3):
-    *   **Structure:** Two grammatically complete, independent sentences. One for Action X, one for Action Y.
+    *   **Field: `general_prompt`**: A single sentence briefly describing the scene. You must describe the **identity** of the characters and the setting only. **Do not describe any actions.** (e.g., "Two chefs in a professional kitchen.")
+    *   **Field: `segments`**: Two grammatically complete, independent sentences. One for Action X, one for Action Y.
     *   **Constraints:**
         *   **No Spatial Words:** Do not use spatial words.
         *   **No Distinctions:** Do not use words that distinguish the characters (e.g., "another", "the second"). You must refer to the subject exactly the same way in both sentences.
     *   **Example:** "The dog barks. The dog sticks its tongue out."
 
 #### 4. Segmentation & Masking Rules
-Every prompt object must contain a `segments` array and a `mask` array.
+Every prompt object (except the `general_prompt` string) must contain a `segments` array and a `mask` array.
 *   **Nested Structure:** Both `segments` and `mask` must be **arrays of arrays**.
     *   Each inner array represents one sentence.
     *   **Single-Sentence Prompts:** The outer array contains exactly one inner array.
@@ -79,6 +80,7 @@ Return **only** valid JSON matching this structure exactly.
           ]
         },
         "split_sentences": {
+          "general_prompt": "Two students sitting at a wooden desk.",
           "segments": [
             ["A student opens a laptop to begin typing."],
             ["A student picks up a closed laptop to put it in a bag."]

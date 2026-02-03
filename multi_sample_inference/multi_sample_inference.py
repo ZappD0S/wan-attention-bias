@@ -40,29 +40,38 @@ def run_inference(
     wan_i2v: WanI2V,
     prompt_sentences: list[str],
     img: Image.Image,
-    char_segment_lists: list[list[str]],
+    char_segments_list: list[list[str]],
     masks: torch.Tensor,
     config: dict,
+    general_prompt: str | None = None,
+    single_char_imgs: list[Image.Image] | None = None,
 ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
     num_layers = wan_i2v.model.num_layers
     timestep_bias_schedule = torch.ones(SAMPLING_STEPS, dtype=torch.bool)
     blocks_bias_schedule = torch.ones(num_layers, dtype=torch.bool)
 
-    control_prompt_lists = []
+    prompt_data_list = []
     n_char = 0
-    for char_segments in char_segment_lists:
+
+    for i, char_segments in enumerate(char_segments_list):
+        single_char_img = single_char_imgs[i] if single_char_imgs is not None else None
         control_prompts = []
+
         for seg in char_segments:
             control_prompts.append(((n_char,), {"prompt": seg, "char_descr_list": []}))
             n_char += 1
-        control_prompt_lists.append(control_prompts)
+
+        prompt_data_list.append(
+            {"control_prompts": control_prompts, "single_char_img": single_char_img}
+        )
 
     wlw_matrix = np.eye(n_char, n_char, dtype=bool)
     wlw_matrix = np.repeat(wlw_matrix[..., np.newaxis], FRAME_NUM, axis=-1)
     wlw_matrix = torch.from_numpy(wlw_matrix)
 
     bias_kwargs = {
-        "control_prompt_lists": control_prompt_lists,
+        "general_prompt": general_prompt,
+        "prompt_data_list": prompt_data_list,
         "timestep_bias_schedule": timestep_bias_schedule,
         "blocks_bias_schedule": blocks_bias_schedule,
         "face_masks": masks,
@@ -102,7 +111,16 @@ def save_outputs(video, extra_data, video_path, action_output_path, repeat_idx):
 
 
 def run_repeat_loop(
-    wan_i2v, prompt_sentences, img, character_segments, masks, config, action_output_path, repeat
+    wan_i2v,
+    prompt_sentences,
+    img,
+    single_char_imgs,
+    char_segments_list,
+    masks,
+    config,
+    action_output_path,
+    repeat,
+    general_prompt,
 ):
     global keep_running
 
@@ -116,16 +134,27 @@ def run_repeat_loop(
             continue
 
         video, extra_data = run_inference(
-            wan_i2v, prompt_sentences, img, character_segments, masks, config
+            wan_i2v,
+            prompt_sentences,
+            img,
+            char_segments_list,
+            masks,
+            config,
+            general_prompt=general_prompt,
+            single_char_imgs=single_char_imgs,
         )
         save_outputs(video, extra_data, video_path, action_output_path, repeat_idx)
 
     return False
 
 
-def process_action_prompts(wan_i2v, prompt_data, param_config, img, masks, output_path, repeat):
+def process_action_prompts(
+    wan_i2v, prompt_data, param_config, img, single_char_imgs, masks, output_path, repeat
+):
     for prompt_type, action_prompt_data in prompt_data["action_prompts"].items():
         allowed_types = param_config.get("prompt_types")
+        assert set(allowed_types) <= prompt_data["action_prompts"].keys()
+
         if allowed_types is not None and prompt_type not in allowed_types:
             continue
 
@@ -138,40 +167,53 @@ def process_action_prompts(wan_i2v, prompt_data, param_config, img, masks, outpu
             json.dump(config, f, indent=2)
 
         print(f"Working on folder {action_output_path.name}")
-        safeguard_suffix = prompt_data["safeguard_suffix"]
-        segment_lists = [[safeguard_suffix]] + action_prompt_data["segments"]
+        segment_lists = action_prompt_data["segments"]
         prompt_sentences = [" ".join(segments) for segments in segment_lists]
 
-        segment_masks = [[0]] + action_prompt_data["mask"]
-        character_segments = [
+        segment_masks = action_prompt_data["mask"]
+        char_segments_list = [
             [seg for is_char, seg in zip(mask_row, segs) if is_char]
             for mask_row, segs in zip(segment_masks, segment_lists)
         ]
+
+        general_prompt = action_prompt_data.get("general_prompt")
 
         signal_received = run_repeat_loop(
             wan_i2v,
             prompt_sentences,
             img,
-            character_segments,
+            single_char_imgs,
+            char_segments_list,
             masks,
             param_config,
             action_output_path,
             repeat,
+            general_prompt,
         )
+
         if signal_received:
             return True
 
     return False
 
 
-def process_parameter_grid(wan_i2v, prompt_data, img, masks, output_path, param_grid):
+def process_parameter_grid(
+    wan_i2v, prompt_data, img, single_char_imgs, masks, output_path, param_grid
+):
     for param_config in ParameterGrid(param_grid):
         repeat = param_config.pop("repeat", 1)
 
         current_masks = masks.flip(dims=(0,)) if param_config.get("invert", False) else masks
 
         signal_received = process_action_prompts(
-            wan_i2v, prompt_data, param_config, img, current_masks, output_path, repeat
+            wan_i2v,
+            prompt_data,
+            param_config,
+            img,
+            single_char_imgs,
+            current_masks,
+            output_path,
+            repeat,
         )
         if signal_received:
             return True
@@ -185,8 +227,12 @@ def process_prompt_entry(wan_i2v, prompt_data, idx, output_path, param_grid, img
         [torch.from_numpy(create_mask_from_bbox(bbox, TARGET_SIZE)) for bbox in bboxes]
     )
 
-    img_path = str(img_dir / prompt_data["img_path"])
+    img_path = str(img_dir / prompt_data["img_paths"]["original"])
     img = load_image(img_path)
+
+    single_char_imgs = [
+        load_image(str(img_dir / rel_path)) for rel_path in prompt_data["img_paths"]["single_char"]
+    ]
 
     # Debug visualization
     debug_path = output_path / "debug" / f"prompt_{idx}"
@@ -197,7 +243,9 @@ def process_prompt_entry(wan_i2v, prompt_data, idx, output_path, param_grid, img
     if not (debug_path / "img_with_masks.png").exists():
         draw_masks(img, list(masks)).save(debug_path / "img_with_masks.png")
 
-    return process_parameter_grid(wan_i2v, prompt_data, img, masks, output_path, param_grid)
+    return process_parameter_grid(
+        wan_i2v, prompt_data, img, single_char_imgs, masks, output_path, param_grid
+    )
 
 
 def main():

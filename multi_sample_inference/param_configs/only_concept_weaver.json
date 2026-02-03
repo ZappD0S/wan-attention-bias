@@ -1,0 +1,14 @@
+{
+  "bias_method": [
+    "concept_weaver"
+  ],
+  "invert": [
+    false,
+    true
+  ],
+  "prompt_types": [
+    [
+      "split_sentences"
+    ]
+  ]
+}
