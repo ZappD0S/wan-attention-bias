@@ -1,53 +1,54 @@
 **Role:** You are an expert dataset generator for AI video synthesis.
 **Task:** Generate a JSON file containing a `safeguard_suffix` and a `dataset` of 10 distinct scenes.
-**Subject Matter:** Scenes depicting two similar or identical characters (and optional inanimate objects) against simple/neutral backgrounds.
+**Subject Matter:** Scenes depicting two similar or identical characters (or objects) against simple/neutral backgrounds.
 
 #### 1. Universal Safeguards (Global Constant)
-For the `safeguard_suffix` key, you must output **exactly** this string. Do not alter it:
+For the `safeguard_suffix` key, output **exactly** this string:
 > **"The scene is filmed as a continuous shot with a static camera, ensuring no cuts and no new objects entering."**
 
 #### 2. Scene & Character Constraints
-*   **Characters:** Exactly two characters per scene. Similar or identical.
-*   **Background:** Simple, neutral, or out of focus.
-*   **Independence:** Characters must never interact with each other physically.
-*   **Movement:** Actions must be dynamic but stationary (e.g., eating, typing, waving).
-*   **State Physics & Causality:**
-    *   **Universal Compatibility:** **Action X** and **Action Y** must share a compatible physical starting state.
-    *   **Identical Initial State:** The `appearance_prompt` must describe **both characters exactly the same way**.
-    *   **Visual Evidence & Preconditions:** **Do not rely on implied mechanisms.** Actions must be physically grounded in the initial appearance.
-        *   If an action involves **emitting** something (e.g., light, water, smoke), the **emitter** (e.g., flash unit, nozzle) must be explicitly described in the `appearance_prompt`.
-        *   If an action involves **manipulating** a tool, that tool must be present in the `appearance_prompt`.
+*   **Scene Setup (The First Sentence):** The `appearance_prompt` must always start with a standalone sentence that establishes the **Count** of the subjects and the **Setting/Background**. 
+    *   *Goal:* Set the stage before describing individual details. 
+    *   *Example:* "Two golden retrievers sit against a seamless white backdrop."
+*   **Enumeration:** In the detailed segments that follow, refer to the first subject as **"one [subject]"** and the second as **"another [subject]"** or **"the second [subject]"**.
+*   **Orientation:** To prevent subjects from looking at each other, describe animate characters in their specific segments as **facing the camera**.
+*   **Independence:** Characters must not interact with each other physically.
+*   **Movement:** Actions must be dynamic but stationary (e.g., barking, typing, signaling).
 
-#### 3. The Prompt Types
-For each scene, generate the `appearance_prompt` and 3 variations of action prompts. **Plan Actions X and Y first**, then reverse-engineer the appearance.
+#### 3. Logical Consistency & Causality
+Reverse-engineer the appearance based on the intended actions. **Do not rely on implied magic.**
+*   **Preconditions:** If an action requires a specific starting state, the appearance prompt must explicitly describe it.
+    *   *Example:* If a light turns on, the specific description must say "an **unlit** light bulb."
+    *   *Example:* If a flash closes, the description must say "with its built-in pop-up flash **raised**."
+*   **Mechanical Grounding:** Actions should be physically plausible for the specific object (e.g., rotating a head, clicking a shutter).
 
-1.  **`appearance_prompt`** (Scene Setup): Visual state *before* movement.
-2.  **`default`** (Action Prompt 1): A performs **Action X**. B performs **Action Y** (Standard locative description).
+#### 4. The Prompt Types
+For each scene, generate the `appearance_prompt` and 3 variations of action prompts.
+
+1.  **`appearance_prompt`** (Scene Setup):
+    *   **Segment 0:** Intro Sentence establishing count and background + Locative (e.g., "Two robots stand in a lab. On the left,").
+    *   **Segment 1:** Specific Subject A + Orientation + State Details.
+    *   **Segment 2:** Connector + Locative (e.g., "and on the right,").
+    *   **Segment 3:** Specific Subject B + Orientation + State Details.
+    *   **Segment 4:** Ending punctuation (".").
+2.  **`default`** (Action Prompt 1): Subject A performs **Action X**. Subject B performs **Action Y** (Standard description with location).
 3.  **`no_locative`** (Action Prompt 2):
     *   **Structure:** Single sentence connecting Action X and Action Y with "and".
-    *   **Constraints:** Do not use spatial words (e.g., "left", "right", "center", "middle", "side", "background").
+    *   **Constraint:** Do not use spatial words (left, right, center, side, etc.).
 4.  **`split_sentences`** (Action Prompt 3):
-    *   **Field: `general_prompt`**: A single sentence briefly describing the scene. You must describe the **identity** of the characters and the setting only. **Do not describe any actions.** (e.g., "Two chefs in a professional kitchen.")
-    *   **Field: `segments`**: Two grammatically complete, independent sentences. One for Action X, one for Action Y.
-    *   **Constraints:**
-        *   **No Spatial Words:** Do not use spatial words.
-        *   **No Distinctions:** Do not use words that distinguish the characters (e.g., "another", "the second"). You must refer to the subject exactly the same way in both sentences.
-    *   **Example:** "The dog barks. The dog sticks its tongue out."
+    *   **Field: `general_prompt`**: A single sentence describing the subjects and setting *without* actions.
+    *   **Field: `segments`**: Two grammatically complete, independent sentences (one for Action X, one for Action Y).
+    *   **Constraint:** No spatial words. Do not distinguish the characters (e.g., use "The [subject]..." for both).
 
-#### 4. Segmentation & Masking Rules
-Every prompt object (except the `general_prompt` string) must contain a `segments` array and a `mask` array.
-*   **Nested Structure:** Both `segments` and `mask` must be **arrays of arrays**.
-    *   Each inner array represents one sentence.
-    *   **Single-Sentence Prompts:** The outer array contains exactly one inner array.
-    *   **Two-Sentence Prompts (`split_sentences`):** The outer array contains exactly two inner arrays.
+#### 5. Segmentation & Masking Rules
+*   **Structure:** Arrays of arrays.
 *   **Mask Values:**
-    *   **`1` (Character Segment):** Must contain the **Subject** + **State/Action** + **Relevant Objects**.
-    *   **`0` (Context Segment):** Contains locative expressions ("On the left,"), connectors ("and"), or background descriptions. Do *not* include the safeguard text.
-*   **Mask Count:** There must be exactly **two** segments marked with `1` across the entire prompt structure.
-*   **Formatting:** The last segment of every inner array (sentence) must end with a period.
+    *   **`1` (Subject/Action Segment):** Must contain the **Subject** + **State/Action** + **Relevant Objects**.
+    *   **`0` (Context Segment):** Contains the introductory sentence, locative expressions, and connectors.
+*   **Mask Count:** Exactly **two** segments marked with `1` across the entire prompt structure.
 
-#### 5. Output Format
-Return **only** valid JSON matching this structure exactly.
+#### 6. Output Format
+Return **only** valid JSON.
 
 ```json
 {
@@ -56,7 +57,7 @@ Return **only** valid JSON matching this structure exactly.
     {
       "appearance_prompt": {
         "segments": [
-          ["On the left,", "a student sits with a closed laptop", "and on the right,", "a student sits with a closed laptop", "at a wooden desk."]
+          ["Two students sit at a wooden desk. On the left,", "one student sits facing the camera with an open laptop", "and on the right,", "another student sits facing the camera with an open laptop", "."]
         ],
         "mask": [
           [0, 1, 0, 1, 0]
@@ -65,7 +66,7 @@ Return **only** valid JSON matching this structure exactly.
       "action_prompts": {
         "default": {
           "segments": [
-            ["On the left,", "the student opens the laptop to begin typing", "while on the right,", "the student picks up the closed laptop to put it in a bag."]
+            ["On the left,", "the student begins typing on the keyboard", "while on the right,", "the student closes the laptop lid slowly."]
           ],
           "mask": [
             [0, 1, 0, 1]
@@ -73,17 +74,17 @@ Return **only** valid JSON matching this structure exactly.
         },
         "no_locative": {
           "segments": [
-            ["A student opens a laptop to begin typing", "and", "a student picks up a closed laptop to put it in a bag."]
+            ["A student begins typing on a keyboard", "and", "a student closes a laptop lid slowly."]
           ],
           "mask": [
             [1, 0, 1]
           ]
         },
         "split_sentences": {
-          "general_prompt": "Two students sitting at a wooden desk.",
+          "general_prompt": "Two students sitting facing the camera at a wooden desk with open laptops.",
           "segments": [
-            ["A student opens a laptop to begin typing."],
-            ["A student picks up a closed laptop to put it in a bag."]
+            ["The student begins typing on the keyboard."],
+            ["The student closes the laptop lid slowly."]
           ],
           "mask": [
             [1],
@@ -92,7 +93,6 @@ Return **only** valid JSON matching this structure exactly.
         }
       }
     }
-    // ... Repeat for 10 items
   ]
 }
 ```

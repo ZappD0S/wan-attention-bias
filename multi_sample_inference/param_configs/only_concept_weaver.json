@@ -1,14 +1,31 @@
-{
-  "bias_method": [
-    "concept_weaver"
-  ],
-  "invert": [
-    false,
-    true
-  ],
-  "prompt_types": [
-    [
-      "split_sentences"
+[
+  {
+    "bias_method": [
+      "none"
+    ],
+    "invert": [
+      false,
+      true
+    ],
+    "prompt_types": [
+      [
+        "default",
+        "split_sentences"
+      ]
     ]
-  ]
-}
+  },
+  {
+    "bias_method": [
+      "concept_weaver"
+    ],
+    "invert": [
+      false,
+      true
+    ],
+    "prompt_types": [
+      [
+        "split_sentences"
+      ]
+    ]
+  }
+]

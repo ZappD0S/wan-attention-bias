@@ -4,14 +4,15 @@ import os
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
+import cv2
 import numpy as np
-import scipy.ndimage as ndimage
 import torch
 import torchvision
 from accelerate import Accelerator
 from big_lama import inpaint_image, load_lama_model
 from diffusers import FluxPipeline
 from PIL import Image, ImageDraw, ImageFont
+from skimage.morphology import convex_hull_image
 from transformers import (
     AutoModelForZeroShotObjectDetection,
     AutoProcessor,
@@ -66,15 +67,6 @@ def load_flux_model() -> FluxPipeline:
         device_map="balanced",
     )
     return pipe
-
-
-# def load_flux_fill_model() -> FluxFillPipeline:
-#     pipe = FluxFillPipeline.from_pretrained(
-#         "black-forest-labs/FLUX.1-Fill-dev",
-#         torch_dtype=torch.bfloat16,
-#     )
-#     pipe.enable_model_cpu_offload()
-#     return pipe
 
 
 def load_dino_model() -> Tuple[Any, Any, torch.device]:
@@ -271,49 +263,49 @@ def process_dataset(
 
 
 def get_masks_from_bboxes(image, bboxes, model, processor, device="cuda"):
-    """
-    Generates precise pixel-level masks from bounding boxes using SAM 2.1.
-    Handles DType mismatch and Argument errors automatically.
-    """
-    input_boxes = [bboxes]  # Shape: [batch, num_objects, 4]
-
+    input_boxes = [bboxes]
     inputs = processor(images=image, input_boxes=input_boxes, return_tensors="pt").to(device)
-
     inputs["pixel_values"] = inputs["pixel_values"].to(dtype=model.dtype)
 
     with torch.no_grad():
         outputs = model(**inputs)
 
-    masks = processor.post_process_masks(
-        outputs.pred_masks.cpu(),
-        inputs["original_sizes"].cpu(),
-    )[0]
+    raw_masks = processor.post_process_masks(
+        outputs.pred_masks.cpu(), inputs["original_sizes"].cpu()
+    )[0][:, 0, :, :]  # Get best mask (index 0)
 
-    # Return the highest confidence mask (index 0)
-    return masks[:, 0, :, :]
+    # 1. Create empty black masks
+    final_masks = torch.zeros_like(raw_masks)
+
+    # 2. Only copy data inside the bbox (implicit intersection)
+    for i, (x1, y1, x2, y2) in enumerate(bboxes):
+        x1, y1, x2, y2 = map(int, [x1, y1, x2, y2])  # ensure ints
+        final_masks[i, y1:y2, x1:x2] = raw_masks[i, y1:y2, x1:x2]
+
+    return final_masks
 
 
 def create_removal_mask(all_masks, keep_index, dilation_pixels=10):
-    others_indices = [i for i in range(all_masks.shape[0]) if i != keep_index]
-    # Ensure it is a boolean numpy array
-    others_mask = torch.any(all_masks[others_indices], dim=0).cpu().numpy().astype(bool)
+    h, w = all_masks.shape[1], all_masks.shape[2]
+    combined_hull = np.zeros((h, w), dtype=bool)
 
-    # this connects parts that are very close (like arm to body)
-    # so that the gaps become "enclosed" holes.
-    others_mask = ndimage.binary_closing(others_mask, iterations=5)
+    for i in range(all_masks.shape[0]):
+        if i == keep_index:
+            continue
 
-    # now that gaps are bridged, this will fill them 100%.
-    others_mask = ndimage.binary_fill_holes(others_mask)
+        mask_np = all_masks[i].cpu().numpy().astype(bool)
 
-    dilated_mask = ndimage.binary_dilation(others_mask, iterations=dilation_pixels)
+        if mask_np.any():
+            hull = convex_hull_image(mask_np)
+            combined_hull |= hull
 
-    # if the dilation created new trapped areas, fill them one last time.
-    dilated_mask = ndimage.binary_fill_holes(dilated_mask)
+    final_mask = combined_hull.astype(np.uint8)
 
-    keep_mask = all_masks[keep_index].cpu().numpy().astype(bool)
-    safe_mask = dilated_mask & ~keep_mask
+    if dilation_pixels > 0:
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (dilation_pixels, dilation_pixels))
+        final_mask = cv2.dilate(final_mask, kernel)
 
-    return Image.fromarray((safe_mask * 255).astype(np.uint8))
+    return Image.fromarray(final_mask * 255)
 
 
 def fill_out_characters(data_list, lama, device: torch.device):
@@ -339,7 +331,7 @@ def fill_out_characters(data_list, lama, device: torch.device):
 
         output["img_paths"]["single_char"] = []
         for j in range(len(bboxes)):
-            removal_mask = create_removal_mask(all_masks, keep_index=j, dilation_pixels=50)
+            removal_mask = create_removal_mask(all_masks, keep_index=j, dilation_pixels=100)
 
             debug_folder = orig_img_path.parent / "debug"
             debug_folder.mkdir(exist_ok=True)

@@ -5,11 +5,11 @@
       "appearance_prompt": {
         "segments": [
           [
-            "On the left side,",
-            "a golden retriever with a glossy coat sits",
+            "Two golden retrievers sit against a seamless white backdrop. On the left side,",
+            "one golden retriever with a glossy coat sits facing the camera",
             "and on the right side,",
-            "a golden retriever with a glossy coat sits",
-            "against a seamless white backdrop."
+            "another golden retriever with a glossy coat sits facing the camera",
+            "."
           ]
         ],
         "mask": [
@@ -58,90 +58,13 @@
           ]
         },
         "split_sentences": {
-          "general_prompt": "Two golden retrievers with glossy coats sitting against a seamless white backdrop.",
+          "general_prompt": "Two golden retrievers with glossy coats sitting facing the camera against a seamless white backdrop.",
           "segments": [
             [
-              "A golden retriever is barking loudly."
+              "The golden retriever is barking loudly."
             ],
             [
-              "A golden retriever is panting with its tongue out."
-            ]
-          ],
-          "mask": [
-            [
-              1
-            ],
-            [
-              1
-            ]
-          ]
-        }
-      }
-    },
-    {
-      "appearance_prompt": {
-        "segments": [
-          [
-            "Seated on the left,",
-            "a mechanical monkey toy holds brass cymbals",
-            "and seated on the right,",
-            "a mechanical monkey toy holds brass cymbals",
-            "against a simple wall."
-          ]
-        ],
-        "mask": [
-          [
-            0,
-            1,
-            0,
-            1,
-            0
-          ]
-        ]
-      },
-      "action_prompts": {
-        "default": {
-          "segments": [
-            [
-              "On the left,",
-              "the mechanical monkey toy is banging the cymbals together",
-              "while on the right,",
-              "the mechanical monkey toy is nodding its head rhythmically."
-            ]
-          ],
-          "mask": [
-            [
-              0,
-              1,
-              0,
-              1
-            ]
-          ]
-        },
-        "no_locative": {
-          "segments": [
-            [
-              "A mechanical monkey toy is banging brass cymbals together",
-              "and",
-              "a mechanical monkey toy is nodding its head rhythmically."
-            ]
-          ],
-          "mask": [
-            [
-              1,
-              0,
-              1
-            ]
-          ]
-        },
-        "split_sentences": {
-          "general_prompt": "Two mechanical monkey toys holding brass cymbals seated against a simple wall.",
-          "segments": [
-            [
-              "The mechanical monkey toy is banging the cymbals together."
-            ],
-            [
-              "The mechanical monkey toy is nodding its head rhythmically."
+              "The golden retriever is panting with its tongue out."
             ]
           ],
           "mask": [
@@ -159,88 +82,11 @@
       "appearance_prompt": {
         "segments": [
           [
-            "Resting on the left,",
-            "a retro metal desk fan sits with stationary blades",
-            "and resting on the right,",
-            "a retro metal desk fan sits with stationary blades",
-            "on a wooden table."
-          ]
-        ],
-        "mask": [
-          [
-            0,
-            1,
-            0,
-            1,
-            0
-          ]
-        ]
-      },
-      "action_prompts": {
-        "default": {
-          "segments": [
-            [
-              "On the left,",
-              "the retro metal desk fan is spinning its blades rapidly",
-              "while on the right,",
-              "the retro metal desk fan is oscillating its head side to side."
-            ]
-          ],
-          "mask": [
-            [
-              0,
-              1,
-              0,
-              1
-            ]
-          ]
-        },
-        "no_locative": {
-          "segments": [
-            [
-              "A retro metal desk fan is spinning its blades rapidly",
-              "and",
-              "a retro metal desk fan is oscillating its head side to side."
-            ]
-          ],
-          "mask": [
-            [
-              1,
-              0,
-              1
-            ]
-          ]
-        },
-        "split_sentences": {
-          "general_prompt": "Two retro metal desk fans with stationary blades resting on a wooden table.",
-          "segments": [
-            [
-              "The retro metal desk fan is spinning its blades rapidly."
-            ],
-            [
-              "The retro metal desk fan is oscillating its head side to side."
-            ]
-          ],
-          "mask": [
-            [
-              1
-            ],
-            [
-              1
-            ]
-          ]
-        }
-      }
-    },
-    {
-      "appearance_prompt": {
-        "segments": [
-          [
-            "Screwed into a base on the left,",
-            "a clear incandescent light bulb stands",
+            "Two clear incandescent light bulbs stand against a dark background. Screwed into a base on the left,",
+            "one unlit clear incandescent light bulb stands",
             "and screwed into a base on the right,",
-            "a clear incandescent light bulb stands",
-            "against a dark background."
+            "another unlit clear incandescent light bulb stands",
+            "."
           ]
         ],
         "mask": [
@@ -289,7 +135,7 @@
           ]
         },
         "split_sentences": {
-          "general_prompt": "Two clear incandescent light bulbs screwed into bases against a dark background.",
+          "general_prompt": "Two unlit clear incandescent light bulbs screwed into bases against a dark background.",
           "segments": [
             [
               "The clear incandescent light bulb is lighting up brightly."
@@ -313,11 +159,11 @@
       "appearance_prompt": {
         "segments": [
           [
-            "Located on the left,",
-            "a tin wind-up robot with square eyes stands",
+            "Two tin wind-up robots stand against a neutral blue wall. Located on the left,",
+            "one tin wind-up robot with square eyes stands facing the camera",
             "and located on the right,",
-            "a tin wind-up robot with square eyes stands",
-            "against a neutral blue wall."
+            "another tin wind-up robot with square eyes stands facing the camera",
+            "."
           ]
         ],
         "mask": [
@@ -366,7 +212,7 @@
           ]
         },
         "split_sentences": {
-          "general_prompt": "Two tin wind-up robots with square eyes located against a neutral blue wall.",
+          "general_prompt": "Two tin wind-up robots with square eyes located facing the camera against a neutral blue wall.",
           "segments": [
             [
               "The tin wind-up robot is rotating its head 360 degrees."
@@ -390,88 +236,11 @@
       "appearance_prompt": {
         "segments": [
           [
-            "On the left side of the marble table,",
-            "a sealed red soda can sits with condensation",
-            "and on the right side,",
-            "a sealed red soda can sits with condensation",
-            "in a studio setting."
-          ]
-        ],
-        "mask": [
-          [
-            0,
-            1,
-            0,
-            1,
-            0
-          ]
-        ]
-      },
-      "action_prompts": {
-        "default": {
-          "segments": [
-            [
-              "On the left,",
-              "the sealed red soda can is crumpling inward",
-              "while on the right,",
-              "the sealed red soda can is popping its tab open with a spray."
-            ]
-          ],
-          "mask": [
-            [
-              0,
-              1,
-              0,
-              1
-            ]
-          ]
-        },
-        "no_locative": {
-          "segments": [
-            [
-              "A sealed red soda can is crumpling inward",
-              "and",
-              "a sealed red soda can is popping its tab open with a spray."
-            ]
-          ],
-          "mask": [
-            [
-              1,
-              0,
-              1
-            ]
-          ]
-        },
-        "split_sentences": {
-          "general_prompt": "Two sealed red soda cans with condensation sitting on a marble table.",
-          "segments": [
-            [
-              "The sealed red soda can is crumpling inward."
-            ],
-            [
-              "The sealed red soda can is popping its tab open with a spray."
-            ]
-          ],
-          "mask": [
-            [
-              1
-            ],
-            [
-              1
-            ]
-          ]
-        }
-      }
-    },
-    {
-      "appearance_prompt": {
-        "segments": [
-          [
-            "Set on the left,",
-            "a black DSLR camera with a visible flash unit sits facing forward",
+            "Two black DSLR cameras sit on a plain surface. Set on the left,",
+            "one black DSLR camera with its built-in pop-up flash raised sits facing the camera",
             "and set on the right,",
-            "a black DSLR camera with a visible flash unit sits facing forward",
-            "on a plain surface."
+            "another black DSLR camera with its built-in pop-up flash raised sits facing the camera",
+            "."
           ]
         ],
         "mask": [
@@ -491,7 +260,7 @@
               "On the left,",
               "the black DSLR camera is triggering a bright flash",
               "while on the right,",
-              "the black DSLR camera is extending its zoom lens outward."
+              "the black DSLR camera is closing its built-in flash unit."
             ]
           ],
           "mask": [
@@ -508,7 +277,7 @@
             [
               "A black DSLR camera is triggering a bright flash",
               "and",
-              "a black DSLR camera is extending its zoom lens outward."
+              "a black DSLR camera is closing its built-in flash unit."
             ]
           ],
           "mask": [
@@ -520,13 +289,13 @@
           ]
         },
         "split_sentences": {
-          "general_prompt": "Two black DSLR cameras with visible flash units sitting on a plain surface.",
+          "general_prompt": "Two black DSLR cameras with their built-in pop-up flashes raised sitting facing the camera on a plain surface.",
           "segments": [
             [
               "The black DSLR camera is triggering a bright flash."
             ],
             [
-              "The black DSLR camera is extending its zoom lens outward."
+              "The black DSLR camera is closing its built-in flash unit."
             ]
           ],
           "mask": [
@@ -544,88 +313,11 @@
       "appearance_prompt": {
         "segments": [
           [
-            "Standing on the left,",
-            "an emperor penguin stands on the ice",
-            "and standing on the right,",
-            "an emperor penguin stands on the ice",
-            "against a snowy background."
-          ]
-        ],
-        "mask": [
-          [
-            0,
-            1,
-            0,
-            1,
-            0
-          ]
-        ]
-      },
-      "action_prompts": {
-        "default": {
-          "segments": [
-            [
-              "On the left,",
-              "the emperor penguin is flapping its flippers rapidly",
-              "whereas on the right,",
-              "the emperor penguin is stretching its beak upward."
-            ]
-          ],
-          "mask": [
-            [
-              0,
-              1,
-              0,
-              1
-            ]
-          ]
-        },
-        "no_locative": {
-          "segments": [
-            [
-              "An emperor penguin is flapping its flippers rapidly",
-              "and",
-              "an emperor penguin is stretching its beak upward."
-            ]
-          ],
-          "mask": [
-            [
-              1,
-              0,
-              1
-            ]
-          ]
-        },
-        "split_sentences": {
-          "general_prompt": "Two emperor penguins standing on the ice against a snowy background.",
-          "segments": [
-            [
-              "The emperor penguin is flapping its flippers rapidly."
-            ],
-            [
-              "The emperor penguin is stretching its beak upward."
-            ]
-          ],
-          "mask": [
-            [
-              1
-            ],
-            [
-              1
-            ]
-          ]
-        }
-      }
-    },
-    {
-      "appearance_prompt": {
-        "segments": [
-          [
-            "Mounted on the left,",
-            "a black traffic light housing stands with unlit lenses",
+            "Two black traffic light housings are mounted against a blue sky. Mounted on the left,",
+            "one black traffic light housing with unlit lenses stands facing the camera",
             "and mounted on the right,",
-            "a black traffic light housing stands with unlit lenses",
-            "against a blue sky."
+            "another black traffic light housing with unlit lenses stands facing the camera",
+            "."
           ]
         ],
         "mask": [
@@ -674,7 +366,7 @@
           ]
         },
         "split_sentences": {
-          "general_prompt": "Two black traffic light housings with unlit lenses mounted against a blue sky.",
+          "general_prompt": "Two black traffic light housings with unlit lenses mounted facing the camera against a blue sky.",
           "segments": [
             [
               "The black traffic light housing is illuminating a bright red light."
@@ -698,11 +390,11 @@
       "appearance_prompt": {
         "segments": [
           [
-            "Positioned on the left,",
-            "a white pillar candle with a blackened wick stands",
+            "Two white pillar candles stand against a black background. Positioned on the left,",
+            "one white pillar candle with a blackened wick stands",
             "and positioned on the right,",
-            "a white pillar candle with a blackened wick stands",
-            "against a black background."
+            "another white pillar candle with a blackened wick stands",
+            "."
           ]
         ],
         "mask": [
@@ -758,6 +450,314 @@
             ],
             [
               "The white pillar candle is emitting a thin trail of gray smoke."
+            ]
+          ],
+          "mask": [
+            [
+              1
+            ],
+            [
+              1
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "appearance_prompt": {
+        "segments": [
+          [
+            "Two shiny metallic robots stand behind holographic consoles against a white laboratory wall. On the left side,",
+            "one shiny metallic robot stands facing the camera",
+            "and on the right side,",
+            "another shiny metallic robot stands facing the camera",
+            "."
+          ]
+        ],
+        "mask": [
+          [
+            0,
+            1,
+            0,
+            1,
+            0
+          ]
+        ]
+      },
+      "action_prompts": {
+        "default": {
+          "segments": [
+            [
+              "On the left,",
+              "the shiny metallic robot is typing on the holographic console",
+              "while on the right,",
+              "the shiny metallic robot is rotating its head to scan the room."
+            ]
+          ],
+          "mask": [
+            [
+              0,
+              1,
+              0,
+              1
+            ]
+          ]
+        },
+        "no_locative": {
+          "segments": [
+            [
+              "A shiny metallic robot is typing on a holographic console",
+              "while",
+              "a shiny metallic robot is rotating its head to scan the room."
+            ]
+          ],
+          "mask": [
+            [
+              1,
+              0,
+              1
+            ]
+          ]
+        },
+        "split_sentences": {
+          "general_prompt": "Two shiny metallic robots standing facing the camera behind holographic consoles against a white laboratory wall.",
+          "segments": [
+            [
+              "The shiny metallic robot is typing on the holographic console."
+            ],
+            [
+              "The shiny metallic robot is rotating its head to scan the room."
+            ]
+          ],
+          "mask": [
+            [
+              1
+            ],
+            [
+              1
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "appearance_prompt": {
+        "segments": [
+          [
+            "Two astronauts in white spacesuits stand inside a futuristic space station. On the left,",
+            "one astronaut in a white spacesuit stands facing the camera",
+            "and on the right,",
+            "another astronaut in a white spacesuit stands facing the camera",
+            "."
+          ]
+        ],
+        "mask": [
+          [
+            0,
+            1,
+            0,
+            1,
+            0
+          ]
+        ]
+      },
+      "action_prompts": {
+        "default": {
+          "segments": [
+            [
+              "On the left side,",
+              "the astronaut is giving a military salute",
+              "while on the right side,",
+              "the astronaut is waving hello."
+            ]
+          ],
+          "mask": [
+            [
+              0,
+              1,
+              0,
+              1
+            ]
+          ]
+        },
+        "no_locative": {
+          "segments": [
+            [
+              "An astronaut is giving a military salute",
+              "and",
+              "an astronaut is waving hello."
+            ]
+          ],
+          "mask": [
+            [
+              1,
+              0,
+              1
+            ]
+          ]
+        },
+        "split_sentences": {
+          "general_prompt": "Two astronauts in white spacesuits standing facing the camera inside a futuristic space station.",
+          "segments": [
+            [
+              "The astronaut is giving a military salute."
+            ],
+            [
+              "The astronaut is waving hello."
+            ]
+          ],
+          "mask": [
+            [
+              1
+            ],
+            [
+              1
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "appearance_prompt": {
+        "segments": [
+          [
+            "Two chubby pandas holding bamboo stalks sit against a blurred forest background. At the left of the frame,",
+            "one chubby panda sits facing the camera",
+            "and at the right,",
+            "another chubby panda sits facing the camera",
+            "."
+          ]
+        ],
+        "mask": [
+          [
+            0,
+            1,
+            0,
+            1,
+            0
+          ]
+        ]
+      },
+      "action_prompts": {
+        "default": {
+          "segments": [
+            [
+              "On the left,",
+              "the chubby panda is chewing on the bamboo stalk",
+              "but on the right,",
+              "the chubby panda is yawning widely."
+            ]
+          ],
+          "mask": [
+            [
+              0,
+              1,
+              0,
+              1
+            ]
+          ]
+        },
+        "no_locative": {
+          "segments": [
+            [
+              "A chubby panda is chewing on the bamboo stalk",
+              "while",
+              "a chubby panda is yawning widely."
+            ]
+          ],
+          "mask": [
+            [
+              1,
+              0,
+              1
+            ]
+          ]
+        },
+        "split_sentences": {
+          "general_prompt": "Two chubby pandas holding bamboo stalks sitting facing the camera against a blurred forest background.",
+          "segments": [
+            [
+              "The chubby panda is chewing on the bamboo stalk."
+            ],
+            [
+              "The chubby panda is yawning widely."
+            ]
+          ],
+          "mask": [
+            [
+              1
+            ],
+            [
+              1
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "appearance_prompt": {
+        "segments": [
+          [
+            "Two businessmen in suits with red ties sit against a beige office wall. On the left side of the room,",
+            "one businessman in a suit with a red tie and watch sits facing the camera",
+            "and on the right side,",
+            "another businessman in a suit with a red tie and watch sits facing the camera",
+            "."
+          ]
+        ],
+        "mask": [
+          [
+            0,
+            1,
+            0,
+            1,
+            0
+          ]
+        ]
+      },
+      "action_prompts": {
+        "default": {
+          "segments": [
+            [
+              "On the left,",
+              "the businessman is checking the time on the watch",
+              "while on the right,",
+              "the businessman is straightening the red tie."
+            ]
+          ],
+          "mask": [
+            [
+              0,
+              1,
+              0,
+              1
+            ]
+          ]
+        },
+        "no_locative": {
+          "segments": [
+            [
+              "A businessman is checking the time on a watch",
+              "and",
+              "a businessman is straightening a red tie."
+            ]
+          ],
+          "mask": [
+            [
+              1,
+              0,
+              1
+            ]
+          ]
+        },
+        "split_sentences": {
+          "general_prompt": "Two businessmen in suits with red ties and watches sitting facing the camera against a beige office wall.",
+          "segments": [
+            [
+              "The businessman is checking the time on the watch."
+            ],
+            [
+              "The businessman is straightening the red tie."
             ]
           ],
           "mask": [
