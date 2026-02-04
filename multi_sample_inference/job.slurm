@@ -41,13 +41,11 @@ trap 'resubmit_handler' USR1
 module purge
 
 if [ "$NODE_ARCH" == "a100" ]; then
-  echo "STATUS: Configuring environment for A100"
   module load arch/a100
 elif [ "$NODE_ARCH" == "h100" ]; then
-  echo "STATUS: Configuring environment for H100"
   module load arch/h100
 else
-  echo "ERROR: NODE_ARCH is unset or unknown ('$NODE_ARCH'). Exiting." >&2
+  echo "ERROR: NODE_ARCH is unset. Exiting." >&2
   exit 1
 fi
 
@@ -60,25 +58,31 @@ nvidia-smi || {
 }
 
 PROMPTS_FILE="./image_prompt_generation/prompts_modified.json"
-OUTPUT_DIR="$SCRATCH/attn_bias/output_videos/"
-mkdir -p $OUTPUT_DIR
-
+PARAM_GRID_FILE="./multi_sample_inference/param_configs/${PARAM_CONFIG_NAME}.json"
+OUTPUT_DIR="$SCRATCH/attn_bias/output_videos/${PARAM_CONFIG_NAME}"
 CHECKPOINT_PATH="$SCRATCH/.weights/"
-mkdir -p $CHECKPOINT_PATH
+
+if [ ! -f "$PARAM_GRID_FILE" ]; then
+  echo "ERROR: Parameter file $PARAM_GRID_FILE does not exist." >&2
+  exit 1
+fi
+
+mkdir -p "$OUTPUT_DIR"
+mkdir -p "$CHECKPOINT_PATH"
 
 source .venv/bin/activate || {
   echo "Failed to activate venv"
   exit 1
 }
 
-echo "STATUS: Starting Python inference at $(date)"
+echo "STATUS: Starting Python inference using config: $PARAM_GRID_FILE"
 
 # Run in background to allow trap catching
 python -m multi_sample_inference.multi_sample_inference \
   --prompts-file "$PROMPTS_FILE" \
-  --param-grid-file "./multi_sample_inference/param_grid.json" \
+  --param-grid-file "$PARAM_GRID_FILE" \
   --output-path "$OUTPUT_DIR" \
-  --checkpoint-path $CHECKPOINT_PATH &
+  --checkpoint-path "$CHECKPOINT_PATH" &
 
 # Get the Process ID of the python command
 PYTHON_PID=$!
