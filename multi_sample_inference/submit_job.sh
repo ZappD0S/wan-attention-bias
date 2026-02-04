@@ -19,17 +19,17 @@ if [[ -z "$NODE_ARCH" || -z "$PARAM_CONFIG_NAME" ]]; then
   exit 1
 fi
 
-if [[ "$TYPE" != "h100" && "$TYPE" != "a100" ]] || [ -z "$PARAM_CONFIG_NAME" ]; then
+if [[ "$NODE_ARCH" != "h100" && "$NODE_ARCH" != "a100" ]] || [ -z "$PARAM_CONFIG_NAME" ]; then
   echo "Usage: ./submit_job.sh [a100|h100] [param_file_name_without_extension]"
   echo "Example: ./submit_job.sh h100 all"
   exit 1
 fi
 
-if [ "$TYPE" == "h100" ]; then
+if [ "$NODE_ARCH" == "h100" ]; then
   PARTITION="gpu_p6"
   ACCOUNT="xvh@h100"
   CONSTRAINT="h100"
-elif [ "$TYPE" == "a100" ]; then
+elif [ "$NODE_ARCH" == "a100" ]; then
   PARTITION="gpu_p5"
   ACCOUNT="xvh@a100"
   CONSTRAINT="a100"
