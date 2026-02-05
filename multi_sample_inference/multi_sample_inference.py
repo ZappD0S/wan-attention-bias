@@ -3,6 +3,7 @@ import gc
 import json
 import signal
 import sys
+import time
 from pathlib import Path
 
 import numpy as np
@@ -93,20 +94,37 @@ def run_inference(
     return video, extra_data
 
 
-def save_outputs(video, extra_data, video_path, action_output_path, repeat_idx):
+def save_outputs(video, extra_data, video_path, action_output_path, repeat_idx, max_retries=5):
+    def _robust_run(path, func, *args):
+        attempts = 0
+        while attempts < max_retries:
+            try:
+                # ensure parent exists and refresh Lustre metadata
+                path.parent.mkdir(parents=True, exist_ok=True)
+                return func(*args)
+            except FileNotFoundError:
+                attempts += 1
+                if attempts == max_retries:
+                    raise
+                time.sleep(1)
+
     video_norm = normalize_video_tensor(video.cpu().numpy())
-    export_to_video(list(video_norm), video_path, fps=16)
+
+    _robust_run(video_path, export_to_video, list(video_norm), video_path, 16)
 
     simil_masks = extra_data["simil_masks"]
     face_masks = simil_masks[0, -1].float().mean(dim=0) > 0.5
     h, w = video.shape[-2:]
     face_masks = unscale(face_masks.float(), (FRAME_NUM, h, w)).bool()
 
-    write_video_masks(
+    mask_path = action_output_path / f"video_with_masks_{repeat_idx}.mp4"
+    _robust_run(
+        mask_path,
+        write_video_masks,
         video_norm,
-        action_output_path / f"video_with_masks_{repeat_idx}.mp4",
+        mask_path,
         face_masks.transpose(0, 1).cpu().numpy(),
-        fps=16,
+        16,
     )
 
 
