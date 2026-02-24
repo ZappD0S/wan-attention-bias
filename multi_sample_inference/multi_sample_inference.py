@@ -90,7 +90,8 @@ def run_inference(
         max_area=TARGET_SIZE[0] * TARGET_SIZE[1],
         sampling_steps=SAMPLING_STEPS,
         frame_num=FRAME_NUM,
-    )
+    )  # pyright: ignore[reportGeneralTypeIssues]
+
     return video, extra_data
 
 
@@ -113,7 +114,11 @@ def save_outputs(video, extra_data, video_path, action_output_path, repeat_idx, 
     _robust_run(video_path, export_to_video, list(video_norm), video_path, 16)
 
     simil_masks = extra_data["simil_masks"]
+
+    # take the masks from the last denoising step and average over the DiT blocks
     face_masks = simil_masks[0, -1].float().mean(dim=0) > 0.5
+
+    # upscale to video real video resolution
     h, w = video.shape[-2:]
     face_masks = unscale(face_masks.float(), (FRAME_NUM, h, w)).bool()
 
@@ -170,10 +175,14 @@ def process_action_prompts(
     wan_i2v, prompt_data, param_config, img, single_char_imgs, masks, output_path, repeat
 ):
     for prompt_type, action_prompt_data in prompt_data["action_prompts"].items():
-        allowed_types = param_config.get("prompt_types")
-        assert set(allowed_types) <= prompt_data["action_prompts"].keys()
+        allowed_prompt_types = param_config.get("prompt_types")
 
-        if allowed_types is not None and prompt_type not in allowed_types:
+        if allowed_prompt_types is None:
+            allowed_prompt_types = list(prompt_data["action_prompts"].keys())
+        else:
+            assert set(allowed_prompt_types) <= prompt_data["action_prompts"].keys()
+
+        if prompt_type not in allowed_prompt_types:
             continue
 
         config = {"params": param_config, "prompt_data": prompt_data, "prompt_type": prompt_type}
@@ -194,7 +203,8 @@ def process_action_prompts(
             for mask_row, segs in zip(segment_masks, segment_lists)
         ]
 
-        general_prompt = action_prompt_data.get("general_prompt")
+        # TODO: put this somewhere else, in a config file possibly
+        general_prompt = "high quality video, background scenery"
 
         signal_received = run_repeat_loop(
             wan_i2v,
@@ -239,18 +249,14 @@ def process_parameter_grid(
     return False
 
 
-def process_prompt_entry(wan_i2v, prompt_data, idx, output_path, param_grid, img_dir):
+def process_prompt_entry(wan_i2v, prompt_data, idx, output_path, param_grid):
     bboxes = prompt_data["bboxes"]
     masks = torch.stack(
         [torch.from_numpy(create_mask_from_bbox(bbox, TARGET_SIZE)) for bbox in bboxes]
     )
 
-    img_path = str(img_dir / prompt_data["img_paths"]["original"])
-    img = load_image(img_path)
-
-    single_char_imgs = [
-        load_image(str(img_dir / rel_path)) for rel_path in prompt_data["img_paths"]["single_char"]
-    ]
+    img = load_image(prompt_data["img_paths"]["original"])
+    single_char_imgs = [load_image(path) for path in prompt_data["img_paths"]["single_char"]]
 
     # Debug visualization
     debug_path = output_path / "debug" / f"prompt_{idx}"
@@ -281,7 +287,6 @@ def main():
         prompt_json_dict = json.load(f)
 
     args.output_path.mkdir(exist_ok=True, parents=True)
-    img_dir = args.prompts_file.parent
 
     wan_i2v = WanI2V(
         config=i2v_14B,
@@ -295,7 +300,7 @@ def main():
         prompt_data["safeguard_suffix"] = safeguard_suffix
 
         signal_received = process_prompt_entry(
-            wan_i2v, prompt_data, i, args.output_path, param_grid, img_dir
+            wan_i2v, prompt_data, i, args.output_path, param_grid
         )
         if signal_received:
             return True

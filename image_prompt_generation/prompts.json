@@ -181,7 +181,7 @@
           "segments": [
             [
               "On the left,",
-              "the tin wind-up robot is rotating its head 360 degrees",
+              "the tin wind-up robot is spinning rapidly in place",
               "and on the right,",
               "the tin wind-up robot is raising its arms up and down."
             ]
@@ -198,7 +198,7 @@
         "no_locative": {
           "segments": [
             [
-              "A tin wind-up robot is rotating its head 360 degrees",
+              "A tin wind-up robot is spinning rapidly in place",
               "while",
               "a tin wind-up robot is raising its arms up and down."
             ]
@@ -215,7 +215,7 @@
           "general_prompt": "Two tin wind-up robots with square eyes located facing the camera against a neutral blue wall.",
           "segments": [
             [
-              "The tin wind-up robot is rotating its head 360 degrees."
+              "The tin wind-up robot is spinning rapidly in place."
             ],
             [
               "The tin wind-up robot is raising its arms up and down."
