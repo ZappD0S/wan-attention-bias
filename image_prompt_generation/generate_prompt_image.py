@@ -2,14 +2,13 @@ import gc
 import json
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 import cv2
 import numpy as np
 import torch
 import torchvision
 from accelerate import Accelerator
-from big_lama import inpaint_image, load_lama_model
 from diffusers import FluxPipeline
 from PIL import Image, ImageDraw, ImageFont
 from skimage.morphology import convex_hull_image
@@ -20,18 +19,22 @@ from transformers import (
     Sam2Processor,
 )
 
+from debug_utils import draw_masks
+
+from .big_lama import inpaint_image, load_lama_model
+
 IOU_THRESHOLD = 0.5
-OUTPUT_FILE = Path("prompts_modified.json")
-WEIGHTS_DIR = "../weights/"
-IMG_DIR = Path("./images")
-DEBUG_IMG_DIR = IMG_DIR / "debug"
+BASE_DIR = Path("./image_prompt_generation/")
+OUTPUT_FILE = BASE_DIR / "prompts_modified.json"
+WEIGHTS_DIR = Path("./weights/")
+IMG_DIR = BASE_DIR / "images"
 MODEL_ID_DINO = "IDEA-Research/grounding-dino-base"
 MODEL_ID_FLUX = "black-forest-labs/FLUX.1-dev"
 
-os.environ["HF_HOME"] = WEIGHTS_DIR
+os.environ["HF_HOME"] = str(WEIGHTS_DIR)
 
 
-def load_dataset(directory: Path = Path.cwd()) -> Tuple[List[Dict], str]:
+def load_dataset(directory: Path) -> tuple[list[dict], str]:
     """
     Iterates through JSON files in the directory to aggregate prompt data.
     """
@@ -69,7 +72,7 @@ def load_flux_model() -> FluxPipeline:
     return pipe
 
 
-def load_dino_model() -> Tuple[Any, Any, torch.device]:
+def load_dino_model() -> tuple[Any, Any, torch.device]:
     """Initializes the Grounding DINO model and processor."""
     print(f"Loading Grounding DINO: {MODEL_ID_DINO}...")
     device = Accelerator().device
@@ -97,8 +100,8 @@ def generate_image(
 
 
 def detect_objects(
-    image: Image.Image, text_prompts: List[str], processor: Any, model: Any, device: torch.device
-) -> Dict[str, Any]:
+    image: Image.Image, text_prompts: list[str], processor: Any, model: Any, device: torch.device
+) -> dict[str, Any]:
     """Runs Grounding DINO to detect objects in the image based on text prompts."""
     clean_prompts = [seg.rstrip(" .") for seg in text_prompts]
 
@@ -111,7 +114,7 @@ def detect_objects(
         outputs,
         inputs.input_ids,
         threshold=0.29,
-        text_threshold=0.15,
+        text_threshold=0.1,
         target_sizes=[image.size[::-1]],
     )
     return results[0]
@@ -120,10 +123,10 @@ def detect_objects(
 def filter_and_sort_boxes(
     boxes: torch.Tensor,
     scores: torch.Tensor,
-    labels: List[str],
+    labels: list[str],
     target_count: int,
     iou_threshold: float = 0.5,
-) -> Tuple[List[List[float]], List[float], List[str]]:
+) -> tuple[list[list[float]], list[float], list[str]]:
     """
     Applies Non-Maximum Suppression (NMS) and filters for the top-k highest scoring boxes.
     """
@@ -142,32 +145,91 @@ def filter_and_sort_boxes(
     return final_boxes, final_scores, final_labels
 
 
+def has_overlap(boxes: list[list[float]]) -> bool:
+    """Check if any pair of boxes has IoU > 0 using torchvision.ops.box_iou."""
+    if len(boxes) <= 1:
+        return False
+    boxes_tensor = torch.tensor(boxes, dtype=torch.float32)
+    iou_matrix = torchvision.ops.box_iou(boxes_tensor, boxes_tensor)
+    return bool((iou_matrix.triu(diagonal=1) > 0).any().item())
+
+
+def enlarge_bboxes_adaptive(
+    boxes: list[list[float]],
+    image_size: tuple[int, int],
+    base_factor: float = 0.5,
+    min_factor: float = 0.0,
+    step: float = 0.05,
+) -> list[list[float]]:
+    """
+    Enlarges bounding boxes, skipping if already overlapping.
+
+    1. Check if any boxes already overlap (IoU > 0)
+    2. If overlapping, return unchanged
+    3. If not, iteratively enlarge with factor reduction on overlap
+    """
+    if len(boxes) <= 1:
+        return boxes
+
+    if has_overlap(boxes):
+        return boxes
+
+    img_w, img_h = image_size
+    factor = base_factor
+
+    while factor >= min_factor:
+        enlarged = []
+        for x1, y1, x2, y2 in boxes:
+            w = x2 - x1
+            h = y2 - y1
+
+            dx = w * factor / 2
+            dy = h * factor / 2
+
+            new_box = [
+                max(0, x1 - dx),
+                max(0, y1 - dy),
+                min(img_w, x2 + dx),
+                min(img_h, y2 + dy),
+            ]
+            enlarged.append(new_box)
+
+        if not has_overlap(enlarged):
+            return enlarged
+
+        factor -= step
+
+    return boxes
+
+
 def draw_bboxes(img: Image.Image, boxes, labels, scores) -> Image.Image:
     """Visualizes bounding boxes on the image."""
     img = img.copy()
     draw = ImageDraw.Draw(img)
     try:
         font = ImageFont.truetype("arial.ttf", 15)
-    except IOError:
+    except OSError:
         font = ImageFont.load_default()
 
-    for box, score, label_text in zip(boxes, scores, labels):
-        box = [round(x, 2) for x in box]
-        print(f"Detected '{label_text}' with confidence {round(score, 3)} at location {box}")
+    for box, score, label_text in zip(boxes, scores, labels, strict=True):
+        rounded_box = [round(x, 2) for x in box]
+        print(
+            f"Detected '{label_text}' with confidence {round(score, 3)} at location {rounded_box}"
+        )
 
-        draw.rectangle(box, outline="red", width=2)
+        draw.rectangle(rounded_box, outline="red", width=2)
 
         caption = f"{label_text}: {round(score, 2)}"
-        text_bbox = draw.textbbox((box[0], box[1]), caption, font=font)
+        text_bbox = draw.textbbox((rounded_box[0], rounded_box[1]), caption, font=font)
         text_width = text_bbox[2] - text_bbox[0]
         text_height = text_bbox[3] - text_bbox[1]
 
         # Position the text
-        text_location = [box[0], box[1] - text_height]
+        text_location = [rounded_box[0], rounded_box[1] - text_height]
 
         # Ensure the text is within the image boundaries
         if text_location[1] < 0:
-            text_location[1] = box[1] + 2
+            text_location[1] = rounded_box[1] + 2
 
         draw.rectangle(
             (
@@ -184,7 +246,7 @@ def draw_bboxes(img: Image.Image, boxes, labels, scores) -> Image.Image:
 
 
 def process_dataset(
-    prompts_list: List[Dict],
+    prompts_list: list[dict],
     flux_pipe: FluxPipeline,
     gd_processor: Any,
     gd_model: Any,
@@ -201,7 +263,7 @@ def process_dataset(
         mask = appearance["mask"][0]
 
         full_prompt = " ".join(segments)
-        character_segments = [seg for is_char, seg in zip(mask, segments) if is_char]
+        character_segments = [seg for is_char, seg in zip(mask, segments, strict=True) if is_char]
 
         img_subdir = IMG_DIR / str(i)
         img_subdir.mkdir(exist_ok=True)
@@ -217,7 +279,6 @@ def process_dataset(
             print("Image already exists. Loading from disk...")
             img = Image.open(img_path)
 
-        # 2. Detect Objects
         raw_results = detect_objects(
             img,
             character_segments,
@@ -226,7 +287,17 @@ def process_dataset(
             device,
         )
 
-        # 3. Filter Boxes (NMS + Top-K)
+        debug_subdir = img_subdir / "debug"
+        debug_subdir.mkdir(exist_ok=True)
+
+        debug_all_boxes = draw_bboxes(
+            img,
+            raw_results["boxes"].tolist(),
+            raw_results["text_labels"],
+            raw_results["scores"].tolist(),
+        )
+        debug_all_boxes.save(debug_subdir / "all_boxes_detected.png")
+
         boxes, scores, labels = filter_and_sort_boxes(
             raw_results["boxes"],
             raw_results["scores"],
@@ -235,16 +306,13 @@ def process_dataset(
             iou_threshold=IOU_THRESHOLD,
         )
 
-        # 4. Save Debug Image
-        img_with_boxes = draw_bboxes(img, boxes, labels, scores)
-
         if len(boxes) != len(character_segments):
-            print(
-                f"ERROR: Wrong number of boxes for #{i}. Expected {len(character_segments)}, got {len(boxes)}"
+            raise Exception(
+                f"ERROR: Wrong number of boxes for #{i}."
+                " Expected {len(character_segments)}, got {len(boxes)}"
             )
 
-        debug_subdir = img_subdir / "debug"
-        debug_subdir.mkdir(exist_ok=True)
+        img_with_boxes = draw_bboxes(img, boxes, labels, scores)
         img_with_boxes.save(debug_subdir / "original_with_boxes.png")
 
         # sorting by horizontal center x
@@ -278,8 +346,8 @@ def get_masks_from_bboxes(image, bboxes, model, processor, device="cuda"):
     final_masks = torch.zeros_like(raw_masks)
 
     # 2. Only copy data inside the bbox (implicit intersection)
-    for i, (x1, y1, x2, y2) in enumerate(bboxes):
-        x1, y1, x2, y2 = map(int, [x1, y1, x2, y2])  # ensure ints
+    for i, box in enumerate(bboxes):
+        x1, y1, x2, y2 = map(int, box)  # ensure ints
         final_masks[i, y1:y2, x1:x2] = raw_masks[i, y1:y2, x1:x2]
 
     return final_masks
@@ -319,27 +387,27 @@ def fill_out_characters(data_list, lama, device: torch.device):
 
     outputs = []
 
-    for i, data in enumerate(data_list):
+    for data in data_list:
         output = data.copy()
-        # drop the pil obj
-        raw_img = output.pop("img")
+        raw_img = output["img"]
         bboxes = output["bboxes"]
 
         all_masks = get_masks_from_bboxes(raw_img, bboxes, model, processor, device)
 
         orig_img_path = Path(output["img_paths"]["original"])
+        debug_folder = orig_img_path.parent / "debug"
+        debug_folder.mkdir(exist_ok=True)
+
+        img_with_masks = draw_masks(raw_img, list(all_masks.numpy()))
+        img_with_masks.save(debug_folder / "img_with_masks.png")
 
         output["img_paths"]["single_char"] = []
         for j in range(len(bboxes)):
             removal_mask = create_removal_mask(all_masks, keep_index=j, dilation_pixels=100)
-
-            debug_folder = orig_img_path.parent / "debug"
-            debug_folder.mkdir(exist_ok=True)
             removal_mask.save(debug_folder / f"mask_char_{j}.png")
 
             output_img = inpaint_image(lama, device, raw_img, removal_mask)
             img_path = orig_img_path.parent / f"single_char_{j}.png"
-
             output_img.save(str(img_path))
 
             output["img_paths"]["single_char"].append(str(img_path))
@@ -351,9 +419,8 @@ def fill_out_characters(data_list, lama, device: torch.device):
 
 def main():
     IMG_DIR.mkdir(exist_ok=True)
-    DEBUG_IMG_DIR.mkdir(exist_ok=True)
 
-    prompts_data_list, safeguard_suffix = load_dataset()
+    prompts_data_list, safeguard_suffix = load_dataset(BASE_DIR)
 
     flux_pipe = load_flux_model()
     gd_processor, gd_model, device = load_dino_model()
@@ -365,9 +432,17 @@ def main():
     gc.collect()
     torch.cuda.empty_cache()
 
-    lama, _ = load_lama_model("../weights/big-lama/", device)
+    lama, _ = load_lama_model(WEIGHTS_DIR / "big-lama", device)
     updated_dataset = fill_out_characters(updated_dataset, lama, device)
 
+    # enlarge bboxes
+    for prompt_data in updated_dataset:
+        raw_img = prompt_data.pop("img")
+        boxes = prompt_data["bboxes"]
+        boxes = enlarge_bboxes_adaptive(boxes, raw_img.size, base_factor=0.5)
+        prompt_data["enlarged_bboxes"] = boxes
+
+    # TODO: do the enlarging here!
     output_data = {"safeguard_suffix": safeguard_suffix, "dataset": updated_dataset}
 
     print(f"Saving results to {OUTPUT_FILE}...")

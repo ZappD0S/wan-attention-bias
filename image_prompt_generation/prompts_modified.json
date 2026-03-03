@@ -92,10 +92,10 @@
         ]
       ],
       "img_paths": {
-        "original": "images/0/original.png",
+        "original": "image_prompt_generation/images/0/original.png",
         "single_char": [
-          "images/0/single_char_0.png",
-          "images/0/single_char_1.png"
+          "image_prompt_generation/images/0/single_char_0.png",
+          "image_prompt_generation/images/0/single_char_1.png"
         ]
       }
     },
@@ -177,23 +177,23 @@
       },
       "bboxes": [
         [
-          157.40855407714844,
-          63.450592041015625,
-          385.58172607421875,
-          456.6950378417969
+          112.76459884643555,
+          31.342294692993164,
+          367.4462013244629,
+          480
         ],
         [
-          428.1161804199219,
-          50.291534423828125,
-          656.0806884765625,
-          446.00445556640625
+          468.13985443115234,
+          33.036827087402344,
+          725.5620193481445,
+          480
         ]
       ],
       "img_paths": {
-        "original": "images/1/original.png",
+        "original": "image_prompt_generation/images/1/original.png",
         "single_char": [
-          "images/1/single_char_0.png",
-          "images/1/single_char_1.png"
+          "image_prompt_generation/images/1/single_char_0.png",
+          "image_prompt_generation/images/1/single_char_1.png"
         ]
       }
     },
@@ -223,7 +223,7 @@
           "segments": [
             [
               "On the left,",
-              "the tin wind-up robot is rotating its head 360 degrees",
+              "the tin wind-up robot is spinning rapidly in place",
               "and on the right,",
               "the tin wind-up robot is raising its arms up and down."
             ]
@@ -240,7 +240,7 @@
         "no_locative": {
           "segments": [
             [
-              "A tin wind-up robot is rotating its head 360 degrees",
+              "A tin wind-up robot is spinning rapidly in place",
               "while",
               "a tin wind-up robot is raising its arms up and down."
             ]
@@ -257,7 +257,7 @@
           "general_prompt": "Two tin wind-up robots with square eyes located facing the camera against a neutral blue wall.",
           "segments": [
             [
-              "The tin wind-up robot is rotating its head 360 degrees."
+              "The tin wind-up robot is spinning rapidly in place."
             ],
             [
               "The tin wind-up robot is raising its arms up and down."
@@ -275,23 +275,23 @@
       },
       "bboxes": [
         [
-          155.025146484375,
-          25.905574798583984,
-          350.9755859375,
-          472.6260986328125
+          97.71625137329102,
+          0,
+          377.7680778503418,
+          480
         ],
         [
-          484.3768615722656,
-          30.041812896728516,
-          666.7084350585938,
-          473.97216796875
+          460.4916458129883,
+          0,
+          733.5404891967773,
+          480
         ]
       ],
       "img_paths": {
-        "original": "images/2/original.png",
+        "original": "image_prompt_generation/images/2/original.png",
         "single_char": [
-          "images/2/single_char_0.png",
-          "images/2/single_char_1.png"
+          "image_prompt_generation/images/2/single_char_0.png",
+          "image_prompt_generation/images/2/single_char_1.png"
         ]
       }
     },
@@ -299,10 +299,108 @@
       "appearance_prompt": {
         "segments": [
           [
-            "Two black DSLR cameras sit on a plain surface. Set on the left,",
-            "one black DSLR camera with its built-in pop-up flash raised sits facing the camera",
-            "and set on the right,",
-            "another black DSLR camera with its built-in pop-up flash raised sits facing the camera",
+            "Two professional espresso machines stand on a clean marble counter. Positioned on the left,",
+            "one professional espresso machine with an empty white ceramic mug under its spout stands",
+            "and positioned on the right,",
+            "another professional espresso machine with a metal steam pitcher under its wand stands",
+            "."
+          ]
+        ],
+        "mask": [
+          [
+            0,
+            1,
+            0,
+            1,
+            0
+          ]
+        ]
+      },
+      "action_prompts": {
+        "default": {
+          "segments": [
+            [
+              "On the left side,",
+              "the professional espresso machine pours a dark stream of coffee into the mug",
+              "while on the right side,",
+              "the professional espresso machine releases a cloud of white steam from the wand."
+            ]
+          ],
+          "mask": [
+            [
+              0,
+              1,
+              0,
+              1
+            ]
+          ]
+        },
+        "no_locative": {
+          "segments": [
+            [
+              "A professional espresso machine pours a dark stream of coffee into a mug",
+              "and",
+              "a professional espresso machine releases a cloud of white steam from a wand."
+            ]
+          ],
+          "mask": [
+            [
+              1,
+              0,
+              1
+            ]
+          ]
+        },
+        "split_sentences": {
+          "general_prompt": "Two professional espresso machines with a ceramic mug and a metal pitcher standing on a clean marble counter.",
+          "segments": [
+            [
+              "The professional espresso machine pours a dark stream of coffee into the mug."
+            ],
+            [
+              "The professional espresso machine releases a cloud of white steam from the wand."
+            ]
+          ],
+          "mask": [
+            [
+              1
+            ],
+            [
+              1
+            ]
+          ]
+        }
+      },
+      "bboxes": [
+        [
+          65.86300659179688,
+          91.04363250732422,
+          403.7430114746094,
+          448.5238952636719
+        ],
+        [
+          395.18450927734375,
+          101.79083251953125,
+          749.0645141601562,
+          432.12274169921875
+        ]
+      ],
+      "img_paths": {
+        "original": "image_prompt_generation/images/3/original.png",
+        "single_char": [
+          "image_prompt_generation/images/3/single_char_0.png",
+          "image_prompt_generation/images/3/single_char_1.png"
+        ]
+      }
+    },
+    {
+      "appearance_prompt": {
+        "segments": [
+          [
+            "Framed in a full-body wide shot from a straight-on angle, two tennis players in white athletic wear stand side-by-side at the baseline of a green hard court. Positioned on the left side of the court,",
+            "one tennis player holding a racket horizontally with both hands stands with their body and face directed straight at the camera",
+            "and positioned on the right side of the court,",
+            "another tennis player holding a racket horizontally with both hands stands with their body and face directed straight at the camera",
             "."
           ]
         ],
@@ -321,9 +419,9 @@
           "segments": [
             [
               "On the left,",
-              "the black DSLR camera is triggering a bright flash",
+              "the tennis player is swinging the racket forcefully in a wide forehand arc",
               "while on the right,",
-              "the black DSLR camera is closing its built-in flash unit."
+              "the tennis player is spinning the racket rapidly between the hands."
             ]
           ],
           "mask": [
@@ -338,9 +436,9 @@
         "no_locative": {
           "segments": [
             [
-              "A black DSLR camera is triggering a bright flash",
+              "A tennis player is swinging a racket forcefully in a wide forehand arc",
               "and",
-              "a black DSLR camera is closing its built-in flash unit."
+              "a tennis player is spinning a racket rapidly between the hands."
             ]
           ],
           "mask": [
@@ -352,13 +450,13 @@
           ]
         },
         "split_sentences": {
-          "general_prompt": "Two black DSLR cameras with their built-in pop-up flashes raised sitting facing the camera on a plain surface.",
+          "general_prompt": "Framed in a full-body wide shot from a straight-on angle, two tennis players in white athletic wear holding rackets horizontally standing side-by-side with their bodies and faces directed straight at the camera at the baseline of a green hard court.",
           "segments": [
             [
-              "The black DSLR camera is triggering a bright flash."
+              "The tennis player is swinging the racket forcefully in a wide forehand arc."
             ],
             [
-              "The black DSLR camera is closing its built-in flash unit."
+              "The tennis player is spinning the racket rapidly between the hands."
             ]
           ],
           "mask": [
@@ -373,121 +471,23 @@
       },
       "bboxes": [
         [
-          76.31505584716797,
-          82.50599670410156,
-          372.9820861816406,
-          391.4632568359375
+          232.40810546875,
+          0,
+          418.30548706054685,
+          480
         ],
         [
-          445.5744323730469,
-          82.99005126953125,
-          743.7307739257812,
-          398.0422668457031
+          421.0502075195312,
+          0,
+          596.1956420898438,
+          480
         ]
       ],
       "img_paths": {
-        "original": "images/3/original.png",
+        "original": "image_prompt_generation/images/4/original.png",
         "single_char": [
-          "images/3/single_char_0.png",
-          "images/3/single_char_1.png"
-        ]
-      }
-    },
-    {
-      "appearance_prompt": {
-        "segments": [
-          [
-            "Two black traffic light housings are mounted against a blue sky. Mounted on the left,",
-            "one black traffic light housing with unlit lenses stands facing the camera",
-            "and mounted on the right,",
-            "another black traffic light housing with unlit lenses stands facing the camera",
-            "."
-          ]
-        ],
-        "mask": [
-          [
-            0,
-            1,
-            0,
-            1,
-            0
-          ]
-        ]
-      },
-      "action_prompts": {
-        "default": {
-          "segments": [
-            [
-              "On the left,",
-              "the black traffic light housing is illuminating a bright red light",
-              "whereas on the right,",
-              "the black traffic light housing is illuminating a bright green light."
-            ]
-          ],
-          "mask": [
-            [
-              0,
-              1,
-              0,
-              1
-            ]
-          ]
-        },
-        "no_locative": {
-          "segments": [
-            [
-              "A black traffic light housing is illuminating a bright red light",
-              "and",
-              "a black traffic light housing is illuminating a bright green light."
-            ]
-          ],
-          "mask": [
-            [
-              1,
-              0,
-              1
-            ]
-          ]
-        },
-        "split_sentences": {
-          "general_prompt": "Two black traffic light housings with unlit lenses mounted facing the camera against a blue sky.",
-          "segments": [
-            [
-              "The black traffic light housing is illuminating a bright red light."
-            ],
-            [
-              "The black traffic light housing is illuminating a bright green light."
-            ]
-          ],
-          "mask": [
-            [
-              1
-            ],
-            [
-              1
-            ]
-          ]
-        }
-      },
-      "bboxes": [
-        [
-          199.93124389648438,
-          92.86663055419922,
-          359.235107421875,
-          394.9222106933594
-        ],
-        [
-          511.2708435058594,
-          69.01189422607422,
-          660.0187377929688,
-          339.2721862792969
-        ]
-      ],
-      "img_paths": {
-        "original": "images/4/original.png",
-        "single_char": [
-          "images/4/single_char_0.png",
-          "images/4/single_char_1.png"
+          "image_prompt_generation/images/4/single_char_0.png",
+          "image_prompt_generation/images/4/single_char_1.png"
         ]
       }
     },
@@ -569,23 +569,23 @@
       },
       "bboxes": [
         [
-          274.6500244140625,
-          163.73875427246094,
-          393.2528381347656,
-          451.6750793457031
+          171.83646392822266,
+          42.05239295959473,
+          371.6372604370117,
+          480
         ],
         [
-          438.84185791015625,
-          244.97769165039062,
-          555.4819946289062,
-          452.86614990234375
+          446.69029998779297,
+          42.687416076660156,
+          648.1281509399414,
+          480
         ]
       ],
       "img_paths": {
-        "original": "images/5/original.png",
+        "original": "image_prompt_generation/images/5/original.png",
         "single_char": [
-          "images/5/single_char_0.png",
-          "images/5/single_char_1.png"
+          "image_prompt_generation/images/5/single_char_0.png",
+          "image_prompt_generation/images/5/single_char_1.png"
         ]
       }
     },
@@ -617,7 +617,7 @@
               "On the left,",
               "the shiny metallic robot is typing on the holographic console",
               "while on the right,",
-              "the shiny metallic robot is rotating its head to scan the room."
+              "the shiny metallic robot is projecting a spinning galaxy hologram from the palm of its hand."
             ]
           ],
           "mask": [
@@ -634,7 +634,7 @@
             [
               "A shiny metallic robot is typing on a holographic console",
               "while",
-              "a shiny metallic robot is rotating its head to scan the room."
+              "a shiny metallic robot is projecting a spinning galaxy hologram from the palm of its hand."
             ]
           ],
           "mask": [
@@ -652,7 +652,7 @@
               "The shiny metallic robot is typing on the holographic console."
             ],
             [
-              "The shiny metallic robot is rotating its head to scan the room."
+              "The shiny metallic robot is projecting a spinning galaxy hologram from the palm of its hand."
             ]
           ],
           "mask": [
@@ -667,23 +667,23 @@
       },
       "bboxes": [
         [
-          20.71088981628418,
-          35.86721420288086,
-          393.6259460449219,
-          401.05120849609375
+          156.52235450744627,
+          28.61005811691283,
+          415.0950008392334,
+          444.68663759231566
         ],
         [
-          455.2062072753906,
-          35.91015625,
-          832.390869140625,
-          398.2528381347656
+          422.73782577514646,
+          35.35474586486815,
+          674.2665992736817,
+          428.4408931732178
         ]
       ],
       "img_paths": {
-        "original": "images/6/original.png",
+        "original": "image_prompt_generation/images/6/original.png",
         "single_char": [
-          "images/6/single_char_0.png",
-          "images/6/single_char_1.png"
+          "image_prompt_generation/images/6/single_char_0.png",
+          "image_prompt_generation/images/6/single_char_1.png"
         ]
       }
     },
@@ -715,7 +715,7 @@
               "On the left side,",
               "the astronaut is giving a military salute",
               "while on the right side,",
-              "the astronaut is waving hello."
+              "the astronaut is looking down and checking the wrist computer."
             ]
           ],
           "mask": [
@@ -732,7 +732,7 @@
             [
               "An astronaut is giving a military salute",
               "and",
-              "an astronaut is waving hello."
+              "an astronaut is looking down and checking a wrist computer."
             ]
           ],
           "mask": [
@@ -750,7 +750,7 @@
               "The astronaut is giving a military salute."
             ],
             [
-              "The astronaut is waving hello."
+              "The astronaut is looking down and checking the wrist computer."
             ]
           ],
           "mask": [
@@ -765,23 +765,23 @@
       },
       "bboxes": [
         [
-          222.7251739501953,
-          104.37773895263672,
-          370.9125061035156,
-          478.92340087890625
+          256.25060272216797,
+          136.99600219726562,
+          397.0871353149414,
+          480
         ],
         [
-          442.46917724609375,
-          111.23155212402344,
-          582.3211669921875,
-          477.8037109375
+          410.2918701171875,
+          136.95644760131836,
+          550.43017578125,
+          480
         ]
       ],
       "img_paths": {
-        "original": "images/7/original.png",
+        "original": "image_prompt_generation/images/7/original.png",
         "single_char": [
-          "images/7/single_char_0.png",
-          "images/7/single_char_1.png"
+          "image_prompt_generation/images/7/single_char_0.png",
+          "image_prompt_generation/images/7/single_char_1.png"
         ]
       }
     },
@@ -863,23 +863,23 @@
       },
       "bboxes": [
         [
-          66.7921371459961,
-          28.18558120727539,
-          439.522216796875,
-          478.5848388671875
+          51.02397155761719,
+          15.753335952758789,
+          423.6858215332031,
+          478.8780517578125
         ],
         [
-          415.6142578125,
-          14.353594779968262,
-          755.6864013671875,
-          477.34429931640625
+          406.2863464355469,
+          44.56456756591797,
+          803.0220336914062,
+          477.00335693359375
         ]
       ],
       "img_paths": {
-        "original": "images/8/original.png",
+        "original": "image_prompt_generation/images/8/original.png",
         "single_char": [
-          "images/8/single_char_0.png",
-          "images/8/single_char_1.png"
+          "image_prompt_generation/images/8/single_char_0.png",
+          "image_prompt_generation/images/8/single_char_1.png"
         ]
       }
     },
@@ -961,23 +961,23 @@
       },
       "bboxes": [
         [
-          81.06305694580078,
-          45.00130081176758,
-          364.9966735839844,
-          479.4832458496094
+          34.82792816162109,
+          1.914236831665022,
+          387.33267059326175,
+          480
         ],
         [
-          459.370361328125,
-          35.839332580566406,
-          753.5394287109375,
-          478.33013916015625
+          398.80251159667966,
+          6.826469039916979,
+          772.783822631836,
+          480
         ]
       ],
       "img_paths": {
-        "original": "images/9/original.png",
+        "original": "image_prompt_generation/images/9/original.png",
         "single_char": [
-          "images/9/single_char_0.png",
-          "images/9/single_char_1.png"
+          "image_prompt_generation/images/9/single_char_0.png",
+          "image_prompt_generation/images/9/single_char_1.png"
         ]
       }
     }

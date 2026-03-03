@@ -250,7 +250,7 @@ def process_parameter_grid(
 
 
 def process_prompt_entry(wan_i2v, prompt_data, idx, output_path, param_grid):
-    bboxes = prompt_data["bboxes"]
+    bboxes = prompt_data["enlarged_bboxes"]
     masks = torch.stack(
         [torch.from_numpy(create_mask_from_bbox(bbox, TARGET_SIZE)) for bbox in bboxes]
     )

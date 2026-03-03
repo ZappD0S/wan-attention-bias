@@ -1,7 +1,10 @@
-import numpy as np
+import contextlib
+
 import cv2
+import numpy as np
 import torch
 from einops import rearrange
+from tqdm import tqdm as std_tqdm
 
 
 def create_mask_from_bbox(bbox, image_size):
@@ -33,7 +36,7 @@ def create_bbox_from_mask(mask):
     if not contours:
         raise ValueError("No contours found!")
 
-    largest_contour = max(contours, key=cv2.contourArea)
+    largest_contour = max(contours, key=cv2.contourArea)  # ty:ignore[no-matching-overload]
 
     x, y, w, h = cv2.boundingRect(largest_contour)
 
@@ -48,3 +51,22 @@ def normalize_video_tensor(video: np.ndarray, value_range: tuple = (-1, 1)) -> n
     video = rearrange(video, "C T H W -> T H W C")
 
     return video
+
+
+@contextlib.contextmanager
+def suppress_tqdm():
+    # Save the original __init__ method
+    orig_init = std_tqdm.__init__
+
+    # Define a patched version that forces disable=True
+    def patched_init(self, *args, **kwargs):
+        kwargs["disable"] = True
+        orig_init(self, *args, **kwargs)
+
+    # Patch the class
+    std_tqdm.__init__ = patched_init  # ty:ignore[invalid-assignment]
+    try:
+        yield
+    finally:
+        # Restore the original method
+        std_tqdm.__init__ = orig_init

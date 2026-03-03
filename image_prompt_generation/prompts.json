@@ -236,10 +236,10 @@
       "appearance_prompt": {
         "segments": [
           [
-            "Two black DSLR cameras sit on a plain surface. Set on the left,",
-            "one black DSLR camera with its built-in pop-up flash raised sits facing the camera",
-            "and set on the right,",
-            "another black DSLR camera with its built-in pop-up flash raised sits facing the camera",
+            "Two professional espresso machines stand on a clean marble counter. Positioned on the left,",
+            "one professional espresso machine with an empty white ceramic mug under its spout stands",
+            "and positioned on the right,",
+            "another professional espresso machine with a metal steam pitcher under its wand stands",
             "."
           ]
         ],
@@ -257,10 +257,10 @@
         "default": {
           "segments": [
             [
-              "On the left,",
-              "the black DSLR camera is triggering a bright flash",
-              "while on the right,",
-              "the black DSLR camera is closing its built-in flash unit."
+              "On the left side,",
+              "the professional espresso machine pours a dark stream of coffee into the mug",
+              "while on the right side,",
+              "the professional espresso machine releases a cloud of white steam from the wand."
             ]
           ],
           "mask": [
@@ -275,9 +275,9 @@
         "no_locative": {
           "segments": [
             [
-              "A black DSLR camera is triggering a bright flash",
+              "A professional espresso machine pours a dark stream of coffee into a mug",
               "and",
-              "a black DSLR camera is closing its built-in flash unit."
+              "a professional espresso machine releases a cloud of white steam from a wand."
             ]
           ],
           "mask": [
@@ -289,13 +289,13 @@
           ]
         },
         "split_sentences": {
-          "general_prompt": "Two black DSLR cameras with their built-in pop-up flashes raised sitting facing the camera on a plain surface.",
+          "general_prompt": "Two professional espresso machines with a ceramic mug and a metal pitcher standing on a clean marble counter.",
           "segments": [
             [
-              "The black DSLR camera is triggering a bright flash."
+              "The professional espresso machine pours a dark stream of coffee into the mug."
             ],
             [
-              "The black DSLR camera is closing its built-in flash unit."
+              "The professional espresso machine releases a cloud of white steam from the wand."
             ]
           ],
           "mask": [
@@ -313,10 +313,10 @@
       "appearance_prompt": {
         "segments": [
           [
-            "Two black traffic light housings are mounted against a blue sky. Mounted on the left,",
-            "one black traffic light housing with unlit lenses stands facing the camera",
-            "and mounted on the right,",
-            "another black traffic light housing with unlit lenses stands facing the camera",
+            "Framed in a full-body wide shot from a straight-on angle, two tennis players in white athletic wear stand side-by-side at the baseline of a green hard court. Positioned on the left side of the court,",
+            "one tennis player holding a racket horizontally with both hands stands with their body and face directed straight at the camera",
+            "and positioned on the right side of the court,",
+            "another tennis player holding a racket horizontally with both hands stands with their body and face directed straight at the camera",
             "."
           ]
         ],
@@ -335,9 +335,9 @@
           "segments": [
             [
               "On the left,",
-              "the black traffic light housing is illuminating a bright red light",
-              "whereas on the right,",
-              "the black traffic light housing is illuminating a bright green light."
+              "the tennis player is swinging the racket forcefully in a wide forehand arc",
+              "while on the right,",
+              "the tennis player is spinning the racket rapidly between the hands."
             ]
           ],
           "mask": [
@@ -352,9 +352,9 @@
         "no_locative": {
           "segments": [
             [
-              "A black traffic light housing is illuminating a bright red light",
+              "A tennis player is swinging a racket forcefully in a wide forehand arc",
               "and",
-              "a black traffic light housing is illuminating a bright green light."
+              "a tennis player is spinning a racket rapidly between the hands."
             ]
           ],
           "mask": [
@@ -366,13 +366,13 @@
           ]
         },
         "split_sentences": {
-          "general_prompt": "Two black traffic light housings with unlit lenses mounted facing the camera against a blue sky.",
+          "general_prompt": "Framed in a full-body wide shot from a straight-on angle, two tennis players in white athletic wear holding rackets horizontally standing side-by-side with their bodies and faces directed straight at the camera at the baseline of a green hard court.",
           "segments": [
             [
-              "The black traffic light housing is illuminating a bright red light."
+              "The tennis player is swinging the racket forcefully in a wide forehand arc."
             ],
             [
-              "The black traffic light housing is illuminating a bright green light."
+              "The tennis player is spinning the racket rapidly between the hands."
             ]
           ],
           "mask": [
@@ -491,7 +491,7 @@
               "On the left,",
               "the shiny metallic robot is typing on the holographic console",
               "while on the right,",
-              "the shiny metallic robot is rotating its head to scan the room."
+              "the shiny metallic robot is projecting a spinning galaxy hologram from the palm of its hand."
             ]
           ],
           "mask": [
@@ -508,7 +508,7 @@
             [
               "A shiny metallic robot is typing on a holographic console",
               "while",
-              "a shiny metallic robot is rotating its head to scan the room."
+              "a shiny metallic robot is projecting a spinning galaxy hologram from the palm of its hand."
             ]
           ],
           "mask": [
@@ -526,7 +526,7 @@
               "The shiny metallic robot is typing on the holographic console."
             ],
             [
-              "The shiny metallic robot is rotating its head to scan the room."
+              "The shiny metallic robot is projecting a spinning galaxy hologram from the palm of its hand."
             ]
           ],
           "mask": [
@@ -568,7 +568,7 @@
               "On the left side,",
               "the astronaut is giving a military salute",
               "while on the right side,",
-              "the astronaut is waving hello."
+              "the astronaut is looking down and checking the wrist computer."
             ]
           ],
           "mask": [
@@ -585,7 +585,7 @@
             [
               "An astronaut is giving a military salute",
               "and",
-              "an astronaut is waving hello."
+              "an astronaut is looking down and checking a wrist computer."
             ]
           ],
           "mask": [
@@ -603,7 +603,7 @@
               "The astronaut is giving a military salute."
             ],
             [
-              "The astronaut is waving hello."
+              "The astronaut is looking down and checking the wrist computer."
             ]
           ],
           "mask": [

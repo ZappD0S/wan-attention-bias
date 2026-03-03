@@ -3,7 +3,7 @@ name = "wan-experiments"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.11,<3.12"
 dependencies = [
     "accelerate",
     "aiofiles",
@@ -22,13 +22,14 @@ dependencies = [
     "cryptography",
     "dashscope",
     "datasets",
+    "decord>=0.6.0",
     "diffusers",
     "easydict",
     "einops",
     "fastapi",
     "ffmpy",
     "filelock",
-    "flash-attn @ https://github.com/mjun0812/flash-attention-prebuild-wheels/releases/download/v0.4.17/flash_attn-2.8.3%2Bcu128torch2.9-cp311-cp311-linux_x86_64.whl",
+    "flash-attn @ https://github.com/mjun0812/flash-attention-prebuild-wheels/releases/download/v0.7.16/flash_attn-2.8.3+cu130torch2.10-cp311-cp311-linux_x86_64.whl",
     "frozenlist",
     "fsspec",
     "ftfy",
@@ -100,6 +101,7 @@ dependencies = [
     "rich",
     "safehttpx",
     "safetensors",
+    "sam2>=1.1.0",
     "scikit-image>=0.26.0",
     "scikit-learn>=1.7.2",
     "semantic-version",
@@ -113,7 +115,7 @@ dependencies = [
     "sympy",
     "tokenizers",
     "tomlkit",
-    "torch==2.9",
+    "torch==2.10",
     "torchcodec",
     "torchvision",
     "tqdm",
@@ -141,6 +143,25 @@ venv = ".venv"
 
 [tool.ruff]
 line-length = 100
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors (standard)
+    "F",    # Pyflakes (standard)
+    "I",    # isort (keeps imports organized)
+    "B",    # flake8-bugbear (essential: catches logic bugs & design flaws)
+    "UP",   # pyupgrade (keeps code modern: e.g., converts old syntax to 3.10+)
+    "PL",   # Pylint (catches the "leakage" and "redefinition" issues)
+    "C4",   # flake8-comprehensions (helps you use list/dict comprehensions better)
+    "SIM",  # flake8-simplify (helps you write cleaner, less bug-prone logic)
+    "RUF",  # Ruff-specific rules (catches common mistakes in the linter itself)
+    "TID",  # flake8-tidy-imports (prevents messy/circular imports)
+]
+
+ignore = [
+    "PLR0913", # Too many arguments in function (sometimes necessary)
+    "B008",    # Do not perform function call in argument defaults (too strict for FastAPI/Typer)
+]
 
 [tool.uv]
 config-settings = { editable_mode = "compat" }
