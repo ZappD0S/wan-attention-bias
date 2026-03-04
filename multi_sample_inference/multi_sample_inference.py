@@ -199,8 +199,8 @@ def process_action_prompts(
 
         segment_masks = action_prompt_data["mask"]
         char_segments_list = [
-            [seg for is_char, seg in zip(mask_row, segs) if is_char]
-            for mask_row, segs in zip(segment_masks, segment_lists)
+            [seg for is_char, seg in zip(mask_row, segs, strict=True) if is_char]
+            for mask_row, segs in zip(segment_masks, segment_lists, strict=True)
         ]
 
         # TODO: put this somewhere else, in a config file possibly
