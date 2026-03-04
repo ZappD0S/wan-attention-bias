@@ -15,6 +15,8 @@ from transformers import (
     Qwen3VLForConditionalGeneration,
 )
 
+from evaluation.utils import group_entries
+
 from .sam2_pipeline import run_sam2_pipeline
 
 
@@ -342,6 +344,34 @@ def extract_score(model_output: str) -> int:
     raise ValueError(f"Could not extract a valid integer score from output: {model_output}")
 
 
+def compute_statistics(correct_count: int, total_count: int, margins: list[float]):
+    binomtest_res = binomtest(correct_count, total_count, p=0.5, alternative="greater")
+    binomtest_ci = binomtest_res.proportion_ci(confidence_level=0.95)
+
+    # bootstrap
+    margins_arr = np.array(margins)
+    boot_means = np.array(
+        [
+            np.random.choice(margins_arr, size=margins_arr.size, replace=True).mean()
+            for _ in range(10_000)
+        ]
+    )
+
+    ci_low, ci_high = np.percentile(boot_means, [2.5, 97.5])
+
+    return {
+        "margin": {
+            "avg": margins_arr.mean(),
+            "ci": [ci_low, ci_high],
+        },
+        "discrimination": {
+            "avg": binomtest_res.statistic,
+            "p-value": binomtest_res.pvalue,
+            "ci": [binomtest_ci.low, binomtest_ci.high],
+        },
+    }
+
+
 def evaluate_pipeline(
     scoring_func,
     model,
@@ -352,82 +382,120 @@ def evaluate_pipeline(
     target_fps: int,
     sam_margin: float,
 ):
+    total_calls = 0
 
     valid_dirs = [d for d in videos_dir.iterdir() if d.is_dir() and d.name != "debug"]
-    total_calls = 0
+    video_pattern = re.compile(r"video_\d+\.mp4")
+    video_dir_to_path: dict[Path, list[Path]] = {}
+
     for video_dir in valid_dirs:
+        video_paths: list[Path] = [
+            p for p in video_dir.iterdir() if video_pattern.fullmatch(p.name) is not None
+        ]
+        video_dir_to_path[video_dir] = video_paths
+
         with open(video_dir / "config.json") as f:
             data = json.load(f)
+            num_videos = len(video_paths)
             num_objs = len(data["prompt_data"]["bboxes"])
             num_actions = len(data["prompt_data"]["action_prompts"]["split_sentences"]["segments"])
-            total_calls += num_objs * num_actions
+            total_calls += num_objs * num_actions * num_videos
 
-    margins = []
-    correct_count: int = 0
-    total_count: int = 0
     pbar = tqdm(total=total_calls, desc="Evaluating Actions", unit="call")
 
-    for video_dir in valid_dirs:
+    entries = []
+    for video_dir, video_paths in video_dir_to_path.items():
+        margins = []
+        correct_count: int = 0
+        total_count: int = 0
+
         with open(video_dir / "config.json") as f:
             json_data = json.load(f)
 
+        params = json_data["params"]
+
         # load bboxes
         bboxes = json_data["prompt_data"]["bboxes"]
+
         current_output_dir = output_dir / video_dir.name
         current_output_dir.mkdir(exist_ok=True, parents=True)
 
-        clean_videos = run_sam2_pipeline(
-            video_dir / "video_0.mp4",
-            current_output_dir,
-            bboxes,
-            sam_model_id,
-            target_fps,
-            sam_margin,
+        for video_path in video_paths:
+            cropped_videos = run_sam2_pipeline(
+                video_path,
+                current_output_dir,
+                bboxes,
+                sam_model_id,
+                target_fps,
+                sam_margin,
+            )
+
+            segments = json_data["prompt_data"]["action_prompts"]["split_sentences"]["segments"]
+            action_descriptions = [s[0] for s in segments]
+            # NOTE: the order of bboxes and action_descriptions is assumed to be the same
+
+            for j, cropped_video_path in enumerate(cropped_videos):
+                margin: float = 0.0
+                scores = {}
+                for k, action_descr in enumerate(action_descriptions):
+                    is_correct = j == k
+                    sign = 1 if is_correct else -1
+
+                    score = scoring_func(model, processor, cropped_video_path, action_descr)
+
+                    margin += sign * score
+                    scores[is_correct] = score
+                    pbar.update(1)
+
+                margins.append(margin)
+
+                total_count += 1
+
+                if scores[True] > scores[False]:
+                    correct_count += 1
+
+        entries.append(
+            {
+                "params": params,
+                "values": {
+                    "margins": margins,
+                    "correct_count": correct_count,
+                    "total_count": total_count,
+                },
+            }
         )
 
-        segments = json_data["prompt_data"]["action_prompts"]["split_sentences"]["segments"]
-        action_descriptions = [s[0] for s in segments]
-        # NOTE: the order of bboxes and action_descriptions is assumed to be the same
+    # return entries
+    grouped_entries = group_entries(entries)
 
-        for j, video_path in enumerate(clean_videos):
-            margin: float = 0.0
-            scores = {}
-            for k, action_descr in enumerate(action_descriptions):
-                is_correct = j == k
-                sign = 1 if is_correct else -1
+    output = []
+    for grouped_entry in grouped_entries:
+        params = grouped_entry["params"]
+        group = grouped_entry["values"]
 
-                score = scoring_func(model, processor, video_path, action_descr)
+        # merge list of lists
+        margins = [m for entry in group for m in entry["margins"]]
+        correct_count = sum(entry["correct_count"] for entry in group)
+        total_count = sum(entry["total_count"] for entry in group)
 
-                margin += sign * score
-                scores[is_correct] = score
-                pbar.update(1)
+        statistics = compute_statistics(correct_count, total_count, margins)
+        output.append({"params": params, "statistics": statistics})
 
-            margins.append(margin)
+    return output
 
-            total_count += 1
 
-            if scores[True] > scores[False]:
-                correct_count += 1
+def display_statistics(statistics):
+    discr_res = statistics["discrimination"]
+    print(f"Discrimination rate: {discr_res['avg']:.2f}")
+    print(f"p-value: {discr_res['p-value']:.4f}")
+    print(f"95% CI: {discr_res['ci']}")
 
-    result = binomtest(correct_count, total_count, p=0.5, alternative="greater")
-    print(f"Discrimination rate: {correct_count / total_count:.2f}")
-    print(f"p-value: {result.pvalue:.4f}")
-    print(f"95% CI: {result.proportion_ci(confidence_level=0.95)}")
-
-    margins_arr = np.array(margins)
-    boot_means = np.array(
-        [
-            np.random.choice(margins_arr, size=margins_arr.size, replace=True).mean()
-            for _ in range(10_000)
-        ]
-    )
-
-    ci_low, ci_high = np.percentile(boot_means, [2.5, 97.5])
-    print(f"Mean margin: {margins_arr.mean():.3f} (95% CI: {ci_low:.3f}, {ci_high:.3f})")
+    margin_res = statistics["margin"]
+    ci_low, ci_high = margin_res["ci"]
+    print(f"Mean margin: {margin_res['avg']:.3f} (95% CI: {ci_low:.3f}, {ci_high:.3f})")
 
 
 def main():
-    # --- Config ---
     OUTPUT_DIR = Path("./evaluation/output/")
     VIDEOS_DIR = Path("./multi_sample_inference/debug_output/")
 
@@ -435,19 +503,18 @@ def main():
 
     SAM_MODEL_ID = "facebook/sam2-hiera-large"
 
-    # load Qwen model
     qwen_model, qwen_processor = load_qwen3_model()
 
     score_funcs = [
         get_soft_score_direct,
-        get_soft_score_blind,
+        get_soft_score_blind,  # this appears to be the best so far
         get_discrete_score_blind,
         get_discrete_score_direct,
     ]
 
     for score_func in score_funcs:
         print(f"Score function: {score_func.__name__}")
-        evaluate_pipeline(
+        results = evaluate_pipeline(
             score_func,
             qwen_model,
             qwen_processor,
@@ -457,6 +524,13 @@ def main():
             TARGET_FPS,
             MARGIN,
         )
+        for res in results:
+            params, statistics = res["params"], res["statistics"]
+            print(f"params: {params}")
+            display_statistics(statistics)
+            print()
+
+        print("\n")
 
 
 if __name__ == "__main__":

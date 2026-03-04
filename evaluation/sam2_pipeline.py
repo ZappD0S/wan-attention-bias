@@ -147,7 +147,7 @@ def run_sam2_pipeline(
         gh, gw = (gy2 - gy1) // 2 * 2, (gx2 - gx1) // 2 * 2
         gy2, gx2 = gy1 + gh, gx1 + gw
 
-        clean_path = output_dir / "obj_{i}.mp4"
+        clean_path = output_dir / f"obj_{i}.mp4"
         clean_video_paths.append(clean_path)
         writer = cv2.VideoWriter(
             str(clean_path),
