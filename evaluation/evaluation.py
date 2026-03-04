@@ -237,7 +237,6 @@ def get_soft_score_direct(model, processor, video_path, action_descr: str) -> fl
 
 
 def get_discrete_score_blind(model, processor, video_path, action_descr: str) -> float:
-    # STEP 1: Identical to Reference
     prompt_description = """You are a forensic video analyst.
     Provide a detailed, objective, chronological log of the video.
 
@@ -251,7 +250,6 @@ def get_discrete_score_blind(model, processor, video_path, action_descr: str) ->
 
     _, video_description = run_qwen_generation(model, processor, prompt_description, video_path)
 
-    # STEP 2: Merged Audit + Scoring instructions
     prompt_audit_template = """You are a strict action auditor. 
     Your task is to rate how well the 'Target Action' matches the 'Video Description'.
 
@@ -373,7 +371,7 @@ def compute_statistics(correct_count: int, total_count: int, margins: list[float
 
 
 def evaluate_pipeline(
-    scoring_func,
+    score_func,
     model,
     processor,
     videos_dir: Path,
@@ -441,7 +439,7 @@ def evaluate_pipeline(
                     is_correct = j == k
                     sign = 1 if is_correct else -1
 
-                    score = scoring_func(model, processor, cropped_video_path, action_descr)
+                    score = score_func(model, processor, cropped_video_path, action_descr)
 
                     margin += sign * score
                     scores[is_correct] = score

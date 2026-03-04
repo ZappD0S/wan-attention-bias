@@ -3,14 +3,12 @@
     "bias_method": [
       "none"
     ],
-    "invert": [
-      false,
-      true
+    "simil_masks_type": [
+      "fixed"
     ],
     "prompt_types": [
       [
-        "default",
-        "split_sentences"
+        "default"
       ]
     ]
   },
@@ -18,9 +16,8 @@
     "bias_method": [
       "concept_weaver"
     ],
-    "invert": [
-      false,
-      true
+    "simil_masks_type": [
+      "fixed"
     ],
     "prompt_types": [
       [
