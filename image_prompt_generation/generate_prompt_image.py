@@ -1,6 +1,5 @@
 import gc
 import json
-import os
 from pathlib import Path
 from typing import Any
 
@@ -26,12 +25,9 @@ from .big_lama import inpaint_image, load_lama_model
 IOU_THRESHOLD = 0.5
 BASE_DIR = Path("./image_prompt_generation/")
 OUTPUT_FILE = BASE_DIR / "prompts_modified.json"
-WEIGHTS_DIR = Path("./weights/")
 IMG_DIR = BASE_DIR / "images"
 MODEL_ID_DINO = "IDEA-Research/grounding-dino-base"
 MODEL_ID_FLUX = "black-forest-labs/FLUX.1-dev"
-
-os.environ["HF_HOME"] = str(WEIGHTS_DIR)
 
 
 def load_dataset(directory: Path) -> tuple[list[dict], str]:
@@ -432,7 +428,7 @@ def main():
     gc.collect()
     torch.cuda.empty_cache()
 
-    lama, _ = load_lama_model(WEIGHTS_DIR / "big-lama", device)
+    lama, _ = load_lama_model("./weights/big-lama", device)
     updated_dataset = fill_out_characters(updated_dataset, lama, device)
 
     # enlarge bboxes
@@ -442,7 +438,6 @@ def main():
         boxes = enlarge_bboxes_adaptive(boxes, raw_img.size, base_factor=0.5)
         prompt_data["enlarged_bboxes"] = boxes
 
-    # TODO: do the enlarging here!
     output_data = {"safeguard_suffix": safeguard_suffix, "dataset": updated_dataset}
 
     print(f"Saving results to {OUTPUT_FILE}...")

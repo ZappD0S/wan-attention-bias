@@ -10,6 +10,7 @@ import numpy as np
 import torch
 from diffusers.utils.export_utils import export_to_video
 from diffusers.utils.loading_utils import load_image
+from huggingface_hub import snapshot_download
 from PIL import Image
 from sklearn.model_selection import ParameterGrid
 from wan.configs.wan_i2v_14B import i2v_14B
@@ -288,9 +289,10 @@ def main():
 
     args.output_path.mkdir(exist_ok=True, parents=True)
 
+    path = snapshot_download("Wan-AI/Wan2.1-I2V-14B-480P", local_files_only=True)
     wan_i2v = WanI2V(
         config=i2v_14B,
-        checkpoint_dir=str(args.checkpoint_path / "Wan2.1-I2V-14B-480P"),
+        checkpoint_dir=path,
         device_id=0,
         t5_cpu=args.t5_cpu,
     )
