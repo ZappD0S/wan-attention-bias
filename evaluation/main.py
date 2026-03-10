@@ -15,9 +15,9 @@ from transformers import (
     Qwen3VLForConditionalGeneration,
 )
 
-from evaluation.utils import group_entries
-
+from . import videobench
 from .sam2_pipeline import run_sam2_pipeline
+from .utils import group_entries
 
 
 def load_qwen2_5_model() -> tuple[Any, Any]:
@@ -121,6 +121,9 @@ def get_next_token_logits(model, processor, prompt, video_path: Path | None):
     return outputs.logits[0, -1, :]
 
 
+# TODO:
+# - question: does the soft score actually has a benefit, of is it just adding the scoring prompt after the reasoning?
+# - For example, if we just predict the next token in this function, (or equivalently take the most likely), does it make any difference?
 def get_soft_score_blind(model, processor, video_path: Path, action_descr: str) -> float:
 
     prompt_description = """You are a forensic video analyst.
@@ -372,8 +375,6 @@ def compute_statistics(correct_count: int, total_count: int, margins: list[float
 
 def evaluate_pipeline(
     score_func,
-    model,
-    processor,
     videos_dir: Path,
     output_dir: Path,
     sam_model_id: str,
@@ -439,7 +440,7 @@ def evaluate_pipeline(
                     is_correct = j == k
                     sign = 1 if is_correct else -1
 
-                    score = score_func(model, processor, cropped_video_path, action_descr)
+                    score = score_func(cropped_video_path, action_descr)
 
                     margin += sign * score
                     scores[is_correct] = score
@@ -503,19 +504,29 @@ def main():
 
     qwen_model, qwen_processor = load_qwen3_model()
 
-    score_funcs = [
-        get_soft_score_direct,
-        get_soft_score_blind,  # this appears to be the best so far
-        get_discrete_score_blind,
-        get_discrete_score_direct,
-    ]
+    qwen_engine = videobench.QwenVLEngine(qwen_model, qwen_processor)
 
-    for score_func in score_funcs:
-        print(f"Score function: {score_func.__name__}")
+    score_funcs = {}
+    score_funcs["videobench"] = lambda video_path, action_descr: videobench.evaluate_video(
+        qwen_engine, video_path, action_descr
+    )
+
+    score_funcs |= {
+        f.__name__: lambda video_path, action_descr, f=f: f(
+            qwen_model, qwen_processor, video_path, action_descr
+        )
+        for f in [
+            get_soft_score_direct,
+            get_soft_score_blind,
+            get_discrete_score_blind,
+            get_discrete_score_direct,
+        ]
+    }
+
+    for score_func_name, score_func in score_funcs.items():
+        print(f"Score function: {score_func_name}")
         results = evaluate_pipeline(
             score_func,
-            qwen_model,
-            qwen_processor,
             VIDEOS_DIR,
             OUTPUT_DIR,
             SAM_MODEL_ID,

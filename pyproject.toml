@@ -164,6 +164,7 @@ ignore = [
     "PLW0602",
     "PLW0603",
     "PLR2004",
+    "E501",
 ]
 
 [tool.uv]
