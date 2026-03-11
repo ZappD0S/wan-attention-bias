@@ -39,7 +39,7 @@ def load_qwen3_model() -> tuple[Any, Any]:
 
 
 def generate_qwen_messages(processor, prompt: str, video_path: Path | None):
-    message_content = [
+    message_content: list[dict[str, Any]] = [
         {"type": "text", "text": prompt},
     ]
 

@@ -1,4 +1,4 @@
-ACTION_PROMPTS = {
+ACTION_PROMPTS: dict[str, str] = {
     "gpt4o-system": """
 <instructions>
 ### Task Description:

@@ -1,4 +1,6 @@
 import gc
+from pathlib import Path
+from typing import Any
 
 import cv2
 import torch
@@ -14,11 +16,12 @@ class QwenVLEngine:
         self.processor = processor
         self.model.eval()
 
-    def generate(self, system_prompt, user_text, video_path=None):
-        messages = [{"role": "system", "content": system_prompt}]
+    def generate(
+        self, system_prompt: str, user_text: str, video_path: str | Path | None = None
+    ) -> str:
+        messages: list[dict[str, Any]] = [{"role": "system", "content": system_prompt}]
 
         if video_path:
-            # video_path = str(video_path)
             cap = cv2.VideoCapture(str(video_path))
             total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
             # Qwen prefers an even number of frames for its temporal patches (stride 2)
@@ -73,6 +76,6 @@ class QwenVLEngine:
 
         return output_text
 
-    def clear_cache(self):
+    def clear_cache(self) -> None:
         gc.collect()
         torch.cuda.empty_cache()

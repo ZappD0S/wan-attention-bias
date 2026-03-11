@@ -3,7 +3,7 @@ import re
 
 class RobustParser:
     @staticmethod
-    def extract_section(text, tag_name):
+    def extract_section(text: str, tag_name: str) -> str:
         """
         Robustly extracts content following a tag like [Video Description]:
         """
@@ -11,7 +11,8 @@ class RobustParser:
             raise ValueError(f"Input text for extracting '{tag_name}' is empty.")
 
         # Pattern 1: Strict w/ optional Markdown (e.g., **[Video Description]:**)
-        pattern_strict = rf"(?:\*\*|)?\[{tag_name}\](?:\*\*|)?:\s*(.*)"
+        # grab everything until you see a new line that starts with [ (like [Answers]), or until the string ends
+        pattern_strict = rf"(?:\*\*|)?\[{tag_name}\](?:\*\*|)?:\s*(.*?)(?=\n(?:\*\*|)?\[|$)"
         match = re.search(pattern_strict, text, re.IGNORECASE | re.DOTALL)
         if match:
             return match.group(1).strip()
@@ -34,7 +35,7 @@ class RobustParser:
         return text
 
     @staticmethod
-    def extract_question(text):
+    def extract_question(text: str) -> str:
         """Extracts content inside <question> tags."""
         if not text:
             return ""  # Questions are optional, so returning empty string here is usually safer
@@ -45,7 +46,7 @@ class RobustParser:
         return text
 
     @staticmethod
-    def extract_score(text):
+    def extract_score(text: str) -> int:
         """
         Robustly looks for the score.
         - Handles words ("three" -> 3)
