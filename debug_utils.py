@@ -1,8 +1,8 @@
 import cv2
 import numpy as np
-from PIL import Image, ImageDraw
 import torch
 import torch.nn.functional as F
+from PIL import Image, ImageDraw
 
 from utils import create_bbox_from_mask
 
@@ -58,7 +58,9 @@ def unscale(tensor: torch.Tensor, target_size: tuple[int, int, int]) -> torch.Te
     T, H, W = tensor.shape[-3:]
     tensor = tensor.view(-1, 1, T, H, W)
 
-    interpolated_tensor = F.interpolate(tensor, size=target_size, mode="nearest")
+    interpolated_tensor = F.interpolate(
+        tensor, size=target_size, mode="trilinear", align_corners=False
+    )
 
     output_shape = batch_dims + target_size
     interpolated_tensor = interpolated_tensor.view(output_shape)
@@ -66,7 +68,7 @@ def unscale(tensor: torch.Tensor, target_size: tuple[int, int, int]) -> torch.Te
     return interpolated_tensor
 
 
-def write_video_masks(video: np.ndarray, save_file, face_masks, fps=16):
+def write_video_hard_masks(video: np.ndarray, save_file, face_masks, fps=16):
     _, h, w, _ = video.shape
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")  # type: ignore
     writer = cv2.VideoWriter(str(save_file), fourcc, fps, (w, h))
@@ -86,6 +88,32 @@ def write_video_masks(video: np.ndarray, save_file, face_masks, fps=16):
                 COLORS[i],
                 thickness=2,
             )
+
+        writer.write(frame)
+
+    writer.release()
+
+
+def write_video_soft_masks(video, save_file, soft_masks, fps=16):
+    def _build_cmap(mask):
+        mask_uint8 = (mask * 255).astype(np.uint8)
+        return cv2.applyColorMap(mask_uint8, cv2.COLORMAP_JET)
+
+    _, h, w, _ = video.shape
+    fourcc = cv2.VideoWriter_fourcc(*"mp4v")  # type: ignore
+    writer = cv2.VideoWriter(str(save_file), fourcc, fps, (w, h))
+    alpha = 0.35  # 35% opacity
+
+    assert np.all((video >= 0) & (video <= 1))
+
+    for frame, mask in zip(video, soft_masks, strict=True):
+        frame = np.ascontiguousarray(frame)
+        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+        frame = (frame * 255).astype(np.uint8)
+
+        mask = np.ascontiguousarray(mask)
+        mask_cmap = _build_cmap(mask)
+        frame = cv2.addWeighted(mask_cmap, alpha, frame, 1 - alpha, 0)
 
         writer.write(frame)
 

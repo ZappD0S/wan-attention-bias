@@ -13,7 +13,7 @@ def load_lama_model(checkpoint_path="big-lama", device=None):
 
     # Load config
     config_path = f"{checkpoint_path}/config.yaml"
-    with open(config_path, "r") as f:
+    with open(config_path) as f:
         config = OmegaConf.create(yaml.safe_load(f))
 
     # Set to inference mode (this is the key!)

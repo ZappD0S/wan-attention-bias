@@ -226,9 +226,38 @@ def process_action_prompts(
     return False
 
 
-def process_parameter_grid(
-    wan_i2v, prompt_data, img, single_char_imgs, masks, output_path, param_grid
-):
+def process_parameter_grid(wan_i2v, prompt_data, idx, output_path, param_grid):
+    img = load_image(prompt_data["img_paths"]["original"])
+
+    debug_path = output_path / "debug" / f"prompt_{idx}"
+    debug_path.mkdir(exist_ok=True, parents=True)
+
+    # TODO: maybe add the option to specify which type of mask use
+
+    # bboxes = prompt_data["enlarged_bboxes"]
+    # masks = torch.stack(
+    #     [torch.from_numpy(create_mask_from_bbox(bbox, TARGET_SIZE)) for bbox in bboxes]
+    # )
+    # if not (debug_path / "img_with_boxes.png").exists():
+    #     draw_boxes(img, bboxes).save(debug_path / "img_with_boxes.png")
+
+    masks = torch.stack(
+        [
+            torch.as_tensor(np.array(load_image(path).convert("L"))) > 128
+            for path in prompt_data["img_paths"]["seg_masks"]
+        ]
+    ).to(torch.bool)
+
+    # remove overlaps from masks
+    overlap_mask = masks.sum(dim=0) > 1
+    masks &= ~overlap_mask
+    assert masks.float().sum(dim=0).max().item() <= 1.0
+
+    single_char_imgs = [load_image(path) for path in prompt_data["img_paths"]["single_char"]]
+
+    if not (debug_path / "img_with_masks.png").exists():
+        draw_masks(img, list(masks)).save(debug_path / "img_with_masks.png")
+
     for param_config in ParameterGrid(param_grid):
         repeat = param_config.pop("repeat", 1)
 
@@ -250,35 +279,11 @@ def process_parameter_grid(
     return False
 
 
-def process_prompt_entry(wan_i2v, prompt_data, idx, output_path, param_grid):
-    bboxes = prompt_data["enlarged_bboxes"]
-    masks = torch.stack(
-        [torch.from_numpy(create_mask_from_bbox(bbox, TARGET_SIZE)) for bbox in bboxes]
-    )
-
-    img = load_image(prompt_data["img_paths"]["original"])
-    single_char_imgs = [load_image(path) for path in prompt_data["img_paths"]["single_char"]]
-
-    # Debug visualization
-    debug_path = output_path / "debug" / f"prompt_{idx}"
-    debug_path.mkdir(exist_ok=True, parents=True)
-
-    if not (debug_path / "img_with_boxes.png").exists():
-        draw_boxes(img, bboxes).save(debug_path / "img_with_boxes.png")
-    if not (debug_path / "img_with_masks.png").exists():
-        draw_masks(img, list(masks)).save(debug_path / "img_with_masks.png")
-
-    return process_parameter_grid(
-        wan_i2v, prompt_data, img, single_char_imgs, masks, output_path, param_grid
-    )
-
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--prompts-file", required=True, type=Path)
     parser.add_argument("--param-grid-file", required=True, type=Path)
     parser.add_argument("--output-path", required=True, type=Path)
-    parser.add_argument("--checkpoint-path", default=Path("./weights/"), type=Path)
     parser.add_argument("--t5-cpu", action="store_true")
     args = parser.parse_args()
 
@@ -301,7 +306,7 @@ def main():
     for i, prompt_data in enumerate(prompt_json_dict["dataset"]):
         prompt_data["safeguard_suffix"] = safeguard_suffix
 
-        signal_received = process_prompt_entry(
+        signal_received = process_parameter_grid(
             wan_i2v, prompt_data, i, args.output_path, param_grid
         )
         if signal_received:

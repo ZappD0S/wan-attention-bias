@@ -80,24 +80,42 @@
       "bboxes": [
         [
           184.31332397460938,
-          85.59011840820312,
+          85.59014892578125,
           471.548583984375,
           475.7910461425781
         ],
         [
-          462.6112365722656,
-          37.229774475097656,
-          756.3827514648438,
-          473.7369689941406
+          462.6111755371094,
+          37.2297477722168,
+          756.3828125,
+          473.73699951171875
         ]
       ],
       "img_paths": {
         "original": "image_prompt_generation/images/0/original.png",
+        "seg_masks": [
+          "image_prompt_generation/images/0/segmentaion_mask_0.png",
+          "image_prompt_generation/images/0/segmentaion_mask_1.png"
+        ],
         "single_char": [
           "image_prompt_generation/images/0/single_char_0.png",
           "image_prompt_generation/images/0/single_char_1.png"
         ]
-      }
+      },
+      "enlarged_bboxes": [
+        [
+          184.31332397460938,
+          85.59014892578125,
+          471.548583984375,
+          475.7910461425781
+        ],
+        [
+          462.6111755371094,
+          37.2297477722168,
+          756.3828125,
+          473.73699951171875
+        ]
+      ]
     },
     {
       "appearance_prompt": {
@@ -177,8 +195,33 @@
       },
       "bboxes": [
         [
+          155.21153259277344,
+          107.01615142822266,
+          324.999267578125,
+          409.7115478515625
+        ],
+        [
+          511.0435485839844,
+          107.8358154296875,
+          682.6583251953125,
+          407.0317687988281
+        ]
+      ],
+      "img_paths": {
+        "original": "image_prompt_generation/images/1/original.png",
+        "seg_masks": [
+          "image_prompt_generation/images/1/segmentaion_mask_0.png",
+          "image_prompt_generation/images/1/segmentaion_mask_1.png"
+        ],
+        "single_char": [
+          "image_prompt_generation/images/1/single_char_0.png",
+          "image_prompt_generation/images/1/single_char_1.png"
+        ]
+      },
+      "enlarged_bboxes": [
+        [
           112.76459884643555,
-          31.342294692993164,
+          31.342302322387695,
           367.4462013244629,
           480
         ],
@@ -188,14 +231,7 @@
           725.5620193481445,
           480
         ]
-      ],
-      "img_paths": {
-        "original": "image_prompt_generation/images/1/original.png",
-        "single_char": [
-          "image_prompt_generation/images/1/single_char_0.png",
-          "image_prompt_generation/images/1/single_char_1.png"
-        ]
-      }
+      ]
     },
     {
       "appearance_prompt": {
@@ -275,25 +311,43 @@
       },
       "bboxes": [
         [
+          144.3915557861328,
+          58.31690216064453,
+          331.0927734375,
+          462.7956848144531
+        ],
+        [
+          505.999755859375,
+          79.06830596923828,
+          688.0323486328125,
+          464.0264587402344
+        ]
+      ],
+      "img_paths": {
+        "original": "image_prompt_generation/images/2/original.png",
+        "seg_masks": [
+          "image_prompt_generation/images/2/segmentaion_mask_0.png",
+          "image_prompt_generation/images/2/segmentaion_mask_1.png"
+        ],
+        "single_char": [
+          "image_prompt_generation/images/2/single_char_0.png",
+          "image_prompt_generation/images/2/single_char_1.png"
+        ]
+      },
+      "enlarged_bboxes": [
+        [
           97.71625137329102,
           0,
           377.7680778503418,
           480
         ],
         [
-          460.4916458129883,
+          460.4916076660156,
           0,
-          733.5404891967773,
+          733.5404968261719,
           480
         ]
-      ],
-      "img_paths": {
-        "original": "image_prompt_generation/images/2/original.png",
-        "single_char": [
-          "image_prompt_generation/images/2/single_char_0.png",
-          "image_prompt_generation/images/2/single_char_1.png"
-        ]
-      }
+      ]
     },
     {
       "appearance_prompt": {
@@ -373,25 +427,43 @@
       },
       "bboxes": [
         [
-          65.86300659179688,
-          91.04363250732422,
-          403.7430114746094,
-          448.5238952636719
+          65.86306762695312,
+          91.04361724853516,
+          403.74298095703125,
+          448.52392578125
         ],
         [
           395.18450927734375,
-          101.79083251953125,
-          749.0645141601562,
+          101.79086303710938,
+          749.0645751953125,
           432.12274169921875
         ]
       ],
       "img_paths": {
         "original": "image_prompt_generation/images/3/original.png",
+        "seg_masks": [
+          "image_prompt_generation/images/3/segmentaion_mask_0.png",
+          "image_prompt_generation/images/3/segmentaion_mask_1.png"
+        ],
         "single_char": [
           "image_prompt_generation/images/3/single_char_0.png",
           "image_prompt_generation/images/3/single_char_1.png"
         ]
-      }
+      },
+      "enlarged_bboxes": [
+        [
+          65.86306762695312,
+          91.04361724853516,
+          403.74298095703125,
+          448.52392578125
+        ],
+        [
+          395.18450927734375,
+          101.79086303710938,
+          749.0645751953125,
+          432.12274169921875
+        ]
+      ]
     },
     {
       "appearance_prompt": {
@@ -471,9 +543,34 @@
       },
       "bboxes": [
         [
-          232.40810546875,
+          258.96484375,
+          63.069862365722656,
+          391.74871826171875,
+          473.64923095703125
+        ],
+        [
+          446.07098388671875,
+          59.78183364868164,
+          571.1748657226562,
+          473.7014465332031
+        ]
+      ],
+      "img_paths": {
+        "original": "image_prompt_generation/images/4/original.png",
+        "seg_masks": [
+          "image_prompt_generation/images/4/segmentaion_mask_0.png",
+          "image_prompt_generation/images/4/segmentaion_mask_1.png"
+        ],
+        "single_char": [
+          "image_prompt_generation/images/4/single_char_0.png",
+          "image_prompt_generation/images/4/single_char_1.png"
+        ]
+      },
+      "enlarged_bboxes": [
+        [
+          232.40806884765624,
           0,
-          418.30548706054685,
+          418.3054931640625,
           480
         ],
         [
@@ -482,14 +579,7 @@
           596.1956420898438,
           480
         ]
-      ],
-      "img_paths": {
-        "original": "image_prompt_generation/images/4/original.png",
-        "single_char": [
-          "image_prompt_generation/images/4/single_char_0.png",
-          "image_prompt_generation/images/4/single_char_1.png"
-        ]
-      }
+      ]
     },
     {
       "appearance_prompt": {
@@ -569,8 +659,33 @@
       },
       "bboxes": [
         [
+          205.1365966796875,
+          118.71086883544922,
+          338.3371276855469,
+          425.34466552734375
+        ],
+        [
+          480.2632751464844,
+          119.21469116210938,
+          614.55517578125,
+          425.32379150390625
+        ]
+      ],
+      "img_paths": {
+        "original": "image_prompt_generation/images/5/original.png",
+        "seg_masks": [
+          "image_prompt_generation/images/5/segmentaion_mask_0.png",
+          "image_prompt_generation/images/5/segmentaion_mask_1.png"
+        ],
+        "single_char": [
+          "image_prompt_generation/images/5/single_char_0.png",
+          "image_prompt_generation/images/5/single_char_1.png"
+        ]
+      },
+      "enlarged_bboxes": [
+        [
           171.83646392822266,
-          42.05239295959473,
+          42.052419662475586,
           371.6372604370117,
           480
         ],
@@ -580,14 +695,7 @@
           648.1281509399414,
           480
         ]
-      ],
-      "img_paths": {
-        "original": "image_prompt_generation/images/5/original.png",
-        "single_char": [
-          "image_prompt_generation/images/5/single_char_0.png",
-          "image_prompt_generation/images/5/single_char_1.png"
-        ]
-      }
+      ]
     },
     {
       "appearance_prompt": {
@@ -667,25 +775,43 @@
       },
       "bboxes": [
         [
-          156.52235450744627,
-          28.61005811691283,
-          415.0950008392334,
-          444.68663759231566
+          173.3857421875,
+          55.745487213134766,
+          398.23162841796875,
+          417.55120849609375
         ],
         [
-          422.73782577514646,
-          35.35474586486815,
-          674.2665992736817,
-          428.4408931732178
+          439.1418762207031,
+          60.990814208984375,
+          657.862548828125,
+          402.8048400878906
         ]
       ],
       "img_paths": {
         "original": "image_prompt_generation/images/6/original.png",
+        "seg_masks": [
+          "image_prompt_generation/images/6/segmentaion_mask_0.png",
+          "image_prompt_generation/images/6/segmentaion_mask_1.png"
+        ],
         "single_char": [
           "image_prompt_generation/images/6/single_char_0.png",
           "image_prompt_generation/images/6/single_char_1.png"
         ]
-      }
+      },
+      "enlarged_bboxes": [
+        [
+          156.52230072021484,
+          28.61005811691283,
+          415.0950698852539,
+          444.68663759231566
+        ],
+        [
+          422.73782577514646,
+          35.354762268066395,
+          674.2665992736817,
+          428.4408920288086
+        ]
+      ]
     },
     {
       "appearance_prompt": {
@@ -765,9 +891,34 @@
       },
       "bboxes": [
         [
-          256.25060272216797,
-          136.99600219726562,
-          397.0871353149414,
+          279.723388671875,
+          199.17396545410156,
+          373.6143493652344,
+          447.8861083984375
+        ],
+        [
+          433.64825439453125,
+          199.40870666503906,
+          527.0737915039062,
+          449.2177429199219
+        ]
+      ],
+      "img_paths": {
+        "original": "image_prompt_generation/images/7/original.png",
+        "seg_masks": [
+          "image_prompt_generation/images/7/segmentaion_mask_0.png",
+          "image_prompt_generation/images/7/segmentaion_mask_1.png"
+        ],
+        "single_char": [
+          "image_prompt_generation/images/7/single_char_0.png",
+          "image_prompt_generation/images/7/single_char_1.png"
+        ]
+      },
+      "enlarged_bboxes": [
+        [
+          256.25064849853516,
+          136.99592971801758,
+          397.0870895385742,
           480
         ],
         [
@@ -776,14 +927,7 @@
           550.43017578125,
           480
         ]
-      ],
-      "img_paths": {
-        "original": "image_prompt_generation/images/7/original.png",
-        "single_char": [
-          "image_prompt_generation/images/7/single_char_0.png",
-          "image_prompt_generation/images/7/single_char_1.png"
-        ]
-      }
+      ]
     },
     {
       "appearance_prompt": {
@@ -864,24 +1008,42 @@
       "bboxes": [
         [
           51.02397155761719,
-          15.753335952758789,
+          15.753307342529297,
           423.6858215332031,
-          478.8780517578125
+          478.8780822753906
         ],
         [
           406.2863464355469,
-          44.56456756591797,
+          44.56458282470703,
           803.0220336914062,
-          477.00335693359375
+          477.0033264160156
         ]
       ],
       "img_paths": {
         "original": "image_prompt_generation/images/8/original.png",
+        "seg_masks": [
+          "image_prompt_generation/images/8/segmentaion_mask_0.png",
+          "image_prompt_generation/images/8/segmentaion_mask_1.png"
+        ],
         "single_char": [
           "image_prompt_generation/images/8/single_char_0.png",
           "image_prompt_generation/images/8/single_char_1.png"
         ]
-      }
+      },
+      "enlarged_bboxes": [
+        [
+          51.02397155761719,
+          15.753307342529297,
+          423.6858215332031,
+          478.8780822753906
+        ],
+        [
+          406.2863464355469,
+          44.56458282470703,
+          803.0220336914062,
+          477.0033264160156
+        ]
+      ]
     },
     {
       "appearance_prompt": {
@@ -961,25 +1123,43 @@
       },
       "bboxes": [
         [
-          34.82792816162109,
-          1.914236831665022,
-          387.33267059326175,
-          480
+          64.20332336425781,
+          45.33555603027344,
+          357.957275390625,
+          479.5490417480469
         ],
         [
-          398.80251159667966,
-          6.826469039916979,
-          772.783822631836,
-          480
+          429.9676208496094,
+          49.707340240478516,
+          741.6187744140625,
+          478.51605224609375
         ]
       ],
       "img_paths": {
         "original": "image_prompt_generation/images/9/original.png",
+        "seg_masks": [
+          "image_prompt_generation/images/9/segmentaion_mask_0.png",
+          "image_prompt_generation/images/9/segmentaion_mask_1.png"
+        ],
         "single_char": [
           "image_prompt_generation/images/9/single_char_0.png",
           "image_prompt_generation/images/9/single_char_1.png"
         ]
-      }
+      },
+      "enlarged_bboxes": [
+        [
+          34.82792816162109,
+          1.9142074584960795,
+          387.33267059326175,
+          480
+        ],
+        [
+          398.80250549316406,
+          6.826469039916979,
+          772.7838897705078,
+          480
+        ]
+      ]
     }
   ]
 }

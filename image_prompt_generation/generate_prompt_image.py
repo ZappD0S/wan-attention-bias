@@ -305,7 +305,7 @@ def process_dataset(
         if len(boxes) != len(character_segments):
             raise Exception(
                 f"ERROR: Wrong number of boxes for #{i}."
-                " Expected {len(character_segments)}, got {len(boxes)}"
+                f" Expected {len(character_segments)}, got {len(boxes)}"
             )
 
         img_with_boxes = draw_bboxes(img, boxes, labels, scores)
@@ -326,7 +326,13 @@ def process_dataset(
     return outputs
 
 
-def get_masks_from_bboxes(image, bboxes, model, processor, device="cuda"):
+def compute_segmentation_masks(
+    image: Image.Image,
+    bboxes: list[tuple[float, float, float, float]],
+    model: Sam2Model,
+    processor: Sam2Processor,
+    device="cuda",
+) -> np.ndarray:
     input_boxes = [bboxes]
     inputs = processor(images=image, input_boxes=input_boxes, return_tensors="pt").to(device)
     inputs["pixel_values"] = inputs["pixel_values"].to(dtype=model.dtype)
@@ -334,86 +340,73 @@ def get_masks_from_bboxes(image, bboxes, model, processor, device="cuda"):
     with torch.no_grad():
         outputs = model(**inputs)
 
-    raw_masks = processor.post_process_masks(
+    raw_seg_masks = processor.post_process_masks(
         outputs.pred_masks.cpu(), inputs["original_sizes"].cpu()
-    )[0][:, 0, :, :]  # Get best mask (index 0)
+    )[0][:, 0, :, :]  # get best mask (index 0)
 
-    # 1. Create empty black masks
-    final_masks = torch.zeros_like(raw_masks)
+    # create empty black masks
+    seg_masks = torch.zeros_like(raw_seg_masks)
 
-    # 2. Only copy data inside the bbox (implicit intersection)
+    # only copy data inside the bbox (implicit intersection)
     for i, box in enumerate(bboxes):
         x1, y1, x2, y2 = map(int, box)  # ensure ints
-        final_masks[i, y1:y2, x1:x2] = raw_masks[i, y1:y2, x1:x2]
+        seg_masks[i, y1:y2, x1:x2] = raw_seg_masks[i, y1:y2, x1:x2]
 
-    return final_masks
+    # TODO: don't hardcode this...
+    dilation_pixels = 10
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (dilation_pixels, dilation_pixels))
+
+    convex_masks_list = []
+    for seg_mask in seg_masks:
+        mask_np = seg_mask.cpu().numpy().astype(bool)
+
+        convex_hull = convex_hull_image(mask_np).astype(np.uint8) * 255
+        dilated_mask = cv2.dilate(convex_hull, kernel)
+
+        convex_masks_list.append(dilated_mask.astype(bool))
+
+    convex_masks = np.stack(convex_masks_list, axis=0)
+
+    return convex_masks
 
 
-def create_removal_mask(all_masks, keep_index, dilation_pixels=10):
-    h, w = all_masks.shape[1], all_masks.shape[2]
-    combined_hull = np.zeros((h, w), dtype=bool)
+def create_removal_mask(
+    seg_masks: np.ndarray, keep_index: int, dilation_pixels: int
+) -> Image.Image:
+    _, h, w = seg_masks.shape
 
-    for i in range(all_masks.shape[0]):
+    # this is the complement of the mask with index `keep_index`
+    compl_mask = np.zeros((h, w), dtype=bool)
+    for i, seg_mask in enumerate(seg_masks):
         if i == keep_index:
             continue
 
-        mask_np = all_masks[i].cpu().numpy().astype(bool)
+        compl_mask |= seg_mask
 
-        if mask_np.any():
-            hull = convex_hull_image(mask_np)
-            combined_hull |= hull
-
-    final_mask = combined_hull.astype(np.uint8)
+    final_mask = compl_mask.astype(np.uint8) * 255
 
     if dilation_pixels > 0:
         kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (dilation_pixels, dilation_pixels))
         final_mask = cv2.dilate(final_mask, kernel)
 
-    return Image.fromarray(final_mask * 255)
+    return Image.fromarray(final_mask)
 
 
-def fill_out_characters(data_list, lama, device: torch.device):
-    # TODO: move this somewhere else
-    model_id = "facebook/sam2.1-hiera-large"
-    processor = Sam2Processor.from_pretrained(model_id)
-    model = Sam2Model.from_pretrained(
-        model_id,
-        torch_dtype=torch.float16,
-    ).to(device)  # ty:ignore[invalid-argument-type]
+def fill_out_characters(
+    raw_img: Image.Image, seg_masks: np.ndarray, lama_model, device: torch.device | str
+) -> list[dict[str, Any]]:
+    output: list[dict[str, Any]] = []
 
-    outputs = []
+    for i in range(len(seg_masks)):
+        removal_mask = create_removal_mask(seg_masks, keep_index=i, dilation_pixels=100)
+        single_char_img = inpaint_image(lama_model, device, raw_img, removal_mask)
 
-    for data in data_list:
-        output = data.copy()
-        raw_img = output["img"]
-        bboxes = output["bboxes"]
+        output.append({"removal_mask": removal_mask, "single_char_img": single_char_img})
 
-        all_masks = get_masks_from_bboxes(raw_img, bboxes, model, processor, device)
-
-        orig_img_path = Path(output["img_paths"]["original"])
-        debug_folder = orig_img_path.parent / "debug"
-        debug_folder.mkdir(exist_ok=True)
-
-        img_with_masks = draw_masks(raw_img, list(all_masks.numpy()))
-        img_with_masks.save(debug_folder / "img_with_masks.png")
-
-        output["img_paths"]["single_char"] = []
-        for j in range(len(bboxes)):
-            removal_mask = create_removal_mask(all_masks, keep_index=j, dilation_pixels=100)
-            removal_mask.save(debug_folder / f"mask_char_{j}.png")
-
-            output_img = inpaint_image(lama, device, raw_img, removal_mask)
-            img_path = orig_img_path.parent / f"single_char_{j}.png"
-            output_img.save(str(img_path))
-
-            output["img_paths"]["single_char"].append(str(img_path))
-
-        outputs.append(output)
-
-    return outputs
+    return output
 
 
-def main():
+def main() -> None:
     IMG_DIR.mkdir(exist_ok=True)
 
     prompts_data_list, safeguard_suffix = load_dataset(BASE_DIR)
@@ -428,15 +421,55 @@ def main():
     gc.collect()
     torch.cuda.empty_cache()
 
-    lama, _ = load_lama_model("./weights/big-lama", device)
-    updated_dataset = fill_out_characters(updated_dataset, lama, device)
+    model_id = "facebook/sam2.1-hiera-large"
+    sam2_processor = Sam2Processor.from_pretrained(model_id)
+    sam2_model = Sam2Model.from_pretrained(
+        model_id,
+        torch_dtype=torch.float16,
+    ).to(device)  # ty:ignore[invalid-argument-type]
 
-    # enlarge bboxes
+    lama_model, _ = load_lama_model("./weights/big-lama", device)
+
     for prompt_data in updated_dataset:
         raw_img = prompt_data.pop("img")
-        boxes = prompt_data["bboxes"]
-        boxes = enlarge_bboxes_adaptive(boxes, raw_img.size, base_factor=0.5)
-        prompt_data["enlarged_bboxes"] = boxes
+        bboxes = prompt_data["bboxes"]
+
+        seg_masks = compute_segmentation_masks(
+            raw_img, bboxes, sam2_model, sam2_processor, device=device
+        )
+        save_dir = Path(prompt_data["img_paths"]["original"]).parent
+
+        prompt_data["img_paths"]["seg_masks"] = []
+        for j, seg_mask in enumerate(seg_masks):
+            seg_mask_img = Image.fromarray(seg_mask)
+
+            seg_mask_path = save_dir / f"segmentaion_mask_{j}.png"
+            seg_mask_img.save(seg_mask_path)
+            prompt_data["img_paths"]["seg_masks"].append(str(seg_mask_path))
+
+        orig_img_path = Path(prompt_data["img_paths"]["original"])
+        debug_folder = orig_img_path.parent / "debug"
+        debug_folder.mkdir(exist_ok=True)
+
+        img_with_masks = draw_masks(raw_img, list(seg_masks))
+        img_with_masks.save(debug_folder / "img_with_masks.png")
+
+        single_char_out = fill_out_characters(raw_img, seg_masks, lama_model, device=device)
+
+        prompt_data["img_paths"]["single_char"] = []
+        for i, data in enumerate(single_char_out):
+            removal_mask = data["removal_mask"]
+            removal_mask.save(debug_folder / f"mask_char_{i}.png")
+
+            single_char_img = data["single_char_img"]
+
+            single_char_img_path = save_dir / f"single_char_{i}.png"
+            single_char_img.save(str(single_char_img_path))
+            prompt_data["img_paths"]["single_char"].append(str(single_char_img_path))
+
+        # enlarge bboxes
+        enlarged_bboxes = enlarge_bboxes_adaptive(bboxes, raw_img.size, base_factor=0.5)
+        prompt_data["enlarged_bboxes"] = enlarged_bboxes
 
     output_data = {"safeguard_suffix": safeguard_suffix, "dataset": updated_dataset}
 

@@ -29,7 +29,7 @@ dependencies = [
     "fastapi",
     "ffmpy",
     "filelock",
-    "flash-attn @ https://github.com/mjun0812/flash-attention-prebuild-wheels/releases/download/v0.7.16/flash_attn-2.8.3+cu128torch2.10-cp311-cp311-linux_x86_64.whl",
+    "flash-attn @ https://github.com/mjun0812/flash-attention-prebuild-wheels/releases/download/v0.7.16/flash_attn-2.8.3+cu130torch2.10-cp311-cp311-linux_x86_64.whl",
     "frozenlist",
     "fsspec",
     "ftfy",
@@ -61,20 +61,10 @@ dependencies = [
     "networkx",
     "nicegui>=3.4.1",
     "numpy",
-    "nvidia-cublas-cu12",
-    "nvidia-cuda-cupti-cu12",
-    "nvidia-cuda-nvrtc-cu12",
-    "nvidia-cuda-runtime-cu12",
-    "nvidia-cudnn-cu12",
-    "nvidia-cufft-cu12",
-    "nvidia-cufile-cu12",
-    "nvidia-curand-cu12",
-    "nvidia-cusolver-cu12",
-    "nvidia-cusparse-cu12",
-    "nvidia-cusparselt-cu12",
-    "nvidia-nccl-cu12",
-    "nvidia-nvjitlink-cu12",
-    "nvidia-nvtx-cu12",
+    "cuda-toolkit[all]>=13.0",
+    "nvidia-cudnn-cu13",
+    "nvidia-nccl-cu13",
+    "nvidia-cusparselt-cu13",
     "omegaconf>=2.3.0",
     "onnxruntime-gpu>=1.23.2",
     "opencv-python-headless",
@@ -101,7 +91,6 @@ dependencies = [
     "rich",
     "safehttpx",
     "safetensors",
-    "sam2>=1.1.0",
     "scikit-image>=0.26.0",
     "scikit-learn>=1.7.2",
     "semantic-version",
@@ -136,6 +125,17 @@ dependencies = [
     "zipp",
 ]
 
+[dependency-groups]
+dev = [
+  "ipykernel",
+  "jupyterlab",
+  "ruff",
+  "xeus-python",
+]
+cuda = [
+  "sam2>=1.1.0",
+]
+
 [tool.pyright]
 typeCheckingMode = "standard"
 venvPath = "."
@@ -165,10 +165,20 @@ ignore = [
     "PLW0603",
     "PLR2004",
     "E501",
+    "E741",
 ]
 
 [tool.uv]
 config-settings = { editable_mode = "compat" }
+no-build-isolation-package = ["sam2"]
+
+[tool.uv.extra-build-variables]
+sam2 = { SAM2_BUILD_ALLOW_ERRORS = "0" }
+
+[[tool.uv.index]]
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
+explicit = true
 
 [tool.uv.workspace]
 members = [
@@ -179,11 +189,7 @@ members = [
 [tool.uv.sources]
 wan = { workspace = true, editable = true }
 lama-inpainting = { workspace = true, editable = true }
+torch = { index = "pytorch-cu130" }
+torchvision = { index = "pytorch-cu130" }
+torchaudio = { index = "pytorch-cu130" }
 
-[dependency-groups]
-dev = [
-    "ipykernel",
-    "jupyterlab",
-    "ruff",
-    "xeus-python",
-]
