@@ -7,6 +7,8 @@ import cv2
 import numpy as np
 import torch
 from qwen_vl_utils import process_vision_info
+from rich.console import Console
+from rich.table import Table
 from scipy.stats import binomtest
 from tqdm import tqdm
 from transformers import (
@@ -403,6 +405,7 @@ def evaluate_pipeline(
     pbar = tqdm(total=total_calls, desc="Evaluating Actions", unit="call")
 
     entries = []
+    print("num videos:", len(video_dir_to_path))
     for video_dir, video_paths in video_dir_to_path.items():
         margins = []
         correct_count: int = 0
@@ -502,8 +505,9 @@ def main():
 
     SAM_MODEL_ID = "facebook/sam2-hiera-large"
 
-    qwen_model, qwen_processor = load_qwen3_model()
+    console = Console()
 
+    qwen_model, qwen_processor = load_qwen3_model()
     qwen_engine = videobench.QwenVLEngine(qwen_model, qwen_processor)
 
     score_funcs = {}
@@ -523,8 +527,21 @@ def main():
         ]
     }
 
+    # Set up the rich table
+    results_table = Table(
+        title="Evaluation Statistics", show_header=True, header_style="bold magenta"
+    )
+    results_table.add_column("Score Function", style="cyan", no_wrap=True)
+    results_table.add_column("Parameters", style="dim")
+    results_table.add_column("Discrim. Rate", justify="right", style="green")
+    results_table.add_column("p-value", justify="right")
+    results_table.add_column("Discrim. 95% CI", justify="center")
+    results_table.add_column("Mean Margin", justify="right", style="green")
+    results_table.add_column("Margin 95% CI", justify="center")
+
     for score_func_name, score_func in score_funcs.items():
-        print(f"Score function: {score_func_name}")
+        console.print(f"\n[bold blue]Evaluating score function:[/bold blue] {score_func_name}")
+
         results = evaluate_pipeline(
             score_func,
             VIDEOS_DIR,
@@ -533,13 +550,29 @@ def main():
             TARGET_FPS,
             MARGIN,
         )
+
         for res in results:
             params, statistics = res["params"], res["statistics"]
-            print(f"params: {params}")
-            display_statistics(statistics)
-            print()
+            discr_res = statistics["discrimination"]
+            margin_res = statistics["margin"]
 
-        print("\n")
+            # Format parameters dictionary as a string
+            param_str = json.dumps(params) if isinstance(params, dict) else str(params)
+
+            # Add a row to the table for this set of results
+            results_table.add_row(
+                score_func_name,
+                param_str,
+                f"{discr_res['avg']:.2f}",
+                f"{discr_res['p-value']:.4f}",
+                f"[{discr_res['ci'][0]:.2f}, {discr_res['ci'][1]:.2f}]",
+                f"{margin_res['avg']:.3f}",
+                f"[{margin_res['ci'][0]:.3f}, {margin_res['ci'][1]:.3f}]",
+            )
+
+    # Print out the final cleanly formatted table
+    console.print("\n")
+    console.print(results_table)
 
 
 if __name__ == "__main__":

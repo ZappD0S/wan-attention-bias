@@ -16,7 +16,7 @@ from sklearn.model_selection import ParameterGrid
 from wan.configs.wan_i2v_14B import i2v_14B
 from wan.regional_prompt import WanI2V
 
-from debug_utils import draw_boxes, draw_masks, unscale, write_video_masks
+from debug_utils import unscale, write_video_soft_masks
 from utils import create_mask_from_bbox, normalize_video_tensor
 
 from .utils import get_folder_name
@@ -116,22 +116,43 @@ def save_outputs(video, extra_data, video_path, action_output_path, repeat_idx, 
 
     simil_masks = extra_data["simil_masks"]
 
-    # take the masks from the last denoising step and average over the DiT blocks
-    face_masks = simil_masks[0, -1].float().mean(dim=0) > 0.5
+    # remove singleton batch dim
+    assert simil_masks.shape[0] == 1
+    simil_masks = simil_masks[0]
 
-    # upscale to video real video resolution
     h, w = video.shape[-2:]
-    face_masks = unscale(face_masks.float(), (FRAME_NUM, h, w)).bool()
 
-    mask_path = action_output_path / f"video_with_masks_{repeat_idx}.mp4"
-    _robust_run(
-        mask_path,
-        write_video_masks,
-        video_norm,
-        mask_path,
-        face_masks.transpose(0, 1).cpu().numpy(),
-        16,
-    )
+    for step in [0, -1]:
+        # take the masks from the `step` denoising step and average over the DiT blocks
+        # TODO: better name?
+        step_simil_masks = simil_masks[step].float().mean(dim=0)
+
+        # upscale to video real video resolution
+        step_simil_masks = unscale(step_simil_masks, (FRAME_NUM, h, w))
+
+        for j, mask in enumerate(step_simil_masks):
+            mask_path = (
+                action_output_path / f"video_{repeat_idx}_soft_masks_char_{j}_step_{step}.mp4"
+            )
+            _robust_run(
+                mask_path,
+                write_video_soft_masks,
+                video_norm,
+                mask_path,
+                mask.cpu().numpy(),
+                16,
+            )
+
+    # threshold_masks = face_masks > 0.5
+    # mask_path = action_output_path / f"video_{repeat_idx}_with_hard_masks.mp4"
+    # _robust_run(
+    #     mask_path,
+    #     write_video_hard_masks,
+    #     video_norm,
+    #     mask_path,
+    #     threshold_masks.transpose(0, 1).cpu().numpy(),
+    #     16,
+    # )
 
 
 def run_repeat_loop(
@@ -175,9 +196,9 @@ def run_repeat_loop(
 def process_action_prompts(
     wan_i2v, prompt_data, param_config, img, single_char_imgs, masks, output_path, repeat
 ):
-    for prompt_type, action_prompt_data in prompt_data["action_prompts"].items():
-        allowed_prompt_types = param_config.get("prompt_types")
+    allowed_prompt_types = param_config.get("prompt_types")
 
+    for prompt_type, action_prompt_data in prompt_data["action_prompts"].items():
         if allowed_prompt_types is None:
             allowed_prompt_types = list(prompt_data["action_prompts"].keys())
         else:
@@ -229,39 +250,38 @@ def process_action_prompts(
 def process_parameter_grid(wan_i2v, prompt_data, idx, output_path, param_grid):
     img = load_image(prompt_data["img_paths"]["original"])
 
-    debug_path = output_path / "debug" / f"prompt_{idx}"
-    debug_path.mkdir(exist_ok=True, parents=True)
+    # debug_path = output_path / "debug" / f"prompt_{idx}"
+    # debug_path.mkdir(exist_ok=True, parents=True)
 
-    # TODO: maybe add the option to specify which type of mask use
-
-    # bboxes = prompt_data["enlarged_bboxes"]
-    # masks = torch.stack(
-    #     [torch.from_numpy(create_mask_from_bbox(bbox, TARGET_SIZE)) for bbox in bboxes]
-    # )
-    # if not (debug_path / "img_with_boxes.png").exists():
-    #     draw_boxes(img, bboxes).save(debug_path / "img_with_boxes.png")
-
-    masks = torch.stack(
-        [
-            torch.as_tensor(np.array(load_image(path).convert("L"))) > 128
-            for path in prompt_data["img_paths"]["seg_masks"]
-        ]
-    ).to(torch.bool)
-
-    # remove overlaps from masks
-    overlap_mask = masks.sum(dim=0) > 1
-    masks &= ~overlap_mask
-    assert masks.float().sum(dim=0).max().item() <= 1.0
+    # if not (debug_path / "img_with_masks.png").exists():
+    #     draw_masks(img, list(masks)).save(debug_path / "img_with_masks.png")
 
     single_char_imgs = [load_image(path) for path in prompt_data["img_paths"]["single_char"]]
-
-    if not (debug_path / "img_with_masks.png").exists():
-        draw_masks(img, list(masks)).save(debug_path / "img_with_masks.png")
 
     for param_config in ParameterGrid(param_grid):
         repeat = param_config.pop("repeat", 1)
 
-        current_masks = masks.flip(dims=(0,)) if param_config.get("invert", False) else masks
+        simil_masks_type = param_config["simil_masks_type"]
+
+        if simil_masks_type == "fixed":
+            bboxes = prompt_data["enlarged_bboxes"]
+            masks = torch.stack(
+                [torch.from_numpy(create_mask_from_bbox(bbox, TARGET_SIZE)) for bbox in bboxes]
+            )
+        else:
+            masks = torch.stack(
+                [
+                    torch.as_tensor(np.array(load_image(path).convert("L"))) > 128
+                    for path in prompt_data["img_paths"]["seg_masks"]
+                ]
+            ).to(torch.bool)
+
+        # remove overlaps from masks
+        overlap_mask = masks.sum(dim=0) > 1
+        masks &= ~overlap_mask
+        assert masks.float().sum(dim=0).max().item() <= 1.0
+
+        masks = masks.flip(dims=(0,)) if param_config.get("invert", False) else masks
 
         signal_received = process_action_prompts(
             wan_i2v,
@@ -269,7 +289,7 @@ def process_parameter_grid(wan_i2v, prompt_data, idx, output_path, param_grid):
             param_config,
             img,
             single_char_imgs,
-            current_masks,
+            masks,
             output_path,
             repeat,
         )

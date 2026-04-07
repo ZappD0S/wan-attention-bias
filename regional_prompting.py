@@ -7,7 +7,6 @@ from pathlib import Path
 import cv2
 import numpy as np
 import torch
-import torch.nn.functional as F
 from matplotlib import pyplot as plt
 from PIL import Image
 from torchvision import tv_tensors
@@ -16,8 +15,8 @@ from wan.configs.wan_i2v_14B import i2v_14B
 from wan.regional_prompt import WanI2V
 from wan.utils.utils import cache_video
 
+from debug_utils import unscale, write_video_wlw_masks
 from utils import create_mask_from_bbox, normalize_video_tensor
-from debug_utils import write_video_wlw_masks, unscale
 
 # %%
 
@@ -158,7 +157,7 @@ for pair_data in config["wlw"]:
         raise ValueError
 
     for intv in time_intervals:
-        assert (0.0 <= intv[0]) and (intv[1] <= 1.0)
+        assert (intv[0] >= 0.0) and (intv[1] <= 1.0)
         intv_inds = (round(t * frame_num) for t in intv)
 
         idx = (inds * 2 if len(inds) == 1 else inds) + (slice(*intv_inds),)
@@ -210,7 +209,7 @@ torch.cuda.synchronize()
 gc.collect()
 torch.cuda.empty_cache()
 video: torch.Tensor
-video, extra_data = wan_i2v.generate(  # type: ignore
+video, extra_data = wan_i2v.generate(
     base_prompt,
     transformed_img,
     bias_kwargs,

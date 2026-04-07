@@ -313,10 +313,10 @@
       "appearance_prompt": {
         "segments": [
           [
-            "Framed in a full-body wide shot from a straight-on angle, two tennis players in white athletic wear stand side-by-side at the baseline of a green hard court. Positioned on the left side of the court,",
-            "one tennis player holding a racket horizontally with both hands stands with their body and face directed straight at the camera",
-            "and positioned on the right side of the court,",
-            "another tennis player holding a racket horizontally with both hands stands with their body and face directed straight at the camera",
+            "Two vintage wooden television sets sit on a dark gray shelf. On the left,",
+            "one vintage wooden television set with a blank glass screen sits",
+            "and on the right,",
+            "another vintage wooden television set with a blank glass screen sits",
             "."
           ]
         ],
@@ -335,9 +335,9 @@
           "segments": [
             [
               "On the left,",
-              "the tennis player is swinging the racket forcefully in a wide forehand arc",
+              "the vintage wooden television set illuminates its screen with flickering black-and-white static",
               "while on the right,",
-              "the tennis player is spinning the racket rapidly between the hands."
+              "the vintage wooden television set displays a steady image of brightly colored test bars."
             ]
           ],
           "mask": [
@@ -352,9 +352,9 @@
         "no_locative": {
           "segments": [
             [
-              "A tennis player is swinging a racket forcefully in a wide forehand arc",
+              "A vintage wooden television set illuminates its screen with flickering black-and-white static",
               "and",
-              "a tennis player is spinning a racket rapidly between the hands."
+              "a vintage wooden television set displays a steady image of brightly colored test bars."
             ]
           ],
           "mask": [
@@ -366,13 +366,13 @@
           ]
         },
         "split_sentences": {
-          "general_prompt": "Framed in a full-body wide shot from a straight-on angle, two tennis players in white athletic wear holding rackets horizontally standing side-by-side with their bodies and faces directed straight at the camera at the baseline of a green hard court.",
+          "general_prompt": "Two vintage wooden television sets with blank glass screens sitting on a dark gray shelf.",
           "segments": [
             [
-              "The tennis player is swinging the racket forcefully in a wide forehand arc."
+              "The vintage wooden television set illuminates its screen with flickering black-and-white static."
             ],
             [
-              "The tennis player is spinning the racket rapidly between the hands."
+              "The vintage wooden television set displays a steady image of brightly colored test bars."
             ]
           ],
           "mask": [

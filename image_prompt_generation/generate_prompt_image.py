@@ -19,6 +19,7 @@ from transformers import (
 )
 
 from debug_utils import draw_masks
+from utils import create_mask_from_bbox
 
 from .big_lama import inpaint_image, load_lama_model
 
@@ -106,12 +107,13 @@ def detect_objects(
     with torch.no_grad():
         outputs = model(**inputs)
 
+    w, h = image.size
     results = processor.post_process_grounded_object_detection(
         outputs,
         inputs.input_ids,
         threshold=0.29,
         text_threshold=0.1,
-        target_sizes=[image.size[::-1]],
+        target_sizes=[(h, w)],
     )
     return results[0]
 
@@ -170,7 +172,7 @@ def enlarge_bboxes_adaptive(
     if has_overlap(boxes):
         return boxes
 
-    img_w, img_h = image_size
+    img_h, img_w = image_size
     factor = base_factor
 
     while factor >= min_factor:
@@ -433,6 +435,7 @@ def main() -> None:
     for prompt_data in updated_dataset:
         raw_img = prompt_data.pop("img")
         bboxes = prompt_data["bboxes"]
+        w, h = raw_img.size
 
         seg_masks = compute_segmentation_masks(
             raw_img, bboxes, sam2_model, sam2_processor, device=device
@@ -440,11 +443,20 @@ def main() -> None:
         save_dir = Path(prompt_data["img_paths"]["original"]).parent
 
         prompt_data["img_paths"]["seg_masks"] = []
-        for j, seg_mask in enumerate(seg_masks):
-            seg_mask_img = Image.fromarray(seg_mask)
+
+        # for j, seg_mask in enumerate(seg_masks):
+        #     seg_mask_img = Image.fromarray(seg_mask)
+        #
+        #     seg_mask_path = save_dir / f"segmentaion_mask_{j}.png"
+        #     seg_mask_img.save(seg_mask_path)
+        #     prompt_data["img_paths"]["seg_masks"].append(str(seg_mask_path))
+
+        for j, bbox in enumerate(bboxes):
+            mask = create_mask_from_bbox(bbox, (h, w))
+            mask = Image.fromarray(mask)
 
             seg_mask_path = save_dir / f"segmentaion_mask_{j}.png"
-            seg_mask_img.save(seg_mask_path)
+            mask.save(seg_mask_path)
             prompt_data["img_paths"]["seg_masks"].append(str(seg_mask_path))
 
         orig_img_path = Path(prompt_data["img_paths"]["original"])
@@ -468,7 +480,7 @@ def main() -> None:
             prompt_data["img_paths"]["single_char"].append(str(single_char_img_path))
 
         # enlarge bboxes
-        enlarged_bboxes = enlarge_bboxes_adaptive(bboxes, raw_img.size, base_factor=0.5)
+        enlarged_bboxes = enlarge_bboxes_adaptive(bboxes, (h, w), base_factor=0.5)
         prompt_data["enlarged_bboxes"] = enlarged_bboxes
 
     output_data = {"safeguard_suffix": safeguard_suffix, "dataset": updated_dataset}

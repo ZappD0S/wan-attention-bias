@@ -10,6 +10,7 @@ from tqdm import tqdm as std_tqdm
 def create_mask_from_bbox(bbox, image_size):
     left, top, right, bottom = bbox
     height, width = image_size
+    assert height <= width
 
     mask = np.zeros((height, width), dtype=bool)
 
@@ -45,6 +46,8 @@ def create_bbox_from_mask(mask):
 
 def normalize_video_tensor(video: np.ndarray, value_range: tuple = (-1, 1)) -> np.ndarray:
     min_val, max_val = value_range
+    assert min_val < max_val
+
     video = np.clip(video, min_val, max_val)
 
     video = (video - min_val) / (max_val - min_val)

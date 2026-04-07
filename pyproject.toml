@@ -65,6 +65,7 @@ dependencies = [
     "nvidia-cudnn-cu13",
     "nvidia-nccl-cu13",
     "nvidia-cusparselt-cu13",
+    "nvidia-npp",
     "omegaconf>=2.3.0",
     "onnxruntime-gpu>=1.23.2",
     "opencv-python-headless",
@@ -105,7 +106,7 @@ dependencies = [
     "tokenizers",
     "tomlkit",
     "torch==2.10",
-    "torchcodec",
+    "torchcodec==0.10",
     "torchvision",
     "tqdm",
     "transformers",
@@ -192,4 +193,4 @@ lama-inpainting = { workspace = true, editable = true }
 torch = { index = "pytorch-cu130" }
 torchvision = { index = "pytorch-cu130" }
 torchaudio = { index = "pytorch-cu130" }
-
+torchcodec = { index = "pytorch-cu130" }

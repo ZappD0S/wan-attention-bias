@@ -469,10 +469,10 @@
       "appearance_prompt": {
         "segments": [
           [
-            "Framed in a full-body wide shot from a straight-on angle, two tennis players in white athletic wear stand side-by-side at the baseline of a green hard court. Positioned on the left side of the court,",
-            "one tennis player holding a racket horizontally with both hands stands with their body and face directed straight at the camera",
-            "and positioned on the right side of the court,",
-            "another tennis player holding a racket horizontally with both hands stands with their body and face directed straight at the camera",
+            "Two vintage wooden television sets sit on a dark gray shelf. On the left,",
+            "one vintage wooden television set with a blank glass screen sits",
+            "and on the right,",
+            "another vintage wooden television set with a blank glass screen sits",
             "."
           ]
         ],
@@ -491,9 +491,9 @@
           "segments": [
             [
               "On the left,",
-              "the tennis player is swinging the racket forcefully in a wide forehand arc",
+              "the vintage wooden television set illuminates its screen with flickering black-and-white static",
               "while on the right,",
-              "the tennis player is spinning the racket rapidly between the hands."
+              "the vintage wooden television set displays a steady image of brightly colored test bars."
             ]
           ],
           "mask": [
@@ -508,9 +508,9 @@
         "no_locative": {
           "segments": [
             [
-              "A tennis player is swinging a racket forcefully in a wide forehand arc",
+              "A vintage wooden television set illuminates its screen with flickering black-and-white static",
               "and",
-              "a tennis player is spinning a racket rapidly between the hands."
+              "a vintage wooden television set displays a steady image of brightly colored test bars."
             ]
           ],
           "mask": [
@@ -522,13 +522,13 @@
           ]
         },
         "split_sentences": {
-          "general_prompt": "Framed in a full-body wide shot from a straight-on angle, two tennis players in white athletic wear holding rackets horizontally standing side-by-side with their bodies and faces directed straight at the camera at the baseline of a green hard court.",
+          "general_prompt": "Two vintage wooden television sets with blank glass screens sitting on a dark gray shelf.",
           "segments": [
             [
-              "The tennis player is swinging the racket forcefully in a wide forehand arc."
+              "The vintage wooden television set illuminates its screen with flickering black-and-white static."
             ],
             [
-              "The tennis player is spinning the racket rapidly between the hands."
+              "The vintage wooden television set displays a steady image of brightly colored test bars."
             ]
           ],
           "mask": [
@@ -543,16 +543,16 @@
       },
       "bboxes": [
         [
-          258.96484375,
-          63.069862365722656,
-          391.74871826171875,
-          473.64923095703125
+          65.66108703613281,
+          117.91748809814453,
+          375.669921875,
+          385.6144714355469
         ],
         [
-          446.07098388671875,
-          59.78183364868164,
-          571.1748657226562,
-          473.7014465332031
+          458.7330322265625,
+          136.69529724121094,
+          778.03271484375,
+          384.7249450683594
         ]
       ],
       "img_paths": {
@@ -568,16 +568,16 @@
       },
       "enlarged_bboxes": [
         [
-          232.40806884765624,
-          0,
-          418.3054931640625,
-          480
+          26.909982681274407,
+          84.45536518096924,
+          414.4210262298584,
+          419.07659435272217
         ],
         [
-          421.0502075195312,
-          0,
-          596.1956420898438,
-          480
+          418.82057189941406,
+          105.69159126281738,
+          817.9451751708984,
+          415.72865104675293
         ]
       ]
     },
