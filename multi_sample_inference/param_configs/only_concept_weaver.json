@@ -4,25 +4,11 @@
       "concept_weaver"
     ],
     "simil_masks_type": [
-      "hard"
+      "soft"
     ],
     "mask_sharing": [
-      "first",
       "prev",
       null
-    ],
-    "prompt_types": [
-      [
-        "split_sentences"
-      ]
-    ]
-  },
-  {
-    "bias_method": [
-      "concept_weaver"
-    ],
-    "simil_masks_type": [
-      "fixed"
     ],
     "prompt_types": [
       [
@@ -35,7 +21,7 @@
       "none"
     ],
     "simil_masks_type": [
-      "hard"
+      "soft"
     ],
     "prompt_types": [
       [

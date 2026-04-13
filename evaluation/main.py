@@ -1,5 +1,6 @@
 import json
 import re
+import textwrap
 from pathlib import Path
 from typing import Any
 
@@ -40,7 +41,7 @@ def load_qwen3_model() -> tuple[Any, Any]:
     return model, processor
 
 
-def generate_qwen_messages(processor, prompt: str, video_path: Path | None):
+def generate_qwen_messages(prompt: str, video_path: Path | None):
     message_content: list[dict[str, Any]] = [
         {"type": "text", "text": prompt},
     ]
@@ -78,7 +79,7 @@ def generate_qwen_messages(processor, prompt: str, video_path: Path | None):
 
 
 def run_qwen_generation(model, processor, prompt: str, video_path: Path | None) -> tuple[str, str]:
-    messages = generate_qwen_messages(processor, prompt, video_path)
+    messages = generate_qwen_messages(prompt, video_path)
     input_text = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
     image_inputs, video_inputs = process_vision_info(messages)  # ty:ignore[invalid-assignment]
 
@@ -109,11 +110,38 @@ def run_qwen_generation(model, processor, prompt: str, video_path: Path | None) 
     return input_text, output_text[0]
 
 
-def get_next_token_logits(model, processor, prompt, video_path: Path | None):
-    messages = generate_qwen_messages(processor, prompt, video_path)
+def get_scoring_logits(
+    model, processor, video_path: Path | None, prompt1: str, reasoning: str, prompt2: str
+):
+    """
+    Constructs a clean 3-turn ChatML sequence and extracts the next token logits.
+    Works for both video-based and text-only first turns.
+    """
+    # Turn 1: User (Instruction + Optional Video)
+    msg1_content: list[dict[str, Any]] = [{"type": "text", "text": prompt1}]
+
+    if video_path is not None:
+        if not video_path.exists():
+            raise FileNotFoundError(f"Video file not found: {video_path}")
+
+        cap = cv2.VideoCapture(str(video_path))
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        nframes_to_use = (total_frames // 2) * 2
+        cap.release()
+        msg1_content.append({"type": "video", "video": str(video_path), "nframes": nframes_to_use})
+
+    messages = [
+        {"role": "user", "content": msg1_content},
+        {"role": "assistant", "content": [{"type": "text", "text": reasoning}]},
+        {"role": "user", "content": [{"type": "text", "text": prompt2}]},
+    ]
+
     image_inputs, video_inputs = process_vision_info(messages)  # ty:ignore[invalid-assignment]
+    text = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+    text += "Score: "  # Force the anchor
+
     inputs = processor(
-        text=[prompt], images=image_inputs, videos=video_inputs, padding=True, return_tensors="pt"
+        text=[text], images=image_inputs, videos=video_inputs, padding=True, return_tensors="pt"
     )
     inputs = inputs.to(model.device)
 
@@ -123,12 +151,37 @@ def get_next_token_logits(model, processor, prompt, video_path: Path | None):
     return outputs.logits[0, -1, :]
 
 
+def print_top_predictions(processor, logits, k=10):
+    """Prints the top K most likely next tokens and their probabilities."""
+    probs = torch.softmax(logits, dim=-1)
+    top_probs, top_indices = torch.topk(probs, k)
+
+    table = Table(
+        title=f"Top {k} Next-Token Predictions", show_header=True, header_style="bold cyan"
+    )
+    table.add_column("Rank", justify="right")
+    table.add_column("Token ID", justify="right")
+    table.add_column("Token Text", style="yellow")
+    table.add_column("Probability", justify="right", style="green")
+
+    for i in range(k):
+        token_id = top_indices[i].item()
+        prob = top_probs[i].item()
+        # Use repr() to make whitespace/newlines visible
+        token_text = repr(processor.tokenizer.decode([token_id]))
+
+        table.add_row(str(i + 1), str(token_id), token_text, f"{prob:.4e}")
+
+    console = Console()
+    console.print(table)
+
+
 # TODO:
 # - question: does the soft score actually has a benefit, of is it just adding the scoring prompt after the reasoning?
 # - For example, if we just predict the next token in this function, (or equivalently take the most likely), does it make any difference?
-def get_soft_score_blind(model, processor, video_path: Path, action_descr: str) -> float:
+def get_soft_score_blind(model, processor, video_path: Path, target_action: str) -> float:
 
-    prompt_description = """You are a forensic video analyst.
+    prompt_description = textwrap.dedent("""You are a forensic video analyst.
     Provide a detailed, objective, chronological log of the video.
 
     Guidelines:
@@ -137,11 +190,11 @@ def get_soft_score_blind(model, processor, video_path: Path, action_descr: str) 
     3. Do NOT interpret intent or purpose.
     4. Focus purely on visual observables.
 
-    Output the log now."""
+    Output the log now.""")
 
     _, video_description = run_qwen_generation(model, processor, prompt_description, video_path)
 
-    prompt_audit_template = """You are a strict action auditor. 
+    prompt_audit = textwrap.dedent(f"""You are a strict action auditor.
     Your task is to rate how well the 'Target Action' matches the 'Video Description'.
 
     Target Action: {target_action}
@@ -152,17 +205,12 @@ def get_soft_score_blind(model, processor, video_path: Path, action_descr: str) 
     - Be skeptical: if a specific detail is missing from the description, assume it did not happen.
     - Check for chronological consistency.
 
-    Output a brief step-by-step reasoning."""
-
-    prompt_audit = prompt_audit_template.format(
-        target_action=action_descr, video_description=video_description
-    )
+    Output a brief step-by-step reasoning.""")
 
     # Get the reasoning text (we pass video_path=None because we rely on the text description now)
-    input_prompt_with_history, reasoning = run_qwen_generation(
-        model, processor, prompt_audit, video_path=None
-    )
-    prompt_score = """
+    _, reasoning = run_qwen_generation(model, processor, prompt_audit, video_path=None)
+
+    prompt_score = textwrap.dedent("""\
     Based on the reasoning above, assign a match score on a scale of 1 to 5.
 
     Criteria:
@@ -170,19 +218,20 @@ def get_soft_score_blind(model, processor, video_path: Path, action_descr: str) 
     4: Strong Match (Main event, minor noise).
     3: Partial Match (Action occurred but mixed with others).
     2: Weak Match (Ambiguous or minor detail).
-    1: No Match (Action not found or different action).
+    1: No Match (Action not found or different action).""")
 
-    Score: """
+    next_token_logits = get_scoring_logits(
+        model, processor, None, prompt_audit, reasoning, prompt_score
+    )
 
-    forced_text = input_prompt_with_history + reasoning + prompt_score
+    # Debug Printing
+    # print(f"\n[BLIND AUDIT] Target Action: {target_action}")
+    # print_top_predictions(processor, next_token_logits, k=5)
 
     target_tokens = ["1", "2", "3", "4", "5"]
-
     target_ids = [processor.tokenizer.encode(t, add_special_tokens=False)[0] for t in target_tokens]
 
     score_values = torch.tensor([1.0, 2.0, 3.0, 4.0, 5.0], device=model.device)
-
-    next_token_logits = get_next_token_logits(model, processor, forced_text, video_path=None)
 
     top_token_id = torch.argmax(next_token_logits).item()
     assert top_token_id in target_ids
@@ -205,11 +254,11 @@ def get_soft_score_direct(model, processor, video_path, action_descr: str) -> fl
     Provide a step-by-step reasoning based on the visual evidence.
     Conclude by evaluating how well the video matches the action."""
 
-    prompt = prompt_template.format(target_action=action_descr)
+    prompt1 = prompt_template.format(target_action=action_descr)
 
-    input_prompt_with_history, reasoning = run_qwen_generation(model, processor, prompt, video_path)
+    _, reasoning = run_qwen_generation(model, processor, prompt1, video_path)
 
-    prompt_score = """
+    prompt2 = textwrap.dedent("""\
     Based on your reasoning, assign a match score on a scale of 1 to 5.
 
     Criteria:
@@ -217,18 +266,25 @@ def get_soft_score_direct(model, processor, video_path, action_descr: str) -> fl
     4: Strong Match (Action occurs, minor noise).
     3: Partial Match (Action is part of a larger sequence).
     2: Weak Match (Ambiguous or hard to see).
-    1: No Match (Action does not happen).
+    1: No Match (Action does not happen).""")
 
-    Score: """
+    # Get Logits using our clean 3-turn function
+    next_token_logits = get_scoring_logits(
+        model, processor, video_path, prompt1, reasoning, prompt2
+    )
 
-    forced_text = input_prompt_with_history + reasoning + prompt_score
+    # Debug: Print top predictions
+    # print_top_predictions(processor, next_token_logits, k=10)
 
     target_tokens = ["1", "2", "3", "4", "5"]
     target_ids = [processor.tokenizer.encode(t, add_special_tokens=False)[0] for t in target_tokens]
+
     target_ids_tensor = torch.tensor(target_ids, device=model.device)
     score_values = torch.tensor([1.0, 2.0, 3.0, 4.0, 5.0], device=model.device)
 
-    next_token_logits = get_next_token_logits(model, processor, forced_text, video_path=video_path)
+    # next_token_logits = get_next_token_logits(model, processor, forced_text, video_path=video_path)
+
+    # print_top_predictions(processor, next_token_logits, k=10)
 
     top_token_id = torch.argmax(next_token_logits).item()
     top_token_text = processor.tokenizer.decode([top_token_id])
@@ -242,7 +298,7 @@ def get_soft_score_direct(model, processor, video_path, action_descr: str) -> fl
 
 
 def get_discrete_score_blind(model, processor, video_path, action_descr: str) -> float:
-    prompt_description = """You are a forensic video analyst.
+    prompt_description = textwrap.dedent("""You are a forensic video analyst.
     Provide a detailed, objective, chronological log of the video.
 
     Guidelines:
@@ -251,11 +307,11 @@ def get_discrete_score_blind(model, processor, video_path, action_descr: str) ->
     3. Do NOT interpret intent or purpose.
     4. Focus purely on visual observables.
 
-    Output the log now."""
+    Output the log now.""")
 
     _, video_description = run_qwen_generation(model, processor, prompt_description, video_path)
 
-    prompt_audit_template = """You are a strict action auditor. 
+    prompt_audit_template = textwrap.dedent("""You are a strict action auditor. 
     Your task is to rate how well the 'Target Action' matches the 'Video Description'.
 
     Target Action: {target_action}
@@ -275,7 +331,7 @@ def get_discrete_score_blind(model, processor, video_path, action_descr: str) ->
 
     Instructions:
     1. Output a brief step-by-step reasoning.
-    2. End your response strictly with: "Score: X" (where X is 1-5)."""
+    2. End your response strictly with: "Score: X" (where X is 1-5).""")
 
     prompt_audit = prompt_audit_template.format(
         target_action=action_descr, video_description=video_description
@@ -287,7 +343,7 @@ def get_discrete_score_blind(model, processor, video_path, action_descr: str) ->
 
 
 def get_discrete_score_direct(model, processor, video_path, action_descr: str) -> float:
-    prompt_audit_template = """You are a strict action auditor and forensic video analyst.
+    prompt_audit_template = textwrap.dedent("""You are a strict action auditor and forensic video analyst.
     Your task is to determine if the 'Target Action' occurs in the video based on visual evidence.
 
     Target Action: {target_action}
@@ -306,7 +362,7 @@ def get_discrete_score_direct(model, processor, video_path, action_descr: str) -
 
     Instructions:
     1. Output a brief step-by-step reasoning based on the visual evidence.
-    2. End your response strictly with: "Score: X" (where X is 1-5)."""
+    2. End your response strictly with: "Score: X" (where X is 1-5).""")
 
     prompt_audit = prompt_audit_template.format(target_action=action_descr)
 
@@ -511,9 +567,9 @@ def main():
     qwen_engine = videobench.QwenVLEngine(qwen_model, qwen_processor)
 
     score_funcs = {}
-    score_funcs["videobench"] = lambda video_path, action_descr: videobench.evaluate_video(
-        qwen_engine, video_path, action_descr
-    )
+    # score_funcs["videobench"] = lambda video_path, action_descr: videobench.evaluate_video(
+    #     qwen_engine, video_path, action_descr
+    # )
 
     score_funcs |= {
         f.__name__: lambda video_path, action_descr, f=f: f(
@@ -570,8 +626,11 @@ def main():
                 f"[{margin_res['ci'][0]:.3f}, {margin_res['ci'][1]:.3f}]",
             )
 
+        console.print(f"\nCurrent results after finishing {score_func_name}:")
+        console.print(results_table)
+
     # Print out the final cleanly formatted table
-    console.print("\n")
+    console.print("FINAL EVALUATION COMPLETED")
     console.print(results_table)
 
 

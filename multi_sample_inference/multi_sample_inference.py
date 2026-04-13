@@ -12,6 +12,7 @@ from diffusers.utils.export_utils import export_to_video
 from diffusers.utils.loading_utils import load_image
 from huggingface_hub import snapshot_download
 from PIL import Image
+from scipy.ndimage import gaussian_filter
 from sklearn.model_selection import ParameterGrid
 from wan.configs.wan_i2v_14B import i2v_14B
 from wan.regional_prompt import WanI2V
@@ -198,12 +199,12 @@ def process_action_prompts(
 ):
     allowed_prompt_types = param_config.get("prompt_types")
 
-    for prompt_type, action_prompt_data in prompt_data["action_prompts"].items():
-        if allowed_prompt_types is None:
-            allowed_prompt_types = list(prompt_data["action_prompts"].keys())
-        else:
-            assert set(allowed_prompt_types) <= prompt_data["action_prompts"].keys()
+    if allowed_prompt_types is None:
+        allowed_prompt_types = list(prompt_data["action_prompts"].keys())
+    else:
+        assert set(allowed_prompt_types) <= prompt_data["action_prompts"].keys()
 
+    for prompt_type, action_prompt_data in prompt_data["action_prompts"].items():
         if prompt_type not in allowed_prompt_types:
             continue
 
@@ -265,21 +266,23 @@ def process_parameter_grid(wan_i2v, prompt_data, idx, output_path, param_grid):
 
         if simil_masks_type == "fixed":
             bboxes = prompt_data["enlarged_bboxes"]
-            masks = torch.stack(
-                [torch.from_numpy(create_mask_from_bbox(bbox, TARGET_SIZE)) for bbox in bboxes]
-            )
+            masks = np.stack([create_mask_from_bbox(bbox, TARGET_SIZE) for bbox in bboxes])
         else:
-            masks = torch.stack(
+            masks = np.stack(
                 [
-                    torch.as_tensor(np.array(load_image(path).convert("L"))) > 128
+                    np.array(load_image(path).convert("L")) > 128
                     for path in prompt_data["img_paths"]["seg_masks"]
                 ]
-            ).to(torch.bool)
+            )
 
         # remove overlaps from masks
-        overlap_mask = masks.sum(dim=0) > 1
+        overlap_mask = masks.sum(axis=0) > 1
         masks &= ~overlap_mask
-        assert masks.float().sum(dim=0).max().item() <= 1.0
+
+        masks = gaussian_filter(masks, sigma=5.0, axes=(1, 2))
+
+        masks = torch.from_numpy(masks).to(torch.bool)
+        assert masks.sum(0).max() <= 1.0
 
         masks = masks.flip(dims=(0,)) if param_config.get("invert", False) else masks
 
