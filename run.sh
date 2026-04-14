@@ -19,6 +19,7 @@ mkdir -p "$PROJECT_ROOT/.uv_cache" "$PROJECT_ROOT/.tmp" "$HOST_HF_PATH"
 # export environment variables for the container
 export APPTAINERENV_HF_HOME="/huggingface_cache"
 export APPTAINERENV_UV_CACHE_DIR="$CONTAINER_ROOT/.uv_cache"
+export APPTAINERENV_UV_PYTHON_INSTALL_DIR="$CONTAINER_ROOT/.uv_python"
 export APPTAINERENV_TMPDIR="$CONTAINER_ROOT/.tmp"
 export APPTAINERENV_UV_PROJECT_ENVIRONMENT="$CONTAINER_ROOT/.venv-container"
 
