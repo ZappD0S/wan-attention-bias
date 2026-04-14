@@ -14,7 +14,7 @@ IMAGE="$PROJECT_ROOT/containers/arch_ml.sif"
 HOST_HF_PATH="${HF_HOME:-$HOME/.cache/huggingface}"
 
 # ensure host directories exist (using absolute paths)
-mkdir -p "$PROJECT_ROOT/.uv_cache" "$PROJECT_ROOT/.tmp"
+mkdir -p "$PROJECT_ROOT/.uv_cache" "$PROJECT_ROOT/.tmp" "$HOST_HF_PATH"
 
 # export environment variables for the container
 export APPTAINERENV_HF_HOME="/huggingface_cache"
