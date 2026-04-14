@@ -68,7 +68,7 @@ OPTS=(
 # execute cleanly using bash arrays
 if [ $# -eq 0 ]; then
   # interactive shell (only reached if DEBUG!=1 due to safeguard above)
-  exec apptainer exec "${OPTS[@]}" "$IMAGE" "${UV_CMD[@]}" bash
+  exec apptainer exec "${OPTS[@]}" "$IMAGE" bash
 else
   # run the requested script/command
   exec apptainer exec "${OPTS[@]}" "$IMAGE" "${UV_CMD[@]}" "$@"
