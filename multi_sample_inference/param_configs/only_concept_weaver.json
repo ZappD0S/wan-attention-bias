@@ -7,8 +7,13 @@
       "soft"
     ],
     "mask_sharing": [
+      "first",
       "prev",
       null
+    ],
+    "self_attention_masking": [
+      true,
+      false
     ],
     "prompt_types": [
       [

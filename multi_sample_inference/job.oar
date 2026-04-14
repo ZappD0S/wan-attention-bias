@@ -1,0 +1,93 @@
+#!/bin/bash
+
+#OAR -n multi_sample_inference
+#OAR -l walltime=96:00:00
+#OAR -p musa
+#OAR -O logs/output_%j.log
+#OAR -E logs/error_%j.log
+#OAR -q abaca
+#OAR --checkpoint 60
+
+PARAM_CONFIG_NAME=""
+
+while getopts "p:" opt; do
+  case $opt in
+  \?)
+      p) PARAM_CONFIG_NAME="$OPTARG" ;;
+    echo "Invalid option -$OPTARG" >&2
+    exit 1
+    ;;
+  esac
+done
+
+if [ -z "$PARAM_CONFIG_NAME" ]; then
+  echo "Usage: $0 -p <param_config_name>"
+  exit 1
+fi
+
+resubmit_handler() {
+  echo "STATUS: Received OAR timeout signal. Resubmitting job..."
+  # 'oarsub -r' is the OAR equivalent of 'scontrol requeue'
+  oarsub -r $OAR_JOB_ID
+  exit 0
+}
+
+trap 'resubmit_handler' SIGUSR2
+
+module purge
+
+module load apptainer
+
+echo "STATUS: Checking GPU availability via nvidia-smi..."
+nvidia-smi || {
+  echo "ERROR: nvidia-smi failed. Driver not found." >&2
+  exit 1
+}
+
+# paths and env
+PROMPTS_FILE="./image_prompt_generation/prompts_modified.json"
+PARAM_GRID_FILE="./multi_sample_inference/param_configs/${PARAM_CONFIG_NAME}.json"
+
+STORAGE="/srv/storage/robotlearn@storage2.grenoble.grid5000.fr/gzappavi"
+OUTPUT_DIR="$STORAGE/attn_bias/output_videos/${PARAM_CONFIG_NAME}"
+
+if [ ! -f "$PARAM_GRID_FILE" ]; then
+  echo "ERROR: Parameter file $PARAM_GRID_FILE does not exist." >&2
+  exit 1
+fi
+
+mkdir -p "$OUTPUT_DIR"
+
+echo "STATUS: Starting Python inference..."
+
+# Run in background so the shell can catch the signal immediately
+./run.sh python -m multi_sample_inference.multi_sample_inference \
+  --prompts-file "$PROMPTS_FILE" \
+  --param-grid-file "$PARAM_GRID_FILE" \
+  --output-path "$OUTPUT_DIR" &
+
+PYTHON_PID=$!
+
+# 'wait' will be interrupted if the shell receives SIGUSR2.
+# If interrupted, the trap 'resubmit_handler' runs and the script exits 0.
+wait $PYTHON_PID
+EXIT_CODE=$?
+
+
+if [ $EXIT_CODE -eq 0 ]; then
+  echo "STATUS: Job completed successfully."
+  exit 0
+
+elif [ $EXIT_CODE -eq 2 ] ||[ $EXIT_CODE -eq 140 ]; then
+  echo "STATUS: Work remains or Checkpoint reached. Resubmitting..."
+  oarsub -r $OAR_JOB_ID
+  exit 0
+
+elif [ $EXIT_CODE -eq 143 ] || [ $EXIT_CODE -eq 130 ]; then
+  echo "STATUS: Job was manually cancelled or terminated. Exiting gracefully."
+  exit 0
+
+else
+  echo "STATUS: Python script failed with Exit Code $EXIT_CODE."
+  exit $EXIT_CODE
+fi
