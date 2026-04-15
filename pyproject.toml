@@ -59,7 +59,7 @@ dependencies = [
     "mpmath",
     "multidict",
     "networkx",
-    "nicegui>=3.4.1",
+    "nicegui",
     "numpy",
     "cuda-toolkit[all]>=13.0",
     "nvidia-cudnn-cu13",
