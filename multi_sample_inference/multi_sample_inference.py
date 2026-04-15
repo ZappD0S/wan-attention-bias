@@ -150,9 +150,10 @@ def process_parameter_grid(tasks_list, prompt_data, output_path, param_grid):
 def team_thread(team_id, assigned_gpus, mode, t5_cpu, task_queue):
     master_port = str(29500 + team_id)
 
-    worker_full_path = Path(fsdp_worker.__file__).resolve()
-    script_dir = worker_full_path.parent
+    worker_file_path = Path(fsdp_worker.__file__).resolve()
+    script_dir = worker_file_path.parent
 
+    worker_module_name = fsdp_worker.__name__
     env = os.environ.copy()
     env["CUDA_VISIBLE_DEVICES"] = ",".join(map(str, assigned_gpus))
 
@@ -170,7 +171,8 @@ def team_thread(team_id, assigned_gpus, mode, t5_cpu, task_queue):
             "torch.distributed.run",
             f"--nproc_per_node={len(assigned_gpus)}",
             f"--master_port={master_port}",
-            str(worker_full_path),
+            "-m",
+            worker_module_name,
             "--task-file",
             str(task_file),
             "--mode",
