@@ -2,6 +2,19 @@
 
 set -e
 
+if [ -f .env ]; then
+  # export $(grep -v '^#' .env | xargs) is a common shortcut,
+  # but this while-read loop is more robust for values with spaces.
+  while IFS='=' read -r key value || [ -n "$key" ]; do
+    [[ "$key" =~ ^#.*$ ]] && continue
+    [[ -z "$key" ]] && continue
+    # Clean whitespace and quotes
+    key=$(echo "$key" | xargs)
+    value=$(echo "$value" | xargs)
+    export "$key"="$value"
+  done <.env
+fi
+
 # The name of your virtual environment directory
 VENV_NAME=".venv-container"
 # The mount point inside the container
@@ -64,6 +77,16 @@ OPTS=(
   --bind "$HOST_HF_PATH:/huggingface_cache"
   --pwd /workspace
 )
+
+if [ -n "$STORAGE_DIR" ]; then
+  if [ -d "$STORAGE_DIR" ]; then
+    TARGET_PATH="${STORAGE_BIND_PATH:-/storage}"
+    OPTS+=(--bind "$STORAGE_DIR:$TARGET_PATH")
+    echo ">>> Mounting storage: $STORAGE_DIR -> $TARGET_PATH"
+  else
+    echo ">>> Warning: STORAGE_DIR is set to '$STORAGE_DIR' but it is not a directory."
+  fi
+fi
 
 # execute cleanly using bash arrays
 if [ $# -eq 0 ]; then
