@@ -150,10 +150,10 @@ def process_parameter_grid(tasks_list, prompt_data, output_path, param_grid):
 def team_thread(team_id, assigned_gpus, mode, t5_cpu, task_queue):
     master_port = str(29500 + team_id)
 
-    worker_file_path = Path(fsdp_worker.__file__).resolve()
-    script_dir = worker_file_path.parent
+    script_path = Path(__file__).resolve()
+    project_root = script_path.parent.parent
 
-    worker_module_name = fsdp_worker.__name__
+    worker_module = fsdp_worker.__spec__.name  # ty:ignore[unresolved-attribute]
     env = os.environ.copy()
     env["CUDA_VISIBLE_DEVICES"] = ",".join(map(str, assigned_gpus))
 
@@ -172,7 +172,7 @@ def team_thread(team_id, assigned_gpus, mode, t5_cpu, task_queue):
             f"--nproc_per_node={len(assigned_gpus)}",
             f"--master_port={master_port}",
             "-m",
-            worker_module_name,
+            worker_module,
             "--task-file",
             str(task_file),
             "--mode",
@@ -183,7 +183,7 @@ def team_thread(team_id, assigned_gpus, mode, t5_cpu, task_queue):
             cmd.append("--t5-cpu")
 
         try:
-            subprocess.run(cmd, env=env, check=True, cwd=script_dir)
+            subprocess.run(cmd, env=env, check=True, cwd=project_root)
         except subprocess.CalledProcessError as e:
             print(f"[ERROR] Team {team_id} failed with code {e.returncode}")
 
