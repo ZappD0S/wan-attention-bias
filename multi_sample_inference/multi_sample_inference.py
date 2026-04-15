@@ -7,6 +7,7 @@ import queue
 import shutil
 import signal
 import subprocess
+import sys
 import threading
 import uuid
 from pathlib import Path
@@ -148,9 +149,12 @@ def process_parameter_grid(tasks_list, prompt_data, output_path, param_grid):
 
 def team_thread(team_id, assigned_gpus, mode, t5_cpu, task_queue):
     master_port = str(29500 + team_id)
+
+    worker_full_path = Path(fsdp_worker.__file__).resolve()
+    script_dir = worker_full_path.parent
+
     env = os.environ.copy()
     env["CUDA_VISIBLE_DEVICES"] = ",".join(map(str, assigned_gpus))
-    worker_script = fsdp_worker.__file__
 
     while keep_running:
         try:
@@ -158,23 +162,28 @@ def team_thread(team_id, assigned_gpus, mode, t5_cpu, task_queue):
         except queue.Empty:
             break
 
+        print(f"[Team {team_id}] Generating {task_file.name} (Mode: {mode}, T5-CPU: {t5_cpu})")
+
         cmd = [
-            "torchrun",
+            sys.executable,
+            "-m",
+            "torch.distributed.run",
             f"--nproc_per_node={len(assigned_gpus)}",
             f"--master_port={master_port}",
-            worker_script,
+            str(worker_full_path),
             "--task-file",
             str(task_file),
             "--mode",
             mode,
         ]
+
         if t5_cpu:
             cmd.append("--t5-cpu")
 
         try:
-            subprocess.run(cmd, env=env, check=True)
-        except subprocess.CalledProcessError:
-            print(f"[ERROR] Team {team_id} failed on {task_file}")
+            subprocess.run(cmd, env=env, check=True, cwd=script_dir)
+        except subprocess.CalledProcessError as e:
+            print(f"[ERROR] Team {team_id} failed with code {e.returncode}")
 
         if task_file.exists():
             task_file.unlink()
