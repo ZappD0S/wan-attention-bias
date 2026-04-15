@@ -24,13 +24,16 @@ CONTAINER_ROOT="/workspace"
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 IMAGE="$PROJECT_ROOT/containers/arch_ml.sif"
-HOST_HF_PATH="${HF_HOME:-$HOME/.cache/huggingface}"
 
 # ensure host directories exist (using absolute paths)
-mkdir -p "$PROJECT_ROOT/.uv_cache" "$PROJECT_ROOT/.tmp" "$HOST_HF_PATH"
+mkdir -p \
+  "$PROJECT_ROOT/.uv_cache" \
+  "$PROJECT_ROOT/.uv_python" \
+  "$PROJECT_ROOT/.tmp" \
+  "$PROJECT_ROOT/.cache/huggingface"
 
 # export environment variables for the container
-export APPTAINERENV_HF_HOME="/huggingface_cache"
+export APPTAINERENV_HF_HOME="${APPTAINERENV_HF_HOME:-/workspace/.cache/huggingface}"
 export APPTAINERENV_UV_CACHE_DIR="$CONTAINER_ROOT/.uv_cache"
 export APPTAINERENV_UV_PYTHON_INSTALL_DIR="$CONTAINER_ROOT/.uv_python"
 export APPTAINERENV_TMPDIR="$CONTAINER_ROOT/.tmp"
@@ -44,16 +47,26 @@ if [ -d "$HOST_VENV_PATH" ]; then
 
   if [ -n "$HOST_LIBS" ]; then
     # Translate host paths to container paths by swapping PROJECT_ROOT for CONTAINER_ROOT
-    CONTAINER_LIBS="${HOST_LIBS//$PROJECT_ROOT/$CONTAINER_ROOT}"
-
     # Export for Apptainer (stripping the trailing colon)
-    export APPTAINERENV_LD_LIBRARY_PATH="${CONTAINER_LIBS%:}"
+    export APPTAINERENV_LD_LIBRARY_PATH="${HOST_LIBS//$PROJECT_ROOT/$CONTAINER_ROOT}"
+    export APPTAINERENV_LD_LIBRARY_PATH="${APPTAINERENV_LD_LIBRARY_PATH%:}"
   fi
+fi
+
+# apptainer flags
+OPTS=(
+  --nv --cleanenv --contain --workdir "$PROJECT_ROOT/.tmp"
+  --bind "$PROJECT_ROOT:/workspace"
+  # --bind "$HOST_HF_PATH:/huggingface_cache"
+  --pwd /workspace
+)
+
+if [ -d "$STORAGE_DIR" ]; then
+  OPTS+=(--bind "$STORAGE_DIR:${STORAGE_BIND_PATH:-/storage}")
 fi
 
 # base uv command stored as an array
 UV_CMD=(uv run)
-
 # handle debug logic safely
 if [ "${DEBUG:-0}" == "1" ]; then
   # Safeguard: debugpy requires a python script to attach to. It cannot debug "bash".
@@ -68,24 +81,6 @@ if [ "${DEBUG:-0}" == "1" ]; then
 
   # uses `uv run --with debugpy` to ensure it's always available
   UV_CMD+=(--with debugpy python -m debugpy --listen "0.0.0.0:$PORT" --wait-for-client)
-fi
-
-# apptainer flags
-OPTS=(
-  --nv --cleanenv --contain --workdir "$PROJECT_ROOT/.tmp"
-  --bind "$PROJECT_ROOT:/workspace"
-  --bind "$HOST_HF_PATH:/huggingface_cache"
-  --pwd /workspace
-)
-
-if [ -n "$STORAGE_DIR" ]; then
-  if [ -d "$STORAGE_DIR" ]; then
-    TARGET_PATH="${STORAGE_BIND_PATH:-/storage}"
-    OPTS+=(--bind "$STORAGE_DIR:$TARGET_PATH")
-    echo ">>> Mounting storage: $STORAGE_DIR -> $TARGET_PATH"
-  else
-    echo ">>> Warning: STORAGE_DIR is set to '$STORAGE_DIR' but it is not a directory."
-  fi
 fi
 
 # execute cleanly using bash arrays
