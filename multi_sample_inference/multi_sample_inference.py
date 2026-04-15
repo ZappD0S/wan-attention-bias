@@ -15,6 +15,7 @@ from pathlib import Path
 import numpy as np
 import torch
 from diffusers.utils.loading_utils import load_image
+from huggingface_hub import snapshot_download
 from scipy.ndimage import gaussian_filter
 from sklearn.model_selection import ParameterGrid
 
@@ -40,6 +41,7 @@ signal.signal(signal.SIGINT, handle_slurm_signal)
 
 def run_repeat_loop(
     tasks_list: list,
+    checkpoint_dir,
     prompt_sentences,
     img,
     single_char_imgs,
@@ -61,6 +63,7 @@ def run_repeat_loop(
         tasks_list.append(
             {
                 "prompt_sentences": prompt_sentences,
+                "checkpoint_dir": checkpoint_dir,
                 "img": img,
                 "single_char_imgs": single_char_imgs,
                 "char_segments_list": char_segments_list,
@@ -76,7 +79,15 @@ def run_repeat_loop(
 
 
 def process_action_prompts(
-    tasks_list, prompt_data, param_config, img, single_char_imgs, masks, output_path, repeat
+    tasks_list,
+    checkpoint_dir,
+    prompt_data,
+    param_config,
+    img,
+    single_char_imgs,
+    masks,
+    output_path,
+    repeat,
 ):
     allowed_prompt_types = param_config.get(
         "prompt_types", list(prompt_data["action_prompts"].keys())
@@ -103,6 +114,7 @@ def process_action_prompts(
 
         run_repeat_loop(
             tasks_list,
+            checkpoint_dir,
             prompt_sentences,
             img,
             single_char_imgs,
@@ -116,7 +128,7 @@ def process_action_prompts(
     return False
 
 
-def process_parameter_grid(tasks_list, prompt_data, output_path, param_grid):
+def process_parameter_grid(tasks_list, checkpoint_dir, prompt_data, output_path, param_grid):
     img = load_image(prompt_data["img_paths"]["original"])
     single_char_imgs = [load_image(path) for path in prompt_data["img_paths"]["single_char"]]
 
@@ -142,7 +154,15 @@ def process_parameter_grid(tasks_list, prompt_data, output_path, param_grid):
         masks = masks.flip(dims=(0,)) if param_config.get("invert", False) else masks
 
         process_action_prompts(
-            tasks_list, prompt_data, param_config, img, single_char_imgs, masks, output_path, repeat
+            tasks_list,
+            checkpoint_dir,
+            prompt_data,
+            param_config,
+            img,
+            single_char_imgs,
+            masks,
+            output_path,
+            repeat,
         )
     return False
 
@@ -269,10 +289,24 @@ def main():
     args.output_path.mkdir(exist_ok=True, parents=True)
     sync_param_grid(args.param_grid_file, args.output_path)
 
+    try:
+        checkpoint_dir = snapshot_download("Wan-AI/Wan2.1-I2V-14B-480P", local_files_only=False)
+        print(f"[Dispatcher] Model resolved at: {checkpoint_dir}")
+    except Exception as e:
+        raise RuntimeError(
+            "Failed to resolve model path. Ensure you have internet or the model is cached."
+        ) from e
+
     tasks_list = []
     safeguard_suffix = prompt_json_dict.get("safeguard_suffix", "")
     for prompt_data in prompt_json_dict["dataset"]:
-        process_parameter_grid(tasks_list, prompt_data, args.output_path, param_grid)
+        process_parameter_grid(
+            tasks_list,
+            checkpoint_dir,
+            prompt_data,
+            args.output_path,
+            param_grid,
+        )
         prompt_data["safeguard_suffix"] = safeguard_suffix
 
     if not tasks_list:

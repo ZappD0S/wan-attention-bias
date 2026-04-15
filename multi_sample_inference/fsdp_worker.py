@@ -8,7 +8,6 @@ import numpy as np
 import torch
 import torch.distributed as dist
 from diffusers.utils.export_utils import export_to_video
-from huggingface_hub import snapshot_download
 from wan.configs.wan_i2v_14B import i2v_14B
 from wan.regional_prompt import WanI2V
 
@@ -129,10 +128,10 @@ def main():
     # If we are sharding, we only shard T5 if it's NOT on the CPU
     t5_fsdp = is_fsdp and not args.t5_cpu
 
-    path = snapshot_download("Wan-AI/Wan2.1-I2V-14B-480P", local_files_only=True)
+    checkpoint_dir = task["checkpoint_dir"]
     wan_i2v = WanI2V(
         config=i2v_14B,
-        checkpoint_dir=path,
+        checkpoint_dir=checkpoint_dir,
         device_id=local_rank,
         rank=dist.get_rank(),
         t5_fsdp=t5_fsdp,
