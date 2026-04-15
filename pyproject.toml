@@ -29,7 +29,7 @@ dependencies = [
     "fastapi",
     "ffmpy",
     "filelock",
-    "flash-attn @ https://github.com/mjun0812/flash-attention-prebuild-wheels/releases/download/v0.7.16/flash_attn-2.8.3+cu130torch2.10-cp311-cp311-linux_x86_64.whl",
+    "flash-attn @ https://github.com/mjun0812/flash-attention-prebuild-wheels/releases/download/v0.9.0/flash_attn-2.8.3+cu128torch2.10-cp311-cp311-linux_x86_64.whl",
     "frozenlist",
     "fsspec",
     "ftfy",
@@ -61,10 +61,10 @@ dependencies = [
     "networkx",
     "nicegui",
     "numpy",
-    "cuda-toolkit[all]>=13.0",
-    "nvidia-cudnn-cu13",
-    "nvidia-nccl-cu13",
-    "nvidia-cusparselt-cu13",
+    "cuda-toolkit[all]>=12.8",
+    "nvidia-cudnn-cu12",
+    "nvidia-nccl-cu12",
+    "nvidia-cusparselt-cu12",
     "nvidia-npp",
     "omegaconf>=2.3.0",
     "onnxruntime-gpu>=1.23.2",
@@ -147,26 +147,11 @@ line-length = 100
 
 [tool.ruff.lint]
 select = [
-    "E",    # pycodestyle errors (standard)
-    "F",    # Pyflakes (standard)
-    "I",    # isort (keeps imports organized)
-    "B",    # flake8-bugbear (essential: catches logic bugs & design flaws)
-    "UP",   # pyupgrade (keeps code modern: e.g., converts old syntax to 3.10+)
-    "PL",   # Pylint (catches the "leakage" and "redefinition" issues)
-    "C4",   # flake8-comprehensions (helps you use list/dict comprehensions better)
-    "SIM",  # flake8-simplify (helps you write cleaner, less bug-prone logic)
-    "RUF",  # Ruff-specific rules (catches common mistakes in the linter itself)
-    "TID",  # flake8-tidy-imports (prevents messy/circular imports)
+    "E", "F", "I", "B", "UP", "PL", "C4", "SIM", "RUF", "TID",
 ]
 
 ignore = [
-    "PLR0913", # Too many arguments in function (sometimes necessary)
-    "B008",    # Do not perform function call in argument defaults (too strict for FastAPI/Typer)
-    "PLW0602",
-    "PLW0603",
-    "PLR2004",
-    "E501",
-    "E741",
+    "PLR0913", "B008", "PLW0602", "PLW0603", "PLR2004", "E501", "E741",
 ]
 
 [tool.uv]
@@ -177,8 +162,8 @@ no-build-isolation-package = ["sam2"]
 sam2 = { SAM2_BUILD_ALLOW_ERRORS = "0" }
 
 [[tool.uv.index]]
-name = "pytorch-cu130"
-url = "https://download.pytorch.org/whl/cu130"
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
 explicit = true
 
 [tool.uv.workspace]
@@ -190,7 +175,7 @@ members = [
 [tool.uv.sources]
 wan = { workspace = true, editable = true }
 lama-inpainting = { workspace = true, editable = true }
-torch = { index = "pytorch-cu130" }
-torchvision = { index = "pytorch-cu130" }
-torchaudio = { index = "pytorch-cu130" }
-torchcodec = { index = "pytorch-cu130" }
+torch = { index = "pytorch-cu128" }
+torchvision = { index = "pytorch-cu128" }
+torchaudio = { index = "pytorch-cu128" }
+torchcodec = { index = "pytorch-cu128" }
