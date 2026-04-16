@@ -48,8 +48,8 @@ if [ -d "$HOST_VENV_PATH" ]; then
   if [ -n "$HOST_LIBS" ]; then
     # Translate host paths to container paths by swapping PROJECT_ROOT for CONTAINER_ROOT
     # Export for Apptainer (stripping the trailing colon)
-    export APPTAINERENV_LD_LIBRARY_PATH="${HOST_LIBS//$PROJECT_ROOT/$CONTAINER_ROOT}"
-    export APPTAINERENV_LD_LIBRARY_PATH="${APPTAINERENV_LD_LIBRARY_PATH%:}"
+    CONTAINER_VENV_LIBS="${HOST_LIBS//$PROJECT_ROOT/$CONTAINER_ROOT}"
+    export APPTAINERENV_LD_LIBRARY_PATH="${CONTAINER_VENV_LIBS}\$LD_LIBRARY_PATH"
   fi
 fi
 
