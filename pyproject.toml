@@ -65,7 +65,7 @@ dependencies = [
     "nvidia-cudnn-cu12",
     "nvidia-nccl-cu12",
     "nvidia-cusparselt-cu12",
-    "nvidia-npp",
+    "nvidia-npp-cu12",
     "omegaconf>=2.3.0",
     "onnxruntime-gpu>=1.23.2",
     "opencv-python-headless",
@@ -124,6 +124,7 @@ dependencies = [
     "widgetsnbextension",
     "yarl",
     "zipp",
+    "sam2>=1.1.0",
 ]
 
 [dependency-groups]
@@ -132,9 +133,6 @@ dev = [
   "jupyterlab",
   "ruff",
   "xeus-python",
-]
-cuda = [
-  "sam2>=1.1.0",
 ]
 
 [tool.pyright]

@@ -2638,6 +2638,16 @@ wheels = [
 ]
 
 [[package]]
+name = "nvidia-npp-cu12"
+version = "12.4.1.87"
+source = { registry = "https://pypi.org/simple" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/fc/07/eb84630bb58abc8bedf6dff04150000136a7fce9a0d8d26a992731f3aeba/nvidia_npp_cu12-12.4.1.87-py3-none-manylinux_2_27_aarch64.whl", hash = "sha256:e6680d2a12beca9ce91e61dd2e6121e8e77e820b09c29a419aa36b84aa7fec3a", size = 281904559, upload-time = "2025-06-05T20:08:56.751Z" },
+    { url = "https://files.pythonhosted.org/packages/a6/8e/efdf6ffa8a63e0bc8c90d1fcbf0cd5d0e8fcc52e68de12fc79c36b587f0e/nvidia_npp_cu12-12.4.1.87-py3-none-manylinux_2_27_x86_64.whl", hash = "sha256:a586435420f08a804ebe83c09f2757d53fdee65364f2129e36d7476ab66c6197", size = 282363718, upload-time = "2025-06-05T20:09:19.678Z" },
+    { url = "https://files.pythonhosted.org/packages/ae/91/e5f3067f369ce9ff3b35613a3e14bb230a17d4d1fb62390087ef90d9c235/nvidia_npp_cu12-12.4.1.87-py3-none-win_amd64.whl", hash = "sha256:7c425c400b610eecfb1a08cfc92ecfa4a1927c2ecb691bc26406444c605d30a9", size = 277277230, upload-time = "2025-06-05T20:15:43.459Z" },
+]
+
+[[package]]
 name = "nvidia-nvfatbin"
 version = "13.2.78"
 source = { registry = "https://pypi.org/simple" }
@@ -4368,7 +4378,7 @@ dependencies = [
     { name = "nvidia-cudnn-cu12" },
     { name = "nvidia-cusparselt-cu12" },
     { name = "nvidia-nccl-cu12" },
-    { name = "nvidia-npp" },
+    { name = "nvidia-npp-cu12" },
     { name = "omegaconf" },
     { name = "onnxruntime-gpu" },
     { name = "opencv-python-headless" },
@@ -4395,6 +4405,7 @@ dependencies = [
     { name = "rich" },
     { name = "safehttpx" },
     { name = "safetensors" },
+    { name = "sam2" },
     { name = "scikit-image" },
     { name = "scikit-learn" },
     { name = "semantic-version" },
@@ -4430,9 +4441,6 @@ dependencies = [
 ]
 
 [package.dev-dependencies]
-cuda = [
-    { name = "sam2" },
-]
 dev = [
     { name = "ipykernel" },
     { name = "jupyterlab" },
@@ -4502,7 +4510,7 @@ requires-dist = [
     { name = "nvidia-cudnn-cu12" },
     { name = "nvidia-cusparselt-cu12" },
     { name = "nvidia-nccl-cu12" },
-    { name = "nvidia-npp" },
+    { name = "nvidia-npp-cu12" },
     { name = "omegaconf", specifier = ">=2.3.0" },
     { name = "onnxruntime-gpu", specifier = ">=1.23.2" },
     { name = "opencv-python-headless" },
@@ -4529,6 +4537,7 @@ requires-dist = [
     { name = "rich" },
     { name = "safehttpx" },
     { name = "safetensors" },
+    { name = "sam2", specifier = ">=1.1.0" },
     { name = "scikit-image", specifier = ">=0.26.0" },
     { name = "scikit-learn", specifier = ">=1.7.2" },
     { name = "semantic-version" },
@@ -4564,7 +4573,6 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
-cuda = [{ name = "sam2", specifier = ">=1.1.0" }]
 dev = [
     { name = "ipykernel" },
     { name = "jupyterlab" },
