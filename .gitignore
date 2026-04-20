@@ -13,3 +13,5 @@
 *.sif
 .tmp/
 /evaluation/logs/
+/.env
+/.cache/

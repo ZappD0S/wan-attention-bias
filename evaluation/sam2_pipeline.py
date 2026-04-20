@@ -139,7 +139,10 @@ def run_sam2_pipeline(
         frame_boxes = [get_bbox(m, margin, h_orig, w_orig) for m in masks]
         valid_boxes = [b for b in frame_boxes if b is not None]
         if not valid_boxes:
-            continue
+            raise RuntimeError(
+                f"Failed to extract any valid bounding boxes for Object {i} "
+                f"in video '{video_path}'. Aborting script."
+            )
 
         # Global BBox calculation
         gy1, gy2 = min(b[0] for b in valid_boxes), max(b[1] for b in valid_boxes)
