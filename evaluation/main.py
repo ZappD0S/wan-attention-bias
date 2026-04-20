@@ -557,10 +557,8 @@ def evaluate_pipeline(
             action_descriptions = [s[0] for s in segments]
 
             for j, cropped_video_path in enumerate(cropped_videos):
-                # --- O(1) CACHING FIX ---
                 cached_description = None
                 if desc_func is not None:
-                    # Run the expensive vision encoder exactly ONCE per cropped video
                     cached_description = desc_func(cropped_video_path)
 
                 margin: float = 0.0
@@ -570,12 +568,9 @@ def evaluate_pipeline(
                     is_correct = j == k
                     sign = 1 if is_correct else -1
 
-                    # --- ROUTING LOGIC ---
                     if desc_func is not None:
-                        # Blind functions expect the text description
                         score = eval_func(cached_description, action_descr)
                     else:
-                        # Direct functions expect the video path
                         score = eval_func(cropped_video_path, action_descr)
 
                     margin += sign * score
