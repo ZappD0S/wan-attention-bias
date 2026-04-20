@@ -12,13 +12,16 @@ import threading
 import uuid
 from pathlib import Path
 
+import msgspec
 import numpy as np
 import torch
 from diffusers.utils.loading_utils import load_image
 from huggingface_hub import snapshot_download
+from msgspec.structs import asdict
 from scipy.ndimage import gaussian_filter
 from sklearn.model_selection import ParameterGrid
 
+from schema import ProcessedVideoSpecification, VideoGenerationDataset
 from utils import create_mask_from_bbox
 
 from . import fsdp_worker
@@ -81,7 +84,7 @@ def run_repeat_loop(
 def process_action_prompts(
     tasks_list,
     checkpoint_dir,
-    prompt_data,
+    prompt_data: ProcessedVideoSpecification,
     param_config,
     img,
     single_char_imgs,
@@ -89,14 +92,21 @@ def process_action_prompts(
     output_path,
     repeat,
 ):
-    allowed_prompt_types = param_config.get(
-        "prompt_types", list(prompt_data["action_prompts"].keys())
-    )
-    for prompt_type, action_prompt_data in prompt_data["action_prompts"].items():
+    # Convert the ActionPromptSuite struct to a dict to iterate over its fields
+    action_prompts_dict = asdict(prompt_data.action_prompts)
+
+    allowed_prompt_types = param_config.get("prompt_types", list(action_prompts_dict.keys()))
+
+    for prompt_type, action_prompt_data in action_prompts_dict.items():
         if prompt_type not in allowed_prompt_types:
             continue
 
-        config = {"params": param_config, "prompt_data": prompt_data, "prompt_type": prompt_type}
+        config = {
+            "params": param_config,
+            "prompt_data": asdict(prompt_data),
+            "prompt_type": prompt_type,
+        }
+
         folder_name = get_folder_name(config)
         action_output_path = output_path / folder_name
         action_output_path.mkdir(exist_ok=True)
@@ -112,6 +122,10 @@ def process_action_prompts(
             for mask_row, segs in zip(segment_masks, segment_lists, strict=True)
         ]
 
+        general_prompt = action_prompt_data.get(
+            "general_prompt", "high quality video, background scenery"
+        )
+
         run_repeat_loop(
             tasks_list,
             checkpoint_dir,
@@ -123,27 +137,29 @@ def process_action_prompts(
             param_config,
             action_output_path,
             repeat,
-            "high quality video, background scenery",
+            general_prompt,
         )
     return False
 
 
-def process_parameter_grid(tasks_list, checkpoint_dir, prompt_data, output_path, param_grid):
-    img = load_image(prompt_data["img_paths"]["original"])
-    single_char_imgs = [load_image(path) for path in prompt_data["img_paths"]["single_char"]]
+def process_parameter_grid(
+    tasks_list, checkpoint_dir, prompt_data: ProcessedVideoSpecification, output_path, param_grid
+):
+    img = load_image(prompt_data.img_paths.original)
+    single_char_imgs = [load_image(path) for path in prompt_data.img_paths.single_char]
 
     for param_config in ParameterGrid(param_grid):
         repeat = param_config.pop("repeat", 1)
         simil_masks_type = param_config["simil_masks_type"]
 
         if simil_masks_type == "fixed":
-            bboxes = prompt_data["enlarged_bboxes"]
+            bboxes = prompt_data.enlarged_bboxes
             masks = np.stack([create_mask_from_bbox(bbox, TARGET_SIZE) for bbox in bboxes])
         else:
             masks = np.stack(
                 [
                     np.array(load_image(path).convert("L")) > 128
-                    for path in prompt_data["img_paths"]["seg_masks"]
+                    for path in prompt_data.img_paths.seg_masks
                 ]
             )
 
@@ -283,8 +299,10 @@ def main():
     with open(args.param_grid_file) as f:
         param_grid = json.load(f)
 
-    with open(args.prompts_file) as f:
-        prompt_json_dict = json.load(f)
+    with open(args.prompts_file, "rb") as f:
+        dataset_root = msgspec.json.decode(
+            f.read(), type=VideoGenerationDataset[ProcessedVideoSpecification]
+        )
 
     args.output_path.mkdir(exist_ok=True, parents=True)
     sync_param_grid(args.param_grid_file, args.output_path)
@@ -298,8 +316,8 @@ def main():
         ) from e
 
     tasks_list = []
-    safeguard_suffix = prompt_json_dict.get("safeguard_suffix", "")
-    for prompt_data in prompt_json_dict["dataset"]:
+
+    for prompt_data in dataset_root.dataset:
         process_parameter_grid(
             tasks_list,
             checkpoint_dir,
@@ -307,7 +325,6 @@ def main():
             args.output_path,
             param_grid,
         )
-        prompt_data["safeguard_suffix"] = safeguard_suffix
 
     if not tasks_list:
         print("No new tasks to perform.")

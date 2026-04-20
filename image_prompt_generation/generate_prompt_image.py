@@ -1,14 +1,15 @@
 import gc
-import json
 from pathlib import Path
 from typing import Any
 
 import cv2
+import msgspec
 import numpy as np
 import torch
 import torchvision
 from accelerate import Accelerator
 from diffusers import FluxPipeline
+from msgspec.structs import asdict
 from PIL import Image, ImageDraw, ImageFont
 from skimage.morphology import convex_hull_image
 from transformers import (
@@ -18,7 +19,12 @@ from transformers import (
     Sam2Processor,
 )
 
-from debug_utils import draw_masks
+from schema import (
+    ProcessedVideoSpecification,
+    VideoAssetPaths,
+    VideoGenerationDataset,
+    VideoSpecification,
+)
 from utils import create_mask_from_bbox
 
 from .big_lama import inpaint_image, load_lama_model
@@ -31,31 +37,29 @@ MODEL_ID_DINO = "IDEA-Research/grounding-dino-base"
 MODEL_ID_FLUX = "black-forest-labs/FLUX.1-dev"
 
 
-def load_dataset(directory: Path) -> tuple[list[dict], str]:
+def load_dataset(directory: Path) -> VideoGenerationDataset[VideoSpecification]:
     """
-    Iterates through JSON files in the directory to aggregate prompt data.
+    Decodes JSON files and aggregates them into a single VideoGenerationDataset object.
     """
-    prompts_data = []
-    suffix = ""
+    all_specs = []
+    global_suffix = ""
 
     for prompt_file_path in directory.glob("*.json"):
-        # Skip the output file to avoid reading what we are writing
         if OUTPUT_FILE.exists() and OUTPUT_FILE.samefile(prompt_file_path):
             continue
 
-        with prompt_file_path.open() as f:
+        with prompt_file_path.open("rb") as f:
             try:
-                data = json.load(f)
-                # Capture the safeguard suffix from the first file that has it
-                if not suffix and "safeguard_suffix" in data:
-                    suffix = data["safeguard_suffix"]
+                data = msgspec.json.decode(
+                    f.read(), type=VideoGenerationDataset[VideoSpecification]
+                )
+                if not global_suffix:
+                    global_suffix = data.safeguard_suffix
+                all_specs.extend(data.dataset)
+            except Exception as e:
+                print(f"Warning: Could not decode {prompt_file_path}: {e}")
 
-                if "dataset" in data:
-                    prompts_data += data["dataset"]
-            except json.JSONDecodeError:
-                print(f"Warning: Could not decode {prompt_file_path}")
-
-    return prompts_data, suffix
+    return VideoGenerationDataset(safeguard_suffix=global_suffix, dataset=all_specs)
 
 
 def load_flux_model() -> FluxPipeline:
@@ -143,7 +147,7 @@ def filter_and_sort_boxes(
     return final_boxes, final_scores, final_labels
 
 
-def has_overlap(boxes: list[list[float]]) -> bool:
+def has_overlap(boxes: list[tuple[float, float, float, float]]) -> bool:
     """Check if any pair of boxes has IoU > 0 using torchvision.ops.box_iou."""
     if len(boxes) <= 1:
         return False
@@ -153,12 +157,12 @@ def has_overlap(boxes: list[list[float]]) -> bool:
 
 
 def enlarge_bboxes_adaptive(
-    boxes: list[list[float]],
+    boxes: list[tuple[float, float, float, float]],
     image_size: tuple[int, int],
     base_factor: float = 0.5,
     min_factor: float = 0.0,
     step: float = 0.05,
-) -> list[list[float]]:
+) -> list[tuple[float, float, float, float]]:
     """
     Enlarges bounding boxes, skipping if already overlapping.
 
@@ -244,37 +248,40 @@ def draw_bboxes(img: Image.Image, boxes, labels, scores) -> Image.Image:
 
 
 def process_dataset(
-    prompts_list: list[dict],
+    dataset: VideoGenerationDataset[VideoSpecification],
     flux_pipe: FluxPipeline,
-    gd_processor: Any,
-    gd_model: Any,
-    device,
-    force=False,
-):
-    """Main processing loop: Generates images, detects objects, and updates dataset."""
+    gd_processor: AutoProcessor,
+    gd_model: AutoModelForZeroShotObjectDetection,
+    device: torch.device,
+    force: bool = False,
+) -> list[tuple[ProcessedVideoSpecification, Image.Image]]:
+    """
+    Main processing loop: Generates images, detects objects, saves debug visuals,
+    and upgrades 'VideoSpecification' objects to 'ProcessedVideoSpecification'.
+    """
 
-    outputs = []
+    processed_pairs: list[tuple[ProcessedVideoSpecification, Image.Image]] = []
 
-    for i, prompt_data in enumerate(prompts_list):
-        appearance = prompt_data["appearance_prompt"]
-        segments = appearance["segments"][0]
-        mask = appearance["mask"][0]
+    for i, spec in enumerate(dataset.dataset):
+        appearance = spec.appearance_prompt
+        segments = appearance.segments[0]
+        mask = appearance.mask[0]
 
         full_prompt = " ".join(segments)
+
         character_segments = [seg for is_char, seg in zip(mask, segments, strict=True) if is_char]
 
         img_subdir = IMG_DIR / str(i)
-        img_subdir.mkdir(exist_ok=True)
+        img_subdir.mkdir(exist_ok=True, parents=True)
         img_path = img_subdir / "original.png"
 
         if not img_path.exists() or force:
-            print(f"\nProcessing [{i + 1}/{len(prompts_list)}]: {full_prompt[:50]}...")
-
+            print(f"\nProcessing [{i + 1}/{len(dataset.dataset)}]: {full_prompt[:60]}...")
             seed = 42 + i
             img = generate_image(flux_pipe, full_prompt, seed)
             img.save(img_path)
         else:
-            print("Image already exists. Loading from disk...")
+            print(f"Loading existing image for item {i}...")
             img = Image.open(img_path)
 
         raw_results = detect_objects(
@@ -288,13 +295,13 @@ def process_dataset(
         debug_subdir = img_subdir / "debug"
         debug_subdir.mkdir(exist_ok=True)
 
-        debug_all_boxes = draw_bboxes(
+        debug_all_img = draw_bboxes(
             img,
             raw_results["boxes"].tolist(),
             raw_results["text_labels"],
             raw_results["scores"].tolist(),
         )
-        debug_all_boxes.save(debug_subdir / "all_boxes_detected.png")
+        debug_all_img.save(debug_subdir / "all_boxes_detected.png")
 
         boxes, scores, labels = filter_and_sort_boxes(
             raw_results["boxes"],
@@ -305,27 +312,33 @@ def process_dataset(
         )
 
         if len(boxes) != len(character_segments):
-            raise Exception(
-                f"ERROR: Wrong number of boxes for #{i}."
-                f" Expected {len(character_segments)}, got {len(boxes)}"
+            raise ValueError(
+                f"ERROR: Expected {len(character_segments)} objects for index {i}, "
+                f"but found {len(boxes)}. Check detection thresholds."
             )
 
-        img_with_boxes = draw_bboxes(img, boxes, labels, scores)
-        img_with_boxes.save(debug_subdir / "original_with_boxes.png")
+        img_with_final_boxes = draw_bboxes(img, boxes, labels, scores)
+        img_with_final_boxes.save(debug_subdir / "original_with_boxes.png")
 
-        # sorting by horizontal center x
+        # Sort objects by horizontal center (x) so they map correctly to 'left'/'right' prompts
         boxes_sorted = sorted(boxes, key=lambda b: 0.5 * (b[2] + b[0]))
 
-        output = prompt_data.copy()
-        output["img"] = img
-        output["bboxes"] = boxes_sorted
+        tuple_bboxes = [(b[0], b[1], b[2], b[3]) for b in boxes_sorted]
 
-        output["img_paths"] = {}
-        output["img_paths"]["original"] = str(img_path)
+        processed_spec = ProcessedVideoSpecification(
+            **asdict(spec),
+            bboxes=tuple_bboxes,
+            img_paths=VideoAssetPaths(
+                original=str(img_path),
+                seg_masks=[],  # To be filled in the SAM2 step
+                single_char=[],  # To be filled in the Inpainting step
+            ),
+            enlarged_bboxes=[],  # To be filled at the end of the pipeline
+        )
 
-        outputs.append(output)
+        processed_pairs.append((processed_spec, img))
 
-    return outputs
+    return processed_pairs
 
 
 def compute_segmentation_masks(
@@ -409,15 +422,14 @@ def fill_out_characters(
 
 
 def main() -> None:
-    IMG_DIR.mkdir(exist_ok=True)
+    IMG_DIR.mkdir(exist_ok=True, parents=True)
 
-    prompts_data_list, safeguard_suffix = load_dataset(BASE_DIR)
+    dataset_root = load_dataset(BASE_DIR)
 
     flux_pipe = load_flux_model()
     gd_processor, gd_model, device = load_dino_model()
 
-    updated_dataset = process_dataset(prompts_data_list, flux_pipe, gd_processor, gd_model, device)
-    print("length:", len(updated_dataset))
+    updated_pairs = process_dataset(dataset_root, flux_pipe, gd_processor, gd_model, device)
 
     del flux_pipe
     gc.collect()
@@ -432,62 +444,40 @@ def main() -> None:
 
     lama_model, _ = load_lama_model("./weights/big-lama", device)
 
-    for prompt_data in updated_dataset:
-        raw_img = prompt_data.pop("img")
-        bboxes = prompt_data["bboxes"]
+    for spec, raw_img in updated_pairs:
+        bboxes = spec.bboxes
         w, h = raw_img.size
 
         seg_masks = compute_segmentation_masks(
             raw_img, bboxes, sam2_model, sam2_processor, device=device
         )
-        save_dir = Path(prompt_data["img_paths"]["original"]).parent
-
-        prompt_data["img_paths"]["seg_masks"] = []
-
-        # for j, seg_mask in enumerate(seg_masks):
-        #     seg_mask_img = Image.fromarray(seg_mask)
-        #
-        #     seg_mask_path = save_dir / f"segmentaion_mask_{j}.png"
-        #     seg_mask_img.save(seg_mask_path)
-        #     prompt_data["img_paths"]["seg_masks"].append(str(seg_mask_path))
+        save_dir = Path(spec.img_paths.original).parent
 
         for j, bbox in enumerate(bboxes):
-            mask = create_mask_from_bbox(bbox, (h, w))
-            mask = Image.fromarray(mask)
+            mask_np = create_mask_from_bbox(bbox, (h, w))
+            mask_img = Image.fromarray(mask_np)
 
             seg_mask_path = save_dir / f"segmentaion_mask_{j}.png"
-            mask.save(seg_mask_path)
-            prompt_data["img_paths"]["seg_masks"].append(str(seg_mask_path))
-
-        orig_img_path = Path(prompt_data["img_paths"]["original"])
-        debug_folder = orig_img_path.parent / "debug"
-        debug_folder.mkdir(exist_ok=True)
-
-        img_with_masks = draw_masks(raw_img, list(seg_masks))
-        img_with_masks.save(debug_folder / "img_with_masks.png")
+            mask_img.save(seg_mask_path)
+            spec.img_paths.seg_masks.append(str(seg_mask_path))
 
         single_char_out = fill_out_characters(raw_img, seg_masks, lama_model, device=device)
-
-        prompt_data["img_paths"]["single_char"] = []
         for i, data in enumerate(single_char_out):
-            removal_mask = data["removal_mask"]
-            removal_mask.save(debug_folder / f"mask_char_{i}.png")
-
             single_char_img = data["single_char_img"]
-
             single_char_img_path = save_dir / f"single_char_{i}.png"
             single_char_img.save(str(single_char_img_path))
-            prompt_data["img_paths"]["single_char"].append(str(single_char_img_path))
+            spec.img_paths.single_char.append(str(single_char_img_path))
 
-        # enlarge bboxes
-        enlarged_bboxes = enlarge_bboxes_adaptive(bboxes, (h, w), base_factor=0.5)
-        prompt_data["enlarged_bboxes"] = enlarged_bboxes
+        raw_enlarged = enlarge_bboxes_adaptive(bboxes, (h, w), base_factor=0.5)
+        spec.enlarged_bboxes = [(b[0], b[1], b[2], b[3]) for b in raw_enlarged]
 
-    output_data = {"safeguard_suffix": safeguard_suffix, "dataset": updated_dataset}
+    processed_dataset_root = VideoGenerationDataset[ProcessedVideoSpecification](
+        safeguard_suffix=dataset_root.safeguard_suffix, dataset=[pair[0] for pair in updated_pairs]
+    )
 
     print(f"Saving results to {OUTPUT_FILE}...")
-    with open(OUTPUT_FILE, "w") as f:
-        json.dump(output_data, f, indent=2)
+    with open(OUTPUT_FILE, "wb") as f:
+        f.write(msgspec.json.encode(processed_dataset_root))
 
     print("Done.")
 
