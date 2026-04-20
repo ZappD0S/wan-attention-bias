@@ -121,6 +121,9 @@ def main():
         raise RuntimeError("Must launch via torchrun.") from e
 
     torch.cuda.set_device(local_rank)
+
+    dist.init_process_group(backend="nccl", device_id=torch.device(f"cuda:{local_rank}"))
+
     with open(args.task_file, "rb") as f:
         task = pickle.load(f)
 
