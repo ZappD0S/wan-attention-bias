@@ -8,35 +8,27 @@ set -e
 VENV_NAME=".venv-container"
 # The mount point inside the container
 CONTAINER_ROOT="/workspace"
-
 # get the absolute path of the directory this script lives in
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
 IMAGE="$PROJECT_ROOT/containers/arch_ml.sif"
 
-# ensure host directories exist
-mkdir -p \
-  "$PROJECT_ROOT/.uv_cache" \
-  "$PROJECT_ROOT/.uv_python" \
-  "$PROJECT_ROOT/.tmp" \
-  "$PROJECT_ROOT/.cache/huggingface"
-
+HOST_UV_CACHE="${UV_CACHE_DIR:-$PROJECT_ROOT/.uv_cache}"
 HOST_HF_HOME="${HF_HOME:-$HOME/.cache/huggingface}"
-mkdir -p "$HOST_HF_HOME"
-CONTAINER_HF_HOME="/workspace/.cache/huggingface"
+HOST_PYTHON_INSTALL="$PROJECT_ROOT/.uv_python"
+HOST_TMP="$PROJECT_ROOT/.tmp"
+
+# ensure host directories exist
+mkdir -p "$HOST_UV_CACHE" "$HOST_HF_HOME" "$HOST_PYTHON_INSTALL" "$HOST_TMP"
 
 # export environment variables for the container
-export APPTAINERENV_HF_HOME="${APPTAINERENV_HF_HOME:-/workspace/.cache/huggingface}"
+export APPTAINERENV_UV_CACHE_DIR="/.cache/uv"
+export APPTAINERENV_HF_HOME="/.cache/huggingface"
+export APPTAINERENV_UV_PYTHON_INSTALL_DIR="/.cache/uv_python"
+
 export APPTAINERENV_HF_TOKEN="$HF_TOKEN"
-
-export APPTAINERENV_UV_CACHE_DIR="$CONTAINER_ROOT/.uv_cache"
-export APPTAINERENV_UV_PYTHON_INSTALL_DIR="$CONTAINER_ROOT/.uv_python"
-export APPTAINERENV_UV_PROJECT_ENVIRONMENT="$CONTAINER_ROOT/.venv-container"
-
-export APPTAINERENV_TMPDIR="$CONTAINER_ROOT/.tmp"
+export APPTAINERENV_UV_PROJECT_ENVIRONMENT="$CONTAINER_ROOT/$VENV_NAME"
 
 HOST_VENV_PATH="$PROJECT_ROOT/$VENV_NAME"
-
 if [ -d "$HOST_VENV_PATH" ]; then
   # Find all 'lib' directories inside any 'nvidia' package (e.g. npp, cublas, cudnn)
   HOST_LIBS=$(find "$HOST_VENV_PATH" -type d -path "*/site-packages/nvidia/*/lib" 2>/dev/null | tr '\n' ':')
@@ -51,10 +43,12 @@ fi
 
 # apptainer flags
 OPTS=(
-  --nv --cleanenv --contain --workdir "$PROJECT_ROOT/.tmp"
-  --bind "$PROJECT_ROOT:/workspace"
-  --bind "$HOST_HF_HOME:$CONTAINER_HF_HOME"
-  --pwd /workspace
+  --nv --cleanenv --contain --workdir "$HOST_TMP"
+  --bind "$PROJECT_ROOT:$CONTAINER_ROOT"
+  --bind "$HOST_UV_CACHE:/.cache/uv"
+  --bind "$HOST_HF_HOME:/.cache/huggingface"
+  --bind "$HOST_PYTHON_INSTALL:/.cache/uv_python"
+  --pwd "$CONTAINER_ROOT"
 )
 
 if [ -d "$STORAGE_DIR" ]; then
