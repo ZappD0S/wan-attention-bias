@@ -1,0 +1,34 @@
+[
+  {
+    "bias_method": [
+      "concept_weaver"
+    ],
+    "simil_masks_type": [
+      "soft"
+    ],
+    "mask_sharing": [
+      null
+    ],
+    "self_attention_masking": [
+      true
+    ],
+    "prompt_types": [
+      [
+        "split_sentences"
+      ]
+    ]
+  },
+  {
+    "bias_method": [
+      "none"
+    ],
+    "simil_masks_type": [
+      "soft"
+    ],
+    "prompt_types": [
+      [
+        "default"
+      ]
+    ]
+  }
+]

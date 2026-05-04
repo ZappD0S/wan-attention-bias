@@ -1,4 +1,5 @@
 import gc
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -37,6 +38,22 @@ MODEL_ID_DINO = "IDEA-Research/grounding-dino-base"
 MODEL_ID_FLUX = "black-forest-labs/FLUX.1-dev"
 
 
+@dataclass
+class GenerationModels:
+    flux: FluxPipeline
+    dino_processor: Any
+    dino_model: AutoModelForZeroShotObjectDetection
+    device: torch.device
+
+
+@dataclass
+class SegmentationModels:
+    sam2: Sam2Model
+    sam2_processor: Sam2Processor
+    lama: Any
+    device: torch.device
+
+
 def load_dataset(directory: Path) -> VideoGenerationDataset[VideoSpecification]:
     """
     Decodes JSON files and aggregates them into a single VideoGenerationDataset object.
@@ -62,24 +79,38 @@ def load_dataset(directory: Path) -> VideoGenerationDataset[VideoSpecification]:
     return VideoGenerationDataset(safeguard_suffix=global_suffix, dataset=all_specs)
 
 
-def load_flux_model() -> FluxPipeline:
-    """Initializes the Flux Image Generation Pipeline."""
+def load_generation_models() -> GenerationModels:
+    """Initializes Flux and Grounding DINO models."""
     print(f"Loading Flux model: {MODEL_ID_FLUX}...")
-    pipe = FluxPipeline.from_pretrained(
+    flux = FluxPipeline.from_pretrained(
         MODEL_ID_FLUX,
         torch_dtype=torch.bfloat16,
         device_map="balanced",
     )
-    return pipe
 
-
-def load_dino_model() -> tuple[Any, Any, torch.device]:
-    """Initializes the Grounding DINO model and processor."""
     print(f"Loading Grounding DINO: {MODEL_ID_DINO}...")
     device = Accelerator().device
-    processor = AutoProcessor.from_pretrained(MODEL_ID_DINO)
-    model = AutoModelForZeroShotObjectDetection.from_pretrained(MODEL_ID_DINO).to(device)
-    return processor, model, device
+    dino_processor = AutoProcessor.from_pretrained(MODEL_ID_DINO)
+    dino_model = AutoModelForZeroShotObjectDetection.from_pretrained(MODEL_ID_DINO).to(device)
+
+    return GenerationModels(
+        flux=flux, dino_processor=dino_processor, dino_model=dino_model, device=device
+    )
+
+
+def load_segmentation_models(device: torch.device) -> SegmentationModels:
+    """Initializes SAM2 and LaMa models."""
+    model_id = "facebook/sam2.1-hiera-large"
+    print(f"Loading SAM2: {model_id}...")
+    sam2_processor = Sam2Processor.from_pretrained(model_id)
+    sam2 = Sam2Model.from_pretrained(
+        model_id,
+        torch_dtype=torch.float16,
+    ).to(device)  # ty:ignore[invalid-argument-type]
+
+    lama, _ = load_lama_model("./weights/big-lama", device)
+
+    return SegmentationModels(sam2=sam2, sam2_processor=sam2_processor, lama=lama, device=device)
 
 
 def generate_image(
@@ -129,22 +160,15 @@ def filter_and_sort_boxes(
     target_count: int,
     iou_threshold: float = 0.5,
 ) -> tuple[list[list[float]], list[float], list[str]]:
-    """
-    Applies Non-Maximum Suppression (NMS) and filters for the top-k highest scoring boxes.
-    """
-    # Remove overlapping boxes
-    keep_indices = torchvision.ops.nms(boxes, scores, iou_threshold)
+    nms_indices = torchvision.ops.nms(boxes, scores, iou_threshold)
+    # sorted() is ascending; slice the last target_count for highest scores
+    top_indices = sorted(nms_indices, key=lambda i: scores[i])[-target_count:]
 
-    # Keep only the target_count boxes with highest score
-    # Note: sorted sorts ascending, so we slice from the end
-    keep_indices = sorted(keep_indices, key=lambda i: scores[i])
-    keep_indices = keep_indices[-target_count:]
-
-    final_boxes = [boxes[i].tolist() for i in keep_indices]
-    final_scores = [scores[i].item() for i in keep_indices]
-    final_labels = [labels[i] for i in keep_indices]
-
-    return final_boxes, final_scores, final_labels
+    return (
+        [boxes[i].tolist() for i in top_indices],
+        [scores[i].item() for i in top_indices],
+        [labels[i] for i in top_indices],
+    )
 
 
 def has_overlap(boxes: list[tuple[float, float, float, float]]) -> bool:
@@ -247,93 +271,116 @@ def draw_bboxes(img: Image.Image, boxes, labels, scores) -> Image.Image:
     return img
 
 
+def find_or_generate_image(
+    spec_index: int,
+    prompt: str,
+    character_segments: list[str],
+    img_path: Path,
+    models: GenerationModels,
+    force: bool,
+) -> tuple[Image.Image, list, list, list, int] | None:
+    """Handles the retry loop for generating an image and detecting objects."""
+    target_count = len(character_segments)
+    max_retries = 10
+
+    # Try loading existing first
+    if img_path.exists() and not force:
+        img = Image.open(img_path)
+        raw = detect_objects(
+            img,
+            character_segments,
+            models.dino_processor,
+            models.dino_model,
+            models.device,
+        )
+        boxes, scores, labels = filter_and_sort_boxes(
+            raw["boxes"], raw["scores"], raw["text_labels"], target_count
+        )
+        if len(boxes) == target_count:
+            return img, boxes, scores, labels, 42 + spec_index
+        print(f"Existing image at index {spec_index} failed detection. Re-generating...")
+
+    # Retry loop
+    for attempt in range(max_retries):
+        seed = 42 + spec_index + (attempt * 1000)
+        print(f"Attempt {attempt + 1}/{max_retries} for index {spec_index} using seed {seed}...")
+
+        temp_img = generate_image(models.flux, prompt, seed)
+        raw = detect_objects(
+            temp_img,
+            character_segments,
+            models.dino_processor,
+            models.dino_model,
+            models.device,
+        )
+        boxes, scores, labels = filter_and_sort_boxes(
+            raw["boxes"], raw["scores"], raw["text_labels"], target_count
+        )
+
+        if len(boxes) == target_count:
+            print(f"Success at index {spec_index} with seed {seed}")
+            temp_img.save(img_path)
+            return temp_img, boxes, scores, labels, seed
+
+        print(f"Found {len(boxes)}/{target_count} objects. Retrying...")
+
+    return None
+
+
+def save_debug_visuals(
+    img: Image.Image, boxes: list, labels: list, scores: list, subdir: Path
+) -> None:
+    """Handles saving the debug bounding box images."""
+    debug_dir = subdir / "debug"
+    debug_dir.mkdir(exist_ok=True)
+    img_with_boxes = draw_bboxes(img, boxes, labels, scores)
+    img_with_boxes.save(debug_dir / "original_with_boxes.png")
+
+
 def process_dataset(
     dataset: VideoGenerationDataset[VideoSpecification],
-    flux_pipe: FluxPipeline,
-    gd_processor: AutoProcessor,
-    gd_model: AutoModelForZeroShotObjectDetection,
-    device: torch.device,
+    models: GenerationModels,
     force: bool = False,
 ) -> list[tuple[ProcessedVideoSpecification, Image.Image]]:
-    """
-    Main processing loop: Generates images, detects objects, saves debug visuals,
-    and upgrades 'VideoSpecification' objects to 'ProcessedVideoSpecification'.
-    """
-
+    """Main processing loop refactored to reduce statement count."""
     processed_pairs: list[tuple[ProcessedVideoSpecification, Image.Image]] = []
 
     for i, spec in enumerate(dataset.dataset):
-        appearance = spec.appearance_prompt
-        segments = appearance.segments[0]
-        mask = appearance.mask[0]
-
-        full_prompt = " ".join(segments)
-
-        character_segments = [seg for is_char, seg in zip(mask, segments, strict=True) if is_char]
+        segments = spec.appearance_prompt.segments[0]
+        mask = spec.appearance_prompt.mask[0]
+        char_segs = [s for is_char, s in zip(mask, segments, strict=True) if is_char]
 
         img_subdir = IMG_DIR / str(i)
         img_subdir.mkdir(exist_ok=True, parents=True)
         img_path = img_subdir / "original.png"
 
-        if not img_path.exists() or force:
-            print(f"\nProcessing [{i + 1}/{len(dataset.dataset)}]: {full_prompt[:60]}...")
-            seed = 42 + i
-            img = generate_image(flux_pipe, full_prompt, seed)
-            img.save(img_path)
-        else:
-            print(f"Loading existing image for item {i}...")
-            img = Image.open(img_path)
-
-        raw_results = detect_objects(
-            img,
-            character_segments,
-            gd_processor,
-            gd_model,
-            device,
+        # Call helper to handle generation and retries
+        result = find_or_generate_image(
+            i,
+            " ".join(segments),
+            char_segs,
+            img_path,
+            models,
+            force,
         )
 
-        debug_subdir = img_subdir / "debug"
-        debug_subdir.mkdir(exist_ok=True)
+        if result is None:
+            print(f"Error: Failed to find objects for index {i} after retries. Skipping.")
+            continue
 
-        debug_all_img = draw_bboxes(
-            img,
-            raw_results["boxes"].tolist(),
-            raw_results["text_labels"],
-            raw_results["scores"].tolist(),
-        )
-        debug_all_img.save(debug_subdir / "all_boxes_detected.png")
+        img, boxes, scores, labels, final_seed = result
 
-        boxes, scores, labels = filter_and_sort_boxes(
-            raw_results["boxes"],
-            raw_results["scores"],
-            raw_results["text_labels"],
-            target_count=len(character_segments),
-            iou_threshold=IOU_THRESHOLD,
-        )
+        # Save debug info
+        save_debug_visuals(img, boxes, labels, scores, img_subdir)
 
-        if len(boxes) != len(character_segments):
-            raise ValueError(
-                f"ERROR: Expected {len(character_segments)} objects for index {i}, "
-                f"but found {len(boxes)}. Check detection thresholds."
-            )
-
-        img_with_final_boxes = draw_bboxes(img, boxes, labels, scores)
-        img_with_final_boxes.save(debug_subdir / "original_with_boxes.png")
-
-        # Sort objects by horizontal center (x) so they map correctly to 'left'/'right' prompts
+        # Map coordinates and create spec
         boxes_sorted = sorted(boxes, key=lambda b: 0.5 * (b[2] + b[0]))
-
-        tuple_bboxes = [(b[0], b[1], b[2], b[3]) for b in boxes_sorted]
-
         processed_spec = ProcessedVideoSpecification(
             **asdict(spec),
-            bboxes=tuple_bboxes,
-            img_paths=VideoAssetPaths(
-                original=str(img_path),
-                seg_masks=[],  # To be filled in the SAM2 step
-                single_char=[],  # To be filled in the Inpainting step
-            ),
-            enlarged_bboxes=[],  # To be filled at the end of the pipeline
+            seed=final_seed,
+            bboxes=[(b[0], b[1], b[2], b[3]) for b in boxes_sorted],
+            img_paths=VideoAssetPaths(original=str(img_path), seg_masks=[], single_char=[]),
+            enlarged_bboxes=[],
         )
 
         processed_pairs.append((processed_spec, img))
@@ -344,18 +391,19 @@ def process_dataset(
 def compute_segmentation_masks(
     image: Image.Image,
     bboxes: list[tuple[float, float, float, float]],
-    model: Sam2Model,
-    processor: Sam2Processor,
-    device="cuda",
+    models: SegmentationModels,
 ) -> np.ndarray:
-    input_boxes = [bboxes]
-    inputs = processor(images=image, input_boxes=input_boxes, return_tensors="pt").to(device)
-    inputs["pixel_values"] = inputs["pixel_values"].to(dtype=model.dtype)
+    # input_boxes = [bboxes]
+    input_boxes = [[list(box) for box in bboxes]]
+    inputs = models.sam2_processor(images=image, input_boxes=input_boxes, return_tensors="pt").to(
+        models.device
+    )
+    inputs["pixel_values"] = inputs["pixel_values"].to(dtype=models.sam2.dtype)
 
     with torch.no_grad():
-        outputs = model(**inputs)
+        outputs = models.sam2(**inputs)
 
-    raw_seg_masks = processor.post_process_masks(
+    raw_seg_masks = models.sam2_processor.post_process_masks(
         outputs.pred_masks.cpu(), inputs["original_sizes"].cpu()
     )[0][:, 0, :, :]  # get best mask (index 0)
 
@@ -374,6 +422,11 @@ def compute_segmentation_masks(
     convex_masks_list = []
     for seg_mask in seg_masks:
         mask_np = seg_mask.cpu().numpy().astype(bool)
+
+        if not np.any(mask_np):
+            print(f"Warning: SAM2 produced an empty mask for bbox index {i}. Skipping convex hull.")
+            convex_masks_list.append(np.zeros(mask_np.shape, dtype=bool))
+            continue
 
         convex_hull = convex_hull_image(mask_np).astype(np.uint8) * 255
         dilated_mask = cv2.dilate(convex_hull, kernel)
@@ -408,17 +461,38 @@ def create_removal_mask(
 
 
 def fill_out_characters(
-    raw_img: Image.Image, seg_masks: np.ndarray, lama_model, device: torch.device | str
+    raw_img: Image.Image,
+    seg_masks: np.ndarray,
+    models: SegmentationModels,
 ) -> list[dict[str, Any]]:
     output: list[dict[str, Any]] = []
 
     for i in range(len(seg_masks)):
         removal_mask = create_removal_mask(seg_masks, keep_index=i, dilation_pixels=100)
-        single_char_img = inpaint_image(lama_model, device, raw_img, removal_mask)
+        single_char_img = inpaint_image(models.lama, models.device, raw_img, removal_mask)
 
         output.append({"removal_mask": removal_mask, "single_char_img": single_char_img})
 
     return output
+
+
+def finalize_spec(
+    spec: ProcessedVideoSpecification,
+    seg_mask_paths: list[str],
+    single_char_paths: list[str],
+    enlarged_bboxes: list[tuple[float, float, float, float]],
+) -> ProcessedVideoSpecification:
+    """Returns a new spec with all asset paths and enlarged bboxes filled in."""
+    # asdict(spec) now includes the 'seed' field
+    data = asdict(spec)
+    data["img_paths"] = VideoAssetPaths(
+        original=spec.img_paths.original,
+        seg_masks=seg_mask_paths,
+        single_char=single_char_paths,
+    )
+    data["enlarged_bboxes"] = enlarged_bboxes
+
+    return ProcessedVideoSpecification(**data)
 
 
 def main() -> None:
@@ -426,53 +500,52 @@ def main() -> None:
 
     dataset_root = load_dataset(BASE_DIR)
 
-    flux_pipe = load_flux_model()
-    gd_processor, gd_model, device = load_dino_model()
+    gen_models = load_generation_models()
+    updated_pairs = process_dataset(dataset_root, gen_models)
 
-    updated_pairs = process_dataset(dataset_root, flux_pipe, gd_processor, gd_model, device)
-
-    del flux_pipe
+    device = gen_models.device
+    del gen_models
     gc.collect()
     torch.cuda.empty_cache()
 
-    model_id = "facebook/sam2.1-hiera-large"
-    sam2_processor = Sam2Processor.from_pretrained(model_id)
-    sam2_model = Sam2Model.from_pretrained(
-        model_id,
-        torch_dtype=torch.float16,
-    ).to(device)  # ty:ignore[invalid-argument-type]
+    seg_models = load_segmentation_models(device)
 
-    lama_model, _ = load_lama_model("./weights/big-lama", device)
+    finalized_pairs: list[tuple[ProcessedVideoSpecification, Image.Image]] = []
 
-    for spec, raw_img in updated_pairs:
+    for i, (spec, raw_img) in enumerate(updated_pairs):
         bboxes = spec.bboxes
         w, h = raw_img.size
 
-        seg_masks = compute_segmentation_masks(
-            raw_img, bboxes, sam2_model, sam2_processor, device=device
-        )
+        print("image", i)
+        seg_masks = compute_segmentation_masks(raw_img, bboxes, seg_models)
         save_dir = Path(spec.img_paths.original).parent
 
+        seg_mask_paths: list[str] = []
         for j, bbox in enumerate(bboxes):
             mask_np = create_mask_from_bbox(bbox, (h, w))
-            mask_img = Image.fromarray(mask_np)
+            seg_mask_path = save_dir / f"segmentation_mask_{j}.png"
+            Image.fromarray(mask_np).save(seg_mask_path)
+            seg_mask_paths.append(str(seg_mask_path))
 
-            seg_mask_path = save_dir / f"segmentaion_mask_{j}.png"
-            mask_img.save(seg_mask_path)
-            spec.img_paths.seg_masks.append(str(seg_mask_path))
-
-        single_char_out = fill_out_characters(raw_img, seg_masks, lama_model, device=device)
-        for i, data in enumerate(single_char_out):
-            single_char_img = data["single_char_img"]
-            single_char_img_path = save_dir / f"single_char_{i}.png"
-            single_char_img.save(str(single_char_img_path))
-            spec.img_paths.single_char.append(str(single_char_img_path))
+        single_char_paths: list[str] = []
+        for j, data in enumerate(fill_out_characters(raw_img, seg_masks, seg_models)):
+            path = save_dir / f"single_char_{j}.png"
+            data["single_char_img"].save(str(path))
+            single_char_paths.append(str(path))
 
         raw_enlarged = enlarge_bboxes_adaptive(bboxes, (h, w), base_factor=0.5)
-        spec.enlarged_bboxes = [(b[0], b[1], b[2], b[3]) for b in raw_enlarged]
+        enlarged = [(b[0], b[1], b[2], b[3]) for b in raw_enlarged]
+
+        finalized_pairs.append(
+            (
+                finalize_spec(spec, seg_mask_paths, single_char_paths, enlarged),
+                raw_img,
+            )
+        )
 
     processed_dataset_root = VideoGenerationDataset[ProcessedVideoSpecification](
-        safeguard_suffix=dataset_root.safeguard_suffix, dataset=[pair[0] for pair in updated_pairs]
+        safeguard_suffix=dataset_root.safeguard_suffix,
+        dataset=[pair[0] for pair in finalized_pairs],
     )
 
     print(f"Saving results to {OUTPUT_FILE}...")

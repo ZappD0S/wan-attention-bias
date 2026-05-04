@@ -210,7 +210,7 @@ def print_top_predictions(processor, logits, k=10):
 
 # TODO:
 # - question: does the soft score actually has a benefit, of is it just adding the scoring prompt after the reasoning?
-# - For example, if we just predict the next token in this function, (or equivalently take the most likely), does it make any difference?
+# - For example, if we just predict the next token in this function (or equivalently take the most likely) does it make any difference?
 def get_soft_score_blind(model, processor, video_description: str, target_action: str) -> float:
     prompt_audit = textwrap.dedent(f"""You are a strict action auditor.
     Your task is to rate how well the 'Target Action' matches the 'Video Description'.

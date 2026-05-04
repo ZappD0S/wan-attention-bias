@@ -2,18 +2,7 @@
 
 set -e
 
-if [ -f .env ]; then
-  # export $(grep -v '^#' .env | xargs) is a common shortcut,
-  # but this while-read loop is more robust for values with spaces.
-  while IFS='=' read -r key value || [ -n "$key" ]; do
-    [[ "$key" =~ ^#.*$ ]] && continue
-    [[ -z "$key" ]] && continue
-    # Clean whitespace and quotes
-    key=$(echo "$key" | xargs)
-    value=$(echo "$value" | xargs)
-    export "$key"="$value"
-  done <.env
-fi
+[ -f .env ] && set -a && source .env && set +a
 
 # The name of your virtual environment directory
 VENV_NAME=".venv-container"
@@ -25,19 +14,26 @@ PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 IMAGE="$PROJECT_ROOT/containers/arch_ml.sif"
 
-# ensure host directories exist (using absolute paths)
+# ensure host directories exist
 mkdir -p \
   "$PROJECT_ROOT/.uv_cache" \
   "$PROJECT_ROOT/.uv_python" \
   "$PROJECT_ROOT/.tmp" \
   "$PROJECT_ROOT/.cache/huggingface"
 
+HOST_HF_HOME="${HF_HOME:-$HOME/.cache/huggingface}"
+mkdir -p "$HOST_HF_HOME"
+CONTAINER_HF_HOME="/workspace/.cache/huggingface"
+
 # export environment variables for the container
 export APPTAINERENV_HF_HOME="${APPTAINERENV_HF_HOME:-/workspace/.cache/huggingface}"
+export APPTAINERENV_HF_TOKEN="$HF_TOKEN"
+
 export APPTAINERENV_UV_CACHE_DIR="$CONTAINER_ROOT/.uv_cache"
 export APPTAINERENV_UV_PYTHON_INSTALL_DIR="$CONTAINER_ROOT/.uv_python"
-export APPTAINERENV_TMPDIR="$CONTAINER_ROOT/.tmp"
 export APPTAINERENV_UV_PROJECT_ENVIRONMENT="$CONTAINER_ROOT/.venv-container"
+
+export APPTAINERENV_TMPDIR="$CONTAINER_ROOT/.tmp"
 
 HOST_VENV_PATH="$PROJECT_ROOT/$VENV_NAME"
 
@@ -57,7 +53,7 @@ fi
 OPTS=(
   --nv --cleanenv --contain --workdir "$PROJECT_ROOT/.tmp"
   --bind "$PROJECT_ROOT:/workspace"
-  # --bind "$HOST_HF_PATH:/huggingface_cache"
+  --bind "$HOST_HF_HOME:$CONTAINER_HF_HOME"
   --pwd /workspace
 )
 

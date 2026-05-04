@@ -61,6 +61,7 @@ class ProcessedVideoSpecification(VideoSpecification):
     bboxes: list[tuple[float, float, float, float]]
     img_paths: VideoAssetPaths
     enlarged_bboxes: list[tuple[float, float, float, float]]
+    seed: int
 
 
 class VideoGenerationDataset(msgspec.Struct, Generic[T]):
