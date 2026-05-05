@@ -7,13 +7,15 @@
 #OAR -E logs/error_%j.log
 #OAR -q abaca
 #OAR --checkpoint 60
+# Add idempotent type: tells OAR to automatically requeue the job if it exits with code 99
+#OAR -t idempotent
 
 PARAM_CONFIG_NAME=""
 
 while getopts "p:" opt; do
   case $opt in
+  p) PARAM_CONFIG_NAME="$OPTARG" ;;
   \?)
-      p) PARAM_CONFIG_NAME="$OPTARG" ;;
     echo "Invalid option -$OPTARG" >&2
     exit 1
     ;;
@@ -25,14 +27,19 @@ if [ -z "$PARAM_CONFIG_NAME" ]; then
   exit 1
 fi
 
-resubmit_handler() {
-  echo "STATUS: Received OAR timeout signal. Resubmitting job..."
-  # 'oarsub -r' is the OAR equivalent of 'scontrol requeue'
-  oarsub -r $OAR_JOB_ID
-  exit 0
+# Renamed handler: forwards the timeout signal to Python and lets bash continue
+checkpoint_handler() {
+  echo "STATUS: Received OAR timeout signal (SIGUSR2). 60 seconds remaining!"
+
+  if [ -n "$PYTHON_PID" ]; then
+    kill -USR2 $PYTHON_PID 2>/dev/null
+  fi
+
+  # We do NOT exit here. This allows the script to fall back to the wait
+  # commands below so Python actually has time to save its files to disk.
 }
 
-trap 'resubmit_handler' SIGUSR2
+trap 'checkpoint_handler' SIGUSR2
 
 module purge
 
@@ -68,20 +75,25 @@ echo "STATUS: Starting Python inference..."
 
 PYTHON_PID=$!
 
-# 'wait' will be interrupted if the shell receives SIGUSR2.
-# If interrupted, the trap 'resubmit_handler' runs and the script exits 0.
+# 'wait' will be interrupted if the shell receives SIGUSR2 (returning code 140).
 wait $PYTHON_PID
 EXIT_CODE=$?
 
+# If interrupted by SIGUSR2, wait AGAIN to give Python time to finish saving its checkpoint
+if [ $EXIT_CODE -eq 140 ]; then
+  echo "STATUS: Interrupted by SIGUSR2. Waiting for Python to finish checkpointing..."
+  wait $PYTHON_PID
+  EXIT_CODE=140 # Preserve the 140 code for the resubmit check below
+fi
 
 if [ $EXIT_CODE -eq 0 ]; then
   echo "STATUS: Job completed successfully."
   exit 0
 
-elif [ $EXIT_CODE -eq 2 ] ||[ $EXIT_CODE -eq 140 ]; then
-  echo "STATUS: Work remains or Checkpoint reached. Resubmitting..."
-  oarsub -r $OAR_JOB_ID
-  exit 0
+elif [ $EXIT_CODE -eq 2 ] || [ $EXIT_CODE -eq 140 ]; then
+  echo "STATUS: Work remains or Checkpoint reached. Resubmitting via idempotent feature..."
+  # Exit 99 triggers OAR's idempotent feature to automatically clone and resubmit this job
+  exit 99
 
 elif [ $EXIT_CODE -eq 143 ] || [ $EXIT_CODE -eq 130 ]; then
   echo "STATUS: Job was manually cancelled or terminated. Exiting gracefully."
