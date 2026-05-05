@@ -61,13 +61,7 @@ dependencies = [
     "networkx",
     "nicegui",
     "numpy",
-    "cuda-toolkit[all]==12.8.*",
-    "nvidia-cudnn-cu12",
-    "nvidia-nccl-cu12",
-    "nvidia-cusparselt-cu12",
-    "nvidia-npp-cu12",
     "omegaconf>=2.3.0",
-    "onnxruntime-gpu>=1.23.2",
     "opencv-python-headless",
     "orjson",
     "packaging",
@@ -156,7 +150,9 @@ ignore = [
 
 [tool.uv]
 config-settings = { editable_mode = "compat" }
-no-build-isolation-package = ["sam2"]
+
+[tool.uv.extra-build-dependencies]
+sam2 = ["setuptools", "wheel", "torch"]
 
 [tool.uv.extra-build-variables]
 sam2 = { SAM2_BUILD_ALLOW_ERRORS = "0" }
