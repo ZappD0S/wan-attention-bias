@@ -61,7 +61,7 @@ dependencies = [
     "networkx",
     "nicegui",
     "numpy",
-    "cuda-toolkit[all]>=12.8",
+    "cuda-toolkit[all]==12.8.*",
     "nvidia-cudnn-cu12",
     "nvidia-nccl-cu12",
     "nvidia-cusparselt-cu12",
