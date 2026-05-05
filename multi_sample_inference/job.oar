@@ -55,7 +55,7 @@ nvidia-smi || {
 PROMPTS_FILE="./image_prompt_generation/prompts_modified.json"
 PARAM_GRID_FILE="./multi_sample_inference/param_configs/${PARAM_CONFIG_NAME}.json"
 
-STORAGE="/srv/storage/robotlearn@storage2.grenoble.grid5000.fr/gzappavi"
+STORAGE="/storage"
 OUTPUT_DIR="$STORAGE/attn_bias/output_videos/${PARAM_CONFIG_NAME}"
 
 if [ ! -f "$PARAM_GRID_FILE" ]; then
