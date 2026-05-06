@@ -10,7 +10,6 @@ import torch
 import torchvision
 from accelerate import Accelerator
 from diffusers import FluxPipeline
-from msgspec.structs import asdict
 from PIL import Image, ImageDraw, ImageFont
 from skimage.morphology import convex_hull_image
 from transformers import (
@@ -376,7 +375,7 @@ def process_dataset(
         # Map coordinates and create spec
         boxes_sorted = sorted(boxes, key=lambda b: 0.5 * (b[2] + b[0]))
         processed_spec = ProcessedVideoSpecification(
-            **asdict(spec),
+            **msgspec.to_builtins(spec),
             seed=final_seed,
             bboxes=[(b[0], b[1], b[2], b[3]) for b in boxes_sorted],
             img_paths=VideoAssetPaths(original=str(img_path), seg_masks=[], single_char=[]),
@@ -483,8 +482,7 @@ def finalize_spec(
     enlarged_bboxes: list[tuple[float, float, float, float]],
 ) -> ProcessedVideoSpecification:
     """Returns a new spec with all asset paths and enlarged bboxes filled in."""
-    # asdict(spec) now includes the 'seed' field
-    data = asdict(spec)
+    data = msgspec.to_builtins(spec)
     data["img_paths"] = VideoAssetPaths(
         original=spec.img_paths.original,
         seg_masks=seg_mask_paths,

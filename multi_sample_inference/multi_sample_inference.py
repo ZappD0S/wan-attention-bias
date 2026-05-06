@@ -17,7 +17,6 @@ import numpy as np
 import torch
 from diffusers.utils.loading_utils import load_image
 from huggingface_hub import snapshot_download
-from msgspec.structs import asdict
 from scipy.ndimage import gaussian_filter
 from sklearn.model_selection import ParameterGrid
 
@@ -93,7 +92,7 @@ def process_action_prompts(
     repeat,
 ):
     # Convert the ActionPromptSuite struct to a dict to iterate over its fields
-    action_prompts_dict = asdict(prompt_data.action_prompts)
+    action_prompts_dict = msgspec.to_builtins(prompt_data.action_prompts)
 
     allowed_prompt_types = param_config.get("prompt_types", list(action_prompts_dict.keys()))
 
@@ -103,7 +102,7 @@ def process_action_prompts(
 
         config = {
             "params": param_config,
-            "prompt_data": asdict(prompt_data),
+            "prompt_data": msgspec.to_builtins(prompt_data),
             "prompt_type": prompt_type,
         }
 
