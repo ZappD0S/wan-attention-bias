@@ -41,7 +41,7 @@ def run_inference(wan_i2v, task):
                 FRAME_NUM,
                 axis=-1,
             )
-        ),
+        ).to(wan_i2v.param_dtype),
     } | task["config"]
 
     return wan_i2v.generate(
