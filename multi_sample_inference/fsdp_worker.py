@@ -114,7 +114,6 @@ def main():
     parser.add_argument("--t5-cpu", action="store_true")
     args = parser.parse_args()
 
-    dist.init_process_group(backend="nccl")
     try:
         local_rank = int(os.environ["LOCAL_RANK"])
     except KeyError as e:
