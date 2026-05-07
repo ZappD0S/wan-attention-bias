@@ -144,9 +144,11 @@ def main():
         init_on_cpu=True,
     )
 
-    video, extra_data = run_inference(wan_i2v, task)
+    outputs = run_inference(wan_i2v, task)
 
-    if dist.get_rank() == 0 and video is not None:
+    if dist.get_rank() == 0:
+        assert outputs is not None
+        video, extra_data = outputs
         save_outputs(video, extra_data, task)
 
     dist.destroy_process_group()
