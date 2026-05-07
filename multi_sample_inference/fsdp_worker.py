@@ -17,6 +17,7 @@ from utils import normalize_video_tensor
 SAMPLING_STEPS, FRAME_NUM, TARGET_SIZE = 40, 81, (480, 832)
 
 
+@torch.inference_mode()
 def run_inference(wan_i2v, task):
     num_layers = wan_i2v.model.num_layers
     bias_kwargs = {

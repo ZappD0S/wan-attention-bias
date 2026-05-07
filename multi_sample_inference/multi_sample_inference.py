@@ -271,8 +271,12 @@ def auto_configure_hardware():
         print("[Strategy] Tier B (35-64GB): Running FSDP Teams (T5 on GPU).")
         return 2, "fsdp", False
     else:
-        print("[Strategy] Tier C (<35GB): Running FSDP Teams (T5 on CPU).")
-        return 2, "fsdp", True
+        gpus_per_team = 4 if num_gpus >= 4 else (2 if num_gpus >= 2 else 1)
+        mode = "fsdp" if gpus_per_team > 1 else "solo"
+        print(
+            f"[Strategy] Tier C (<35GB): Running {mode.upper()} Teams of {gpus_per_team} (T5 on CPU)."
+        )
+        return gpus_per_team, mode, True
 
 
 def sync_param_grid(src_path, output_dir):
