@@ -547,8 +547,12 @@ def main() -> None:
     )
 
     print(f"Saving results to {OUTPUT_FILE}...")
+
+    encoded = msgspec.json.encode(processed_dataset_root)
+    formatted = msgspec.json.format(encoded, indent=4)
+
     with open(OUTPUT_FILE, "wb") as f:
-        f.write(msgspec.json.encode(processed_dataset_root))
+        f.write(formatted)
 
     print("Done.")
 
