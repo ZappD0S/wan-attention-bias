@@ -1,29 +1,15 @@
 #!/bin/bash
-
 #OAR -n multi_sample_inference
-#OAR -l walltime=96:00:00
+#OAR -q abaca
 #OAR -p musa
+#OAR -l walltime=48:00:00
 #OAR -O logs/output_%j.log
 #OAR -E logs/error_%j.log
-#OAR -q abaca
 #OAR --checkpoint 60
-# Add idempotent type: tells OAR to automatically requeue the job if it exits with code 99
 #OAR -t idempotent
 
-PARAM_CONFIG_NAME=""
-
-while getopts "p:" opt; do
-  case $opt in
-  p) PARAM_CONFIG_NAME="$OPTARG" ;;
-  \?)
-    echo "Invalid option -$OPTARG" >&2
-    exit 1
-    ;;
-  esac
-done
-
 if [ -z "$PARAM_CONFIG_NAME" ]; then
-  echo "Usage: $0 -p <param_config_name>"
+  echo "ERROR: PARAM_CONFIG_NAME environment variable is not set."
   exit 1
 fi
 
@@ -42,7 +28,6 @@ checkpoint_handler() {
 trap 'checkpoint_handler' SIGUSR2
 
 module purge
-
 module load apptainer
 
 echo "STATUS: Checking GPU availability via nvidia-smi..."
