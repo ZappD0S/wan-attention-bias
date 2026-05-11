@@ -49,7 +49,7 @@ else
   exit 1
 fi
 
-module load cuda/12.8.0 ffmpeg/6.1.1-cuda
+module load apptainer
 
 echo "STATUS: Checking GPU availability via nvidia-smi..."
 nvidia-smi || {
@@ -78,7 +78,7 @@ source .venv/bin/activate || {
 echo "STATUS: Starting Python inference using config: $PARAM_GRID_FILE"
 
 # Run in background to allow trap catching
-python -m multi_sample_inference.multi_sample_inference \
+./run.sh python -m multi_sample_inference.multi_sample_inference \
   --prompts-file "$PROMPTS_FILE" \
   --param-grid-file "$PARAM_GRID_FILE" \
   --output-path "$OUTPUT_DIR" \
