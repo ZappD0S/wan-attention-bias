@@ -8,6 +8,8 @@
 #OAR --checkpoint 60
 #OAR -t idempotent
 
+PARAM_CONFIG_NAME=${1:-$PARAM_CONFIG_NAME}
+
 if [ -z "$PARAM_CONFIG_NAME" ]; then
   echo "ERROR: PARAM_CONFIG_NAME environment variable is not set."
   exit 1
