@@ -9,6 +9,7 @@ import signal
 import subprocess
 import sys
 import threading
+import time
 import uuid
 from pathlib import Path
 
@@ -19,6 +20,7 @@ from diffusers.utils.loading_utils import load_image
 from huggingface_hub import snapshot_download
 from scipy.ndimage import gaussian_filter
 from sklearn.model_selection import ParameterGrid
+from tqdm import tqdm
 
 from schema import ProcessedVideoSpecification, VideoGenerationDataset
 from utils import create_mask_from_bbox
@@ -32,7 +34,7 @@ keep_running = True
 
 def handle_slurm_signal(signum, _):
     global keep_running
-    print(f"\n[Dispatcher] Signal {signum} received. Stopping loop...")
+    tqdm.write(f"\n[Dispatcher] Signal {signum} received. Stopping loop...")
     keep_running = False
 
 
@@ -59,7 +61,7 @@ def run_repeat_loop(
     for repeat_idx in range(repeat):
         video_path = action_output_path / f"video_{repeat_idx}.mp4"
         if video_path.exists():
-            print(f"Skipping existing: {video_path.name}")
+            tqdm.write(f"Skipping existing: {video_path.name}")
             continue
 
         tasks_list.append(
@@ -91,7 +93,6 @@ def process_action_prompts(
     output_path,
     repeat,
 ):
-    # Convert the ActionPromptSuite struct to a dict to iterate over its fields
     action_prompts_dict = msgspec.to_builtins(prompt_data.action_prompts)
 
     allowed_prompt_types = param_config.get("prompt_types", list(action_prompts_dict.keys()))
@@ -188,6 +189,10 @@ def team_thread(team_id, assigned_gpus, mode, t5_cpu, task_queue):
     script_path = Path(__file__).resolve()
     project_root = script_path.parent.parent
 
+    log_dir = project_root / "logs"
+    log_dir.mkdir(exist_ok=True)
+    log_path = log_dir / f"team_{team_id}.log"
+
     worker_module = fsdp_worker.__spec__.name  # ty:ignore[unresolved-attribute]
     env = os.environ.copy()
     env["CUDA_VISIBLE_DEVICES"] = ",".join(map(str, assigned_gpus))
@@ -198,7 +203,7 @@ def team_thread(team_id, assigned_gpus, mode, t5_cpu, task_queue):
         except queue.Empty:
             break
 
-        print(f"[Team {team_id}] Generating {task_file.name} (Mode: {mode}, T5-CPU: {t5_cpu})")
+        tqdm.write(f"[Team {team_id}] Generating {task_file.name} (Mode: {mode}, T5-CPU: {t5_cpu})")
 
         cmd = [
             sys.executable,
@@ -218,9 +223,19 @@ def team_thread(team_id, assigned_gpus, mode, t5_cpu, task_queue):
             cmd.append("--t5-cpu")
 
         try:
-            subprocess.run(cmd, env=env, check=True, cwd=project_root)
-        except subprocess.CalledProcessError as e:
-            print(f"[ERROR] Team {team_id} failed with code {e.returncode}")
+            with open(log_path, "a") as log_file:
+                log_file.write(f"\n--- Starting Task: {task_file.name} ---\n")
+                subprocess.run(
+                    cmd,
+                    env=env,
+                    check=True,
+                    cwd=project_root,
+                    stdout=log_file,
+                    stderr=subprocess.STDOUT,
+                )
+        except subprocess.CalledProcessError:
+            err_msg = f"[ERROR] Team {team_id} failed. Check {log_path} for details."
+            tqdm.write(err_msg)
 
         if task_file.exists():
             task_file.unlink()
@@ -254,6 +269,8 @@ def launch_workers(task_queue):
         current_gpu += 1
         worker_id += 1
 
+    return threads
+
 
 def auto_configure_hardware():
     """Determines the best strategy based on GPU VRAM."""
@@ -262,22 +279,22 @@ def auto_configure_hardware():
         raise RuntimeError("No GPUs detected!")
 
     vram_gb = torch.cuda.get_device_properties(0).total_memory / (1024**3)
-    print(f"[Hardware] {num_gpus} GPUs detected. VRAM: {vram_gb:.1f} GB per device.")
+    tqdm.write(f"[Hardware] {num_gpus} GPUs detected. VRAM: {vram_gb:.1f} GB per device.")
 
     if vram_gb >= 65:
-        print("[Strategy] Tier A (>=65GB): Running Solo workers (T5 on GPU).")
+        tqdm.write("[Strategy] Tier A (>=65GB): Running Solo workers (T5 on GPU).")
         return 1, "solo", False
     elif vram_gb >= 35:
-        print("[Strategy] Tier B (35-64GB): Running FSDP Teams (T5 on GPU).")
+        tqdm.write("[Strategy] Tier B (35-64GB): Running FSDP Teams (T5 on GPU).")
         return 2, "fsdp", False
     elif num_gpus >= 4:
-        print("[Strategy] Tier C1 (<35GB, >=4 GPUs): Running FSDP Teams of 4 (T5 on GPU).")
+        tqdm.write("[Strategy] Tier C1 (<35GB, >=4 GPUs): Running FSDP Teams of 4 (T5 on GPU).")
         return 4, "fsdp", False
     elif num_gpus >= 2:
-        print("[Strategy] Tier C2 (<35GB, 2-3 GPUs): Running FSDP Teams of 2 (T5 on CPU).")
+        tqdm.write("[Strategy] Tier C2 (<35GB, 2-3 GPUs): Running FSDP Teams of 2 (T5 on CPU).")
         return 2, "fsdp", True
     else:
-        print("[Strategy] Tier C3 (<35GB, 1 GPU): Running Solo workers (T5 on CPU).")
+        tqdm.write("[Strategy] Tier C3 (<35GB, 1 GPU): Running Solo workers (T5 on CPU).")
         return 1, "solo", True
 
 
@@ -314,7 +331,7 @@ def main():
 
     try:
         checkpoint_dir = snapshot_download("Wan-AI/Wan2.1-I2V-14B-480P", local_files_only=False)
-        print(f"[Dispatcher] Model resolved at: {checkpoint_dir}")
+        tqdm.write(f"[Dispatcher] Model resolved at: {checkpoint_dir}")
     except Exception as e:
         raise RuntimeError(
             "Failed to resolve model path. Ensure you have internet or the model is cached."
@@ -335,7 +352,7 @@ def main():
         print("No new tasks to perform.")
         return
 
-    print(f"[Dispatcher] Serializing {len(tasks_list)} task files...")
+    tqdm.write(f"[Dispatcher] Serializing {len(tasks_list)} task files...")
     task_dir = args.output_path / "temp_tasks"
     task_dir.mkdir(exist_ok=True)
     task_queue = queue.Queue()
@@ -346,8 +363,38 @@ def main():
             pickle.dump(task_dict, f)
         task_queue.put(task_file)
 
-    launch_workers(task_queue)
-    print("[Dispatcher] Batch processing finished.")
+    threads = launch_workers(task_queue)
+    total_tasks = len(tasks_list)
+
+    with tqdm(total=total_tasks, desc="Generating Videos", unit="task", dynamic_ncols=True) as pbar:
+        while task_queue.unfinished_tasks > 0 and keep_running:
+            # Update progress
+            completed = total_tasks - task_queue.unfinished_tasks
+            if completed > pbar.n:
+                pbar.update(completed - pbar.n)
+
+            # Calculate and display the exact finish timestamp
+            rate = pbar.format_dict.get("rate")
+            if rate and rate > 0:
+                remaining_seconds = (pbar.total - pbar.n) / rate
+                finish_timestamp = time.time() + remaining_seconds
+                finish_str = time.strftime("%b %d, %H:%M:%S", time.localtime(finish_timestamp))
+                pbar.set_postfix_str(f"Finish ~ {finish_str}")
+
+            # Check for thread crashes
+            if not any(t.is_alive() for t in threads):
+                tqdm.write("\n[Dispatcher] All worker threads have stopped unexpectedly.")
+                break
+
+            time.sleep(1)
+
+        # Final UI refresh to 100%
+        completed = total_tasks - task_queue.unfinished_tasks
+        if completed > pbar.n:
+            pbar.update(completed - pbar.n)
+        pbar.set_postfix_str("Done!")
+
+    tqdm.write("[Dispatcher] Batch processing finished.")
 
 
 if __name__ == "__main__":
