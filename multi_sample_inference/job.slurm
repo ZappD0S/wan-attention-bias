@@ -57,6 +57,15 @@ nvidia-smi || {
   exit 1
 }
 
+export CONTAINER_IMAGE="$SINGULARITY_ALLOWED_DIR/cuda_ubuntu.sif"
+
+export SINGULARITY_TMPDIR="$JOBSCRATCH/singularity_tmp"
+export SINGULARITY_CACHEDIR="$SCRATCH/singularity_cache"
+export CONTAINER_TMPDIR="$JOBSCRATCH/run_sh_workdir"
+
+export SINGULARITY_BINDPATH="$SCRATCH,$WORK"
+export APPTAINER_BINDPATH="$SCRATCH,$WORK"
+
 PROMPTS_FILE="./image_prompt_generation/prompts_modified.json"
 PARAM_GRID_FILE="./multi_sample_inference/param_configs/${PARAM_CONFIG_NAME}.json"
 OUTPUT_DIR="$SCRATCH/attn_bias/output_videos/${PARAM_CONFIG_NAME}"
@@ -70,12 +79,7 @@ fi
 mkdir -p "$OUTPUT_DIR"
 mkdir -p "$CHECKPOINT_PATH"
 
-source .venv/bin/activate || {
-  echo "Failed to activate venv"
-  exit 1
-}
-
-echo "STATUS: Starting Python inference using config: $PARAM_GRID_FILE"
+echo "STATUS: Starting inference using config: $PARAM_GRID_FILE"
 
 # Run in background to allow trap catching
 ./run.sh python -m multi_sample_inference.multi_sample_inference \

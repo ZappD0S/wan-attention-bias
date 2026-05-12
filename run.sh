@@ -21,12 +21,12 @@ VENV_NAME=".venv-container"
 CONTAINER_ROOT="/workspace"
 # get the absolute path of the directory this script lives in
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-IMAGE="$PROJECT_ROOT/containers/cuda_ubuntu.sif"
+IMAGE="${CONTAINER_IMAGE:-$PROJECT_ROOT/containers/cuda_ubuntu.sif}"
 
 HOST_UV_CACHE="${UV_CACHE_DIR:-$PROJECT_ROOT/.uv_cache}"
 HOST_HF_HOME="${HF_HOME:-$HOME/.cache/huggingface}"
 HOST_PYTHON_INSTALL="$PROJECT_ROOT/.uv_python"
-HOST_TMP="$PROJECT_ROOT/.tmp"
+HOST_TMP="${CONTAINER_TMPDIR:-$PROJECT_ROOT/.tmp}"
 
 # ensure host directories exist
 mkdir -p "$HOST_UV_CACHE" "$HOST_HF_HOME" "$HOST_PYTHON_INSTALL" "$HOST_TMP"
