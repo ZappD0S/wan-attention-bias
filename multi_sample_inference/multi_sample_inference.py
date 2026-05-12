@@ -196,6 +196,7 @@ def team_thread(team_id, assigned_gpus, mode, t5_cpu, task_queue):
     worker_module = fsdp_worker.__spec__.name  # ty:ignore[unresolved-attribute]
     env = os.environ.copy()
     env["CUDA_VISIBLE_DEVICES"] = ",".join(map(str, assigned_gpus))
+    env["TQDM_DISABLE"] = "1"
 
     while keep_running:
         try:
@@ -223,16 +224,7 @@ def team_thread(team_id, assigned_gpus, mode, t5_cpu, task_queue):
             cmd.append("--t5-cpu")
 
         try:
-            with open(log_path, "a") as log_file:
-                log_file.write(f"\n--- Starting Task: {task_file.name} ---\n")
-                subprocess.run(
-                    cmd,
-                    env=env,
-                    check=True,
-                    cwd=project_root,
-                    stdout=log_file,
-                    stderr=subprocess.STDOUT,
-                )
+            subprocess.run(cmd, env=env, check=True, cwd=project_root)
         except subprocess.CalledProcessError:
             err_msg = f"[ERROR] Team {team_id} failed. Check {log_path} for details."
             tqdm.write(err_msg)
