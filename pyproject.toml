@@ -22,7 +22,6 @@ dependencies = [
     "cryptography",
     "dashscope",
     "datasets",
-    "decord>=0.6.0",
     "diffusers",
     "easydict",
     "einops",

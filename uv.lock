@@ -550,7 +550,7 @@ name = "cuda-bindings"
 version = "12.9.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "cuda-pathfinder" },
+    { name = "cuda-pathfinder", marker = "sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a9/2b/ebcbb60aa6dba830474cd360c42e10282f7a343c0a1f58d24fbd3b7c2d77/cuda_bindings-12.9.4-cp311-cp311-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:a6a429dc6c13148ff1e27c44f40a3dd23203823e637b87fd0854205195988306", size = 11840604, upload-time = "2025-10-21T14:51:34.565Z" },
@@ -643,18 +643,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/43/fa/6d96a0978d19e17b68d634497769987b16c8f4cd0a7a05048bec693caa6b/decorator-5.2.1.tar.gz", hash = "sha256:65f266143752f734b0a7cc83c46f4618af75b8c5911b00ccb61d0ac9b6da0360", size = 56711, upload-time = "2025-02-24T04:41:34.073Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/4e/8c/f3147f5c4b73e7550fe5f9352eaa956ae838d5c51eb58e7a25b9f3e2643b/decorator-5.2.1-py3-none-any.whl", hash = "sha256:d316bb415a2d9e2d2b3abcc4084c6502fc09240e292cd76a76afc106a1c8e04a", size = 9190, upload-time = "2025-02-24T04:41:32.565Z" },
-]
-
-[[package]]
-name = "decord"
-version = "0.6.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "numpy" },
-]
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/11/79/936af42edf90a7bd4e41a6cac89c913d4b47fa48a26b042d5129a9242ee3/decord-0.6.0-py3-none-manylinux2010_x86_64.whl", hash = "sha256:51997f20be8958e23b7c4061ba45d0efcd86bffd5fe81c695d0befee0d442976", size = 13602299, upload-time = "2021-06-14T21:30:55.486Z" },
-    { url = "https://files.pythonhosted.org/packages/6c/be/e15b5b866da452e62635a7b27513f31cb581fa2ea9cc9b768b535d62a955/decord-0.6.0-py3-none-win_amd64.whl", hash = "sha256:02665d7c4f1193a330205a791bc128f7e108eb6ae5b67144437a02f700943bad", size = 24733380, upload-time = "2021-06-14T21:30:57.766Z" },
 ]
 
 [[package]]
@@ -2318,7 +2306,7 @@ name = "nvidia-cudnn-cu12"
 version = "9.10.2.21"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "nvidia-cublas-cu12" },
+    { name = "nvidia-cublas-cu12", marker = "sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/fa/41/e79269ce215c857c935fd86bcfe91a451a584dfc27f1e068f568b9ad1ab7/nvidia_cudnn_cu12-9.10.2.21-py3-none-manylinux_2_27_aarch64.whl", hash = "sha256:c9132cc3f8958447b4910a1720036d9eff5928cc3179b0a51fb6d167c6cc87d8", size = 705026878, upload-time = "2025-06-06T21:52:51.348Z" },
@@ -2330,7 +2318,7 @@ name = "nvidia-cufft-cu12"
 version = "11.3.3.83"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "nvidia-nvjitlink-cu12" },
+    { name = "nvidia-nvjitlink-cu12", marker = "sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/60/bc/7771846d3a0272026c416fbb7e5f4c1f146d6d80704534d0b187dd6f4800/nvidia_cufft_cu12-11.3.3.83-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:848ef7224d6305cdb2a4df928759dca7b1201874787083b6e7550dd6765ce69a", size = 193109211, upload-time = "2025-03-07T01:44:56.873Z" },
@@ -2360,9 +2348,9 @@ name = "nvidia-cusolver-cu12"
 version = "11.7.3.90"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "nvidia-cublas-cu12" },
-    { name = "nvidia-cusparse-cu12" },
-    { name = "nvidia-nvjitlink-cu12" },
+    { name = "nvidia-cublas-cu12", marker = "sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'" },
+    { name = "nvidia-cusparse-cu12", marker = "sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'" },
+    { name = "nvidia-nvjitlink-cu12", marker = "sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c8/32/f7cd6ce8a7690544d084ea21c26e910a97e077c9b7f07bf5de623ee19981/nvidia_cusolver_cu12-11.7.3.90-py3-none-manylinux_2_27_aarch64.whl", hash = "sha256:db9ed69dbef9715071232caa9b69c52ac7de3a95773c2db65bdba85916e4e5c0", size = 267229841, upload-time = "2025-03-07T01:46:54.356Z" },
@@ -2374,7 +2362,7 @@ name = "nvidia-cusparse-cu12"
 version = "12.5.8.93"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "nvidia-nvjitlink-cu12" },
+    { name = "nvidia-nvjitlink-cu12", marker = "sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/bc/f7/cd777c4109681367721b00a106f491e0d0d15cfa1fd59672ce580ce42a97/nvidia_cusparse_cu12-12.5.8.93-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:9b6c161cb130be1a07a27ea6923df8141f3c295852f4b260c65f18f3e0a091dc", size = 288117129, upload-time = "2025-03-07T01:47:40.407Z" },
@@ -4020,7 +4008,6 @@ dependencies = [
     { name = "cryptography" },
     { name = "dashscope" },
     { name = "datasets" },
-    { name = "decord" },
     { name = "diffusers" },
     { name = "easydict" },
     { name = "einops" },
@@ -4126,7 +4113,6 @@ dev = [
     { name = "ipykernel" },
     { name = "jupyterlab" },
     { name = "ruff" },
-    { name = "xeus-python" },
 ]
 
 [package.metadata]
@@ -4148,7 +4134,6 @@ requires-dist = [
     { name = "cryptography" },
     { name = "dashscope" },
     { name = "datasets" },
-    { name = "decord", specifier = ">=0.6.0" },
     { name = "diffusers" },
     { name = "easydict" },
     { name = "einops" },
@@ -4254,7 +4239,6 @@ dev = [
     { name = "ipykernel" },
     { name = "jupyterlab" },
     { name = "ruff" },
-    { name = "xeus-python" },
 ]
 
 [[package]]
@@ -4389,38 +4373,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/c7/79/12135bdf8b9c9367b8701c2c19a14c913c120b882d50b014ca0d38083c2c/wsproto-1.3.2.tar.gz", hash = "sha256:b86885dcf294e15204919950f666e06ffc6c7c114ca900b060d6e16293528294", size = 50116, upload-time = "2025-11-20T18:18:01.871Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a4/f5/10b68b7b1544245097b2a1b8238f66f2fc6dcaeb24ba5d917f52bd2eed4f/wsproto-1.3.2-py3-none-any.whl", hash = "sha256:61eea322cdf56e8cc904bd3ad7573359a242ba65688716b0710a5eb12beab584", size = 24405, upload-time = "2025-11-20T18:18:00.454Z" },
-]
-
-[[package]]
-name = "xeus-python"
-version = "0.17.6"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "pygments" },
-    { name = "xeus-python-shell", extra = ["ipython"] },
-]
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/e9/ec/b24dba3d6e07c583da635a4759abf432faf219c2d344ef481c84c962f919/xeus_python-0.17.6-cp311-cp311-macosx_15_0_arm64.whl", hash = "sha256:9e1f4f10ff89def9278d0ede3a033abeda03d36aa49c0d4c04a92da82a181739", size = 1683822, upload-time = "2025-09-30T12:31:37.292Z" },
-    { url = "https://files.pythonhosted.org/packages/f9/d7/242936a74ee759b54d7870d409fe7ec4538a3abf040322a728cb56b91d0d/xeus_python-0.17.6-cp311-cp311-macosx_15_0_x86_64.whl", hash = "sha256:4c8076e12f20120a059ee585067f8a9b18226ee4834927651881418da23ab331", size = 1772515, upload-time = "2025-09-30T12:31:38.729Z" },
-    { url = "https://files.pythonhosted.org/packages/15/d0/6b9257e3d12c1914d940625bdacc2202a25ab2960e72d31a774aa53de000/xeus_python-0.17.6-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:2d53478dbd5c169dc5d09b950d8f22382bdf55930dd4fd791a4d8a1ba37b97b8", size = 2287256, upload-time = "2025-09-30T12:31:40.18Z" },
-    { url = "https://files.pythonhosted.org/packages/c3/1a/51cb4c8d4c17d2de94faafb4130af3b172335260a34c5e1791082d274fb5/xeus_python-0.17.6-cp311-cp311-win_amd64.whl", hash = "sha256:9aa1c20fea710208ee77106f1793b43c96cb6c013ef7e0052f2926f8d953d2a6", size = 1515698, upload-time = "2025-09-30T12:31:41.559Z" },
-]
-
-[[package]]
-name = "xeus-python-shell"
-version = "0.6.6"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "debugpy" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/e6/c4/97982fe028eee168a5af1d77032b1a049db7028ccf141273d61e207cc550/xeus_python_shell-0.6.6.tar.gz", hash = "sha256:fbdfd26a558c3c1c045d8a5aae2e1249a8c9a99755d9af6d8a2093149dc88f25", size = 5756, upload-time = "2026-01-07T12:25:09.23Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/c3/ad/1a07a96ce7f9a2e81c416fda77d27b58295bd694e3c2ce106080761f7dcc/xeus_python_shell-0.6.6-py3-none-any.whl", hash = "sha256:105464b052f70269a3dbe8f8b84e716991d1a24002aa19abc99ef1fe013c9613", size = 6745, upload-time = "2026-01-07T12:25:07.991Z" },
-]
-
-[package.optional-dependencies]
-ipython = [
-    { name = "ipython" },
 ]
 
 [[package]]
