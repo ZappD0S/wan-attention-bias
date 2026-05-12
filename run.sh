@@ -4,6 +4,17 @@ set -e
 
 [ -f .env ] && set -a && source .env && set +a
 
+if command -v apptainer >/dev/null 2>&1; then
+  RUNTIME_CMD="apptainer"
+  ENV_PREFIX="APPTAINERENV"
+elif command -v singularity >/dev/null 2>&1; then
+  RUNTIME_CMD="singularity"
+  ENV_PREFIX="SINGULARITYENV"
+else
+  echo "Error: Neither apptainer nor singularity is installed." >&2
+  exit 1
+fi
+
 # The name of your virtual environment directory
 VENV_NAME=".venv-container"
 # The mount point inside the container
@@ -21,12 +32,12 @@ HOST_TMP="$PROJECT_ROOT/.tmp"
 mkdir -p "$HOST_UV_CACHE" "$HOST_HF_HOME" "$HOST_PYTHON_INSTALL" "$HOST_TMP"
 
 # export environment variables for the container
-export APPTAINERENV_UV_CACHE_DIR="/.cache/uv"
-export APPTAINERENV_HF_HOME="/.cache/huggingface"
-export APPTAINERENV_UV_PYTHON_INSTALL_DIR="/.cache/uv_python"
+export ${ENV_PREFIX}_UV_CACHE_DIR="/.cache/uv"
+export ${ENV_PREFIX}_HF_HOME="/.cache/huggingface"
+export ${ENV_PREFIX}_UV_PYTHON_INSTALL_DIR="/.cache/uv_python"
 
-export APPTAINERENV_HF_TOKEN="$HF_TOKEN"
-export APPTAINERENV_UV_PROJECT_ENVIRONMENT="$CONTAINER_ROOT/$VENV_NAME"
+export ${ENV_PREFIX}_HF_TOKEN="$HF_TOKEN"
+export ${ENV_PREFIX}_UV_PROJECT_ENVIRONMENT="$CONTAINER_ROOT/$VENV_NAME"
 
 # apptainer flags
 OPTS=(
@@ -45,6 +56,7 @@ fi
 
 # base uv command stored as an array
 UV_CMD=(uv run)
+
 # handle debug logic safely
 if [ "${DEBUG:-0}" == "1" ]; then
   # Safeguard: debugpy requires a python script to attach to. It cannot debug "bash".
@@ -64,8 +76,8 @@ fi
 # execute cleanly using bash arrays
 if [ $# -eq 0 ]; then
   # interactive shell (only reached if DEBUG!=1 due to safeguard above)
-  exec apptainer exec "${OPTS[@]}" "$IMAGE" bash
+  exec "$RUNTIME_CMD" exec "${OPTS[@]}" "$IMAGE" bash
 else
   # run the requested script/command
-  exec apptainer exec "${OPTS[@]}" "$IMAGE" "${UV_CMD[@]}" "$@"
+  exec "$RUNTIME_CMD" exec "${OPTS[@]}" "$IMAGE" "${UV_CMD[@]}" "$@"
 fi

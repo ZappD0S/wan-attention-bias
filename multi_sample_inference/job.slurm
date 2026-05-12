@@ -49,7 +49,7 @@ else
   exit 1
 fi
 
-module load apptainer
+module load singularity
 
 echo "STATUS: Checking GPU availability via nvidia-smi..."
 nvidia-smi || {
