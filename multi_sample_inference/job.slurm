@@ -85,8 +85,7 @@ echo "STATUS: Starting inference using config: $PARAM_GRID_FILE"
 ./run.sh python -m multi_sample_inference.multi_sample_inference \
   --prompts-file "$PROMPTS_FILE" \
   --param-grid-file "$PARAM_GRID_FILE" \
-  --output-path "$OUTPUT_DIR" \
-  --checkpoint-path "$CHECKPOINT_PATH" &
+  --output-path "$OUTPUT_DIR" &
 
 # Get the Process ID of the python command
 PYTHON_PID=$!
