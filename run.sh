@@ -15,38 +15,24 @@ else
   exit 1
 fi
 
-# The name of your virtual environment directory
-VENV_NAME=".venv-container"
-# The mount point inside the container
 CONTAINER_ROOT="/workspace"
-# get the absolute path of the directory this script lives in
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 IMAGE="${CONTAINER_IMAGE:-$PROJECT_ROOT/containers/cuda_ubuntu.sif}"
 
-HOST_UV_CACHE="${UV_CACHE_DIR:-$PROJECT_ROOT/.uv_cache}"
 HOST_HF_HOME="${HF_HOME:-$HOME/.cache/huggingface}"
-HOST_PYTHON_INSTALL="$PROJECT_ROOT/.uv_python"
 HOST_TMP="${CONTAINER_TMPDIR:-$PROJECT_ROOT/.tmp}"
+mkdir -p "$HOST_HF_HOME" "$HOST_TMP"
 
-# ensure host directories exist
-mkdir -p "$HOST_UV_CACHE" "$HOST_HF_HOME" "$HOST_PYTHON_INSTALL" "$HOST_TMP"
-
-# export environment variables for the container
-export ${ENV_PREFIX}_UV_CACHE_DIR="/.cache/uv"
+# Export external variables for the container
 export ${ENV_PREFIX}_HF_HOME="/.cache/huggingface"
-export ${ENV_PREFIX}_UV_PYTHON_INSTALL_DIR="/.cache/uv_python"
-
 export ${ENV_PREFIX}_HF_TOKEN="$HF_TOKEN"
-export ${ENV_PREFIX}_UV_PROJECT_ENVIRONMENT="$CONTAINER_ROOT/$VENV_NAME"
 
-# apptainer flags
+# apptainer execution flags
 OPTS=(
   --nv --cleanenv --contain
   --workdir "$HOST_TMP"
   --bind "$PROJECT_ROOT:$CONTAINER_ROOT"
-  --bind "$HOST_UV_CACHE:/.cache/uv"
   --bind "$HOST_HF_HOME:/.cache/huggingface"
-  --bind "$HOST_PYTHON_INSTALL:/.cache/uv_python"
   --pwd "$CONTAINER_ROOT"
 )
 
@@ -54,12 +40,12 @@ if [ -d "$STORAGE_DIR" ]; then
   OPTS+=(--bind "$STORAGE_DIR:${STORAGE_BIND_PATH:-/storage}")
 fi
 
-# base uv command stored as an array
-UV_CMD=(uv run)
+# initialize command array
+CMD=()
 
 # handle debug logic safely
 if [ "${DEBUG:-0}" == "1" ]; then
-  # Safeguard: debugpy requires a python script to attach to. It cannot debug "bash".
+  # safeguard: debugpy requires a target Python script to attach to.
   if [ $# -eq 0 ]; then
     echo "Error: DEBUG=1 requires a Python script."
     exit 1
@@ -69,15 +55,17 @@ if [ "${DEBUG:-0}" == "1" ]; then
   PORT="${DEBUG_PORT:-5678}"
   echo ">>> Debugger enabled! Waiting for VS Code to attach on port $PORT..."
 
-  # uses `uv run --with debugpy` to ensure it's always available
-  UV_CMD+=(--with debugpy python -m debugpy --listen "0.0.0.0:$PORT" --wait-for-client)
+  # prefix the execution with debugpy
+  CMD+=(python -m debugpy --listen "0.0.0.0:$PORT" --wait-for-client)
 fi
 
-# execute cleanly using bash arrays
+# execute based on arguments provided
 if [ $# -eq 0 ]; then
-  # interactive shell (only reached if DEBUG!=1 due to safeguard above)
+  # no arguments: Drop into an interactive bash shell
   exec "$RUNTIME_CMD" exec "${OPTS[@]}" "$IMAGE" bash
 else
-  # run the requested script/command
-  exec "$RUNTIME_CMD" exec "${OPTS[@]}" "$IMAGE" "${UV_CMD[@]}" "$@"
+  # arguments provided: Run the script
+  # because /opt/venv/bin is natively in the PATH, calling 'python script.py'
+  # works automatically without needing 'uv run'.
+  exec "$RUNTIME_CMD" exec "${OPTS[@]}" "$IMAGE" "${CMD[@]}" "$@"
 fi
