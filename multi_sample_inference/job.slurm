@@ -63,6 +63,7 @@ export SINGULARITY_TMPDIR="$JOBSCRATCH/singularity_tmp"
 export SINGULARITY_CACHEDIR="$SCRATCH/singularity_cache"
 export CONTAINER_TMPDIR="$JOBSCRATCH/run_sh_workdir"
 
+export HF_HOME="$WORK/.cache/huggingface"
 export SINGULARITY_BINDPATH="$SCRATCH,$WORK"
 export APPTAINER_BINDPATH="$SCRATCH,$WORK"
 
