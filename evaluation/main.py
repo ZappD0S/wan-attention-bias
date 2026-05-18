@@ -1,7 +1,10 @@
+import argparse
 import json
+import os
+import random
 import re
 import textwrap
-from functools import partial
+from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
 
@@ -23,645 +26,566 @@ from .sam2_pipeline import run_sam2_pipeline
 from .utils import DataEntry, group_entries
 
 
-def load_qwen2_5_model() -> tuple[Any, Any]:
-    model_name = "Qwen/Qwen2.5-VL-7B-Instruct"
-    model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
-        model_name, torch_dtype="auto", device_map="auto"
-    )
-    processor = AutoProcessor.from_pretrained(model_name)
-    return model, processor
+class QwenEngine:
+    """Manages the model state and handles generation and logit extraction."""
 
-
-def load_qwen3_model() -> tuple[Any, Any]:
-    model_name = "Qwen/Qwen3-VL-8B-Instruct"
-    model = Qwen3VLForConditionalGeneration.from_pretrained(
-        model_name, torch_dtype="auto", device_map="auto"
-    )
-    processor = AutoProcessor.from_pretrained(model_name)
-    return model, processor
-
-
-def generate_qwen_messages(prompt: str, video_path: Path | None):
-    message_content: list[dict[str, Any]] = [
-        {"type": "text", "text": prompt},
-    ]
-
-    if video_path is not None:
-        if not video_path.exists():
-            return "Error: Video file not found."
-
-        cap = cv2.VideoCapture(str(video_path))
-
-        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        # Qwen prefers an even number of frames for its temporal patches (stride 2)
-        nframes_to_use = (total_frames // 2) * 2
-
-        cap.release()
-
-        message_content += [
-            {
-                "type": "video",
-                "video": str(video_path),
-                "nframes": nframes_to_use,
-                # "min_frames": nframes_to_use,
-                # "max_frames": nframes_to_use,
-            }
-        ]
-
-    messages = [
-        {
-            "role": "user",
-            "content": message_content,
-        }
-    ]
-
-    return messages
-
-
-def run_qwen_generation(model, processor, prompt: str, video_path: Path | None) -> tuple[str, str]:
-    messages = generate_qwen_messages(prompt, video_path)
-    input_text = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-
-    image_inputs, video_inputs, video_kwargs = process_vision_info(
-        messages, return_video_kwargs=True, return_video_metadata=True
-    )
-
-    assert video_kwargs is not None
-
-    if video_inputs is not None:
-        video_inputs, video_metadatas = zip(*video_inputs, strict=True)
-        video_inputs = list(video_inputs)
-        video_metadatas = list(video_metadatas)
-    else:
-        video_metadatas = None
-
-    inputs = processor(
-        text=[input_text],
-        images=image_inputs,
-        videos=video_inputs,
-        video_metadata=video_metadatas,
-        **video_kwargs,
-        padding=True,
-        return_tensors="pt",
-    )
-
-    inputs = inputs.to(model.device)
-
-    # Generate
-    with torch.no_grad():
-        generated_ids = model.generate(
-            **inputs, do_sample=False, max_new_tokens=2048, temperature=None, top_p=None, top_k=None
+    def __init__(self, model_id: str, is_qwen3: bool = True):
+        model_class = (
+            Qwen3VLForConditionalGeneration if is_qwen3 else Qwen2_5_VLForConditionalGeneration
         )
+        self.model = model_class.from_pretrained(model_id, torch_dtype="auto", device_map="auto")
+        self.processor = AutoProcessor.from_pretrained(model_id)
+        self.device = self.model.device
 
-    # Decode
-    generated_ids_trimmed = [
-        out_ids[len(in_ids) :]
-        for in_ids, out_ids in zip(inputs.input_ids, generated_ids, strict=True)
-    ]
-    output_text = processor.batch_decode(
-        generated_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
-    )
-
-    return input_text, output_text[0]
-
-
-def get_scoring_logits(
-    model, processor, video_path: Path | None, prompt1: str, reasoning: str, prompt2: str
-):
-    """
-    Constructs a clean 3-turn ChatML sequence and extracts the next token logits.
-    Works for both video-based and text-only first turns.
-    """
-    msg1_content: list[dict[str, Any]] = [{"type": "text", "text": prompt1}]
-
-    if video_path is not None:
-        if not video_path.exists():
-            raise FileNotFoundError(f"Video file not found: {video_path}")
-
+    def _get_nframes(self, video_path: Path | None) -> int | None:
+        if video_path is None or not video_path.exists():
+            return None
         cap = cv2.VideoCapture(str(video_path))
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        nframes_to_use = (total_frames // 2) * 2
         cap.release()
-        msg1_content.append({"type": "video", "video": str(video_path), "nframes": nframes_to_use})
+        return (total_frames // 2) * 2
 
-    messages = [
-        {"role": "user", "content": msg1_content},
-        {"role": "assistant", "content": [{"type": "text", "text": reasoning}]},
-        {"role": "user", "content": [{"type": "text", "text": prompt2}]},
-    ]
+    def generate(
+        self, prompt: str, system_prompt: str | None = None, video_path: Path | None = None
+    ) -> str:
+        nframes = self._get_nframes(video_path)
+        content: list[dict[str, Any]] = [{"type": "text", "text": prompt}]
 
-    image_inputs, video_inputs, video_kwargs = process_vision_info(
-        messages, return_video_kwargs=True, return_video_metadata=True
-    )
+        if video_path:
+            content.append({"type": "video", "video": str(video_path), "nframes": nframes})
 
-    assert video_kwargs is not None
+        messages = [{"role": "user", "content": content}]
 
-    if video_inputs is not None:
-        video_inputs, video_metadatas = zip(*video_inputs, strict=True)
-        video_inputs = list(video_inputs)
-        video_metadatas = list(video_metadatas)
-    else:
-        video_metadatas = None
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
 
-    # Get the raw chat template without forcing "Score: "
-    text = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-
-    inputs = processor(
-        text=[text],
-        images=image_inputs,
-        videos=video_inputs,
-        video_metadata=video_metadatas,
-        **video_kwargs,
-        padding=True,
-        return_tensors="pt",
-    )
-    inputs = inputs.to(model.device)
-
-    with torch.no_grad():
-        outputs = model(**inputs)
-
-    return outputs.logits[0, -1, :]
-
-
-def print_top_predictions(processor, logits, k=10):
-    """Prints the top K most likely next tokens and their probabilities."""
-    probs = torch.softmax(logits, dim=-1)
-    top_probs, top_indices = torch.topk(probs, k)
-
-    table = Table(
-        title=f"Top {k} Next-Token Predictions", show_header=True, header_style="bold cyan"
-    )
-    table.add_column("Rank", justify="right")
-    table.add_column("Token ID", justify="right")
-    table.add_column("Token Text", style="yellow")
-    table.add_column("Probability", justify="right", style="green")
-
-    for i in range(k):
-        token_id = top_indices[i].item()
-        prob = top_probs[i].item()
-        # Use repr() to make whitespace/newlines visible
-        token_text = repr(processor.tokenizer.decode([token_id]))
-
-        table.add_row(str(i + 1), str(token_id), token_text, f"{prob:.4e}")
-
-    console = Console()
-    console.print(table)
-
-
-# TODO:
-# - question: does the soft score actually has a benefit, of is it just adding the scoring prompt after the reasoning?
-# - For example, if we just predict the next token in this function (or equivalently take the most likely) does it make any difference?
-def get_soft_score_blind(model, processor, video_description: str, target_action: str) -> float:
-    prompt_audit = textwrap.dedent(f"""You are a strict action auditor.
-    Your task is to rate how well the 'Target Action' matches the 'Video Description'.
-
-    Target Action: {target_action}
-    Video Description: {video_description}
-
-    Reasoning Rules:
-    - Rely ONLY on the Video Description provided above. 
-    - Be skeptical: if a specific detail is missing from the description, assume it did not happen.
-    - Check for chronological consistency.
-
-    Output a brief step-by-step reasoning.""")
-
-    # Get the reasoning text (video_path is None because we only use the text description)
-    _, reasoning = run_qwen_generation(model, processor, prompt_audit, video_path=None)
-
-    prompt_score = textwrap.dedent("""\
-    Based on the reasoning above, assign a match score on a scale of 1 to 5.
-
-    Criteria:
-    5: Perfect Match (Unambiguous, clearly main focus).
-    4: Strong Match (Main event, minor noise).
-    3: Partial Match (Action occurred but mixed with others).
-    2: Weak Match (Ambiguous or minor detail).
-    1: No Match (Action not found or different action).
-
-    CRITICAL INSTRUCTION: Output ONLY a single integer (1, 2, 3, 4, or 5). Do not output any words, punctuation, or spaces.""")
-
-    # Pass None for video_path
-    next_token_logits = get_scoring_logits(
-        model, processor, None, prompt_audit, reasoning, prompt_score
-    )
-
-    target_tokens = ["1", "2", "3", "4", "5"]
-    target_ids = [processor.tokenizer.encode(t, add_special_tokens=False)[0] for t in target_tokens]
-
-    # Calculate probabilities across the ENTIRE vocabulary
-    full_probs = torch.softmax(next_token_logits, dim=-1)
-
-    # Extract just the probabilities for our targets
-    target_ids_tensor = torch.tensor(target_ids, device=model.device)
-    target_probs = full_probs[target_ids_tensor]
-
-    # SAFETY CHECK
-    total_target_prob = target_probs.sum().item()
-    if total_target_prob < 0.5:
-        top_token_id = torch.argmax(next_token_logits).item()
-        top_token_text = repr(processor.tokenizer.decode([top_token_id]))
-        print(
-            f"\n[WARNING] Blind soft score math is breaking! Model wants to output {top_token_text}. "
-            f"Probability mass on 1-5 is only {total_target_prob:.3f}"
+        input_text = self.processor.apply_chat_template(
+            messages, tokenize=False, add_generation_prompt=True
         )
 
-    # Re-normalize targets to sum to 1.0
-    normalized_probs = target_probs / (target_probs.sum() + 1e-9)
-
-    # Calculate expected value
-    score_values = torch.tensor([1.0, 2.0, 3.0, 4.0, 5.0], device=model.device)
-    continuous_score = torch.sum(normalized_probs * score_values).item()
-
-    return continuous_score
-
-
-def get_soft_score_direct(model, processor, video_path, action_descr: str) -> float:
-    prompt_template = """You are a strict video auditor. 
-    Analyze the video content and determine if the following action occurs.
-
-    Target Action: {target_action}
-
-    Provide a step-by-step reasoning based on the visual evidence.
-    Conclude by evaluating how well the video matches the action."""
-
-    prompt1 = prompt_template.format(target_action=action_descr)
-
-    _, reasoning = run_qwen_generation(model, processor, prompt1, video_path)
-
-    prompt2 = textwrap.dedent("""\
-    Based on your reasoning, assign a match score on a scale of 1 to 5.
-
-    Criteria:
-    5: Perfect Match (Action is clearly the main focus).
-    4: Strong Match (Action occurs, minor noise).
-    3: Partial Match (Action is part of a larger sequence).
-    2: Weak Match (Ambiguous or hard to see).
-    1: No Match (Action does not happen).
-
-    CRITICAL INSTRUCTION: Output ONLY a single integer (1, 2, 3, 4, or 5). Do not output any words, punctuation, or spaces.""")
-
-    next_token_logits = get_scoring_logits(
-        model, processor, video_path, prompt1, reasoning, prompt2
-    )
-
-    target_tokens = ["1", "2", "3", "4", "5"]
-    target_ids = [processor.tokenizer.encode(t, add_special_tokens=False)[0] for t in target_tokens]
-
-    full_probs = torch.softmax(next_token_logits, dim=-1)
-
-    target_ids_tensor = torch.tensor(target_ids, device=model.device)
-    target_probs = full_probs[target_ids_tensor]
-
-    total_target_prob = target_probs.sum().item()
-    if total_target_prob < 0.5:
-        top_token_id = torch.argmax(next_token_logits).item()
-        top_token_text = repr(processor.tokenizer.decode([top_token_id]))
-        print(
-            f"\n[WARNING] Soft score math is breaking! Model wants to output {top_token_text} instead of a digit. "
-            f"Probability mass on 1-5 is only {total_target_prob:.3f}"
+        image_inputs, video_inputs, video_kwargs = process_vision_info(
+            messages, return_video_kwargs=True, return_video_metadata=True
         )
 
-    normalized_probs = target_probs / (target_probs.sum() + 1e-9)
+        if video_inputs:
+            video_inputs, video_metadatas = zip(*video_inputs, strict=True)
+            video_inputs, video_metadatas = list(video_inputs), list(video_metadatas)
+        else:
+            video_metadatas = None
 
-    score_values = torch.tensor([1.0, 2.0, 3.0, 4.0, 5.0], device=model.device)
-    continuous_score = torch.sum(normalized_probs * score_values).item()
+        inputs = self.processor(
+            text=[input_text],
+            images=image_inputs,
+            videos=video_inputs,
+            video_metadata=video_metadatas,
+            **video_kwargs,  # ty:ignore[invalid-argument-type]
+            padding=True,
+            return_tensors="pt",
+        ).to(self.device)
 
-    return continuous_score
+        with torch.no_grad():
+            generated_ids = self.model.generate(
+                **inputs,
+                do_sample=False,
+                max_new_tokens=2048,
+                temperature=None,
+                top_p=None,
+                top_k=None,
+            )  # ty:ignore[invalid-argument-type]
 
-
-def get_discrete_score_blind(model, processor, video_description: str, target_action: str) -> float:
-    prompt_audit_template = textwrap.dedent("""You are a strict action auditor. 
-    Your task is to rate how well the 'Target Action' matches the 'Video Description'.
-
-    Target Action: {target_action}
-    Video Description: {video_description}
-
-    Reasoning Rules:
-    - Rely ONLY on the Video Description provided above. 
-    - Be skeptical: if a specific detail is missing from the description, assume it did not happen.
-    - Check for chronological consistency.
-
-    Scoring Criteria:
-    5: Perfect Match (Unambiguous, clearly main focus).
-    4: Strong Match (Main event, minor noise).
-    3: Partial Match (Action occurred but mixed with others).
-    2: Weak Match (Ambiguous or minor detail).
-    1: No Match (Action not found or different action).
-
-    Instructions:
-    1. Output a brief step-by-step reasoning.
-    2. End your response strictly with: "Score: X" (where X is 1-5).""")
-
-    prompt_audit = prompt_audit_template.format(
-        target_action=target_action, video_description=video_description
-    )
-
-    # Generate response based entirely on the text (video_path=None)
-    _, response_text = run_qwen_generation(model, processor, prompt_audit, video_path=None)
-
-    return extract_score(response_text)
-
-
-def get_blind_video_description(model, processor, video_path: Path) -> str:
-    """Generates an objective visual log of the video to be used by blind scoring functions."""
-    prompt_description = textwrap.dedent("""You are a forensic video analyst.
-    Provide a detailed, objective, chronological log of the video.
-
-    Guidelines:
-    1. Break the video down by visual changes and movements.
-    2. Describe specific body parts, objects, and interactions.
-    3. Do NOT interpret intent or purpose.
-    4. Focus purely on visual observables.
-
-    Output the log now.""")
-
-    _, video_description = run_qwen_generation(model, processor, prompt_description, video_path)
-    return video_description
-
-
-def get_discrete_score_direct(model, processor, video_path, action_descr: str) -> float:
-    prompt_audit_template = textwrap.dedent("""You are a strict action auditor and forensic video analyst.
-    Your task is to determine if the 'Target Action' occurs in the video based on visual evidence.
-
-    Target Action: {target_action}
-
-    Reasoning Rules:
-    - Focus purely on visual observables (movements, contacts, states).
-    - Do NOT interpret intent or purpose.
-    - Be skeptical: if the specific visual details are missing, assume it did not happen.
-
-    Scoring Criteria:
-    5: Perfect Match (Unambiguous, clearly main focus).
-    4: Strong Match (Main event, minor noise).
-    3: Partial Match (Action occurred but mixed with others).
-    2: Weak Match (Ambiguous or minor detail).
-    1: No Match (Action not found or different action).
-
-    Instructions:
-    1. Output a brief step-by-step reasoning based on the visual evidence.
-    2. End your response strictly with: "Score: X" (where X is 1-5).""")
-
-    prompt_audit = prompt_audit_template.format(target_action=action_descr)
-
-    # Generate full text (Model sees video)
-    _, response_text = run_qwen_generation(model, processor, prompt_audit, video_path=video_path)
-
-    return extract_score(response_text)
-
-
-def extract_score(model_output: str) -> int:
-    if not model_output:
-        raise ValueError("Model output is empty.")
-
-    # 1. Primary Regex: Looks for "Score" followed by a number.
-    # Matches: "Score: 5", "**Score**: 5", "Score - 5", "Score: 5/5"
-    # flags=re.IGNORECASE makes it work even if model outputs "score: 5"
-    match = re.search(r"Score\**\s*[:\-]?\s*(\d)", model_output, re.IGNORECASE)
-
-    if match:
-        score = int(match.group(1))
-        # Clamp value just in case model hallucinates a 0 or 6
-        return max(1, min(5, score))
-
-    # Matches: "5", "5\nReason:..."
-    # 2. Fallback: Look for a number at the very start of the string
-    match_start = re.match(r"^\s*(\d)", model_output)
-    if match_start:
-        score = int(match_start.group(1))
-        return max(1, min(5, score))
-
-    # 3. Last Resort: Look for "X/5" anywhere in text
-    # Matches: "I give this a 5/5"
-    match_fraction = re.search(r"(\d)\s*/\s*5", model_output)
-    if match_fraction:
-        score = int(match_fraction.group(1))
-        return max(1, min(5, score))
-
-    raise ValueError(f"Could not extract a valid integer score from output: {model_output}")
-
-
-def compute_statistics(correct_count: int, total_count: int, margins: list[float]):
-    binomtest_res = binomtest(correct_count, total_count, p=0.5, alternative="greater")
-    binomtest_ci = binomtest_res.proportion_ci(confidence_level=0.95)
-
-    # bootstrap
-    margins_arr = np.array(margins)
-    boot_means = np.array(
-        [
-            np.random.choice(margins_arr, size=margins_arr.size, replace=True).mean()
-            for _ in range(10_000)
+        trimmed_ids = [
+            out[len(ins) :] for ins, out in zip(inputs.input_ids, generated_ids, strict=True)
         ]
-    )
+        output_text = self.processor.batch_decode(
+            trimmed_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False
+        )
+        return output_text[0]
 
-    ci_low, ci_high = np.percentile(boot_means, [2.5, 97.5])
+    def get_scoring_logits(
+        self, prompt1: str, reasoning: str, prompt2: str, video_path: Path | None = None
+    ):
+        nframes = self._get_nframes(video_path)
+        msg1_content: list[dict[str, Any]] = [{"type": "text", "text": prompt1}]
 
-    return {
-        "margin": {
-            "avg": margins_arr.mean(),
-            "ci": [ci_low, ci_high],
-        },
-        "discrimination": {
-            "avg": binomtest_res.statistic,
-            "p-value": binomtest_res.pvalue,
-            "ci": [binomtest_ci.low, binomtest_ci.high],
-        },
-    }
+        if video_path:
+            msg1_content.append({"type": "video", "video": str(video_path), "nframes": nframes})
 
+        messages = [
+            {"role": "user", "content": msg1_content},
+            {"role": "assistant", "content": [{"type": "text", "text": reasoning}]},
+            {"role": "user", "content": [{"type": "text", "text": prompt2}]},
+        ]
 
-def _prepare_evaluation_tasks(videos_dir: Path) -> tuple[dict[Path, list[Path]], int]:
-    """Finds all valid videos and calculates total evaluation calls needed for the progress bar."""
-    valid_dirs = [d for d in videos_dir.iterdir() if d.is_dir() and d.name != "debug"]
-    video_pattern = re.compile(r"video_\d+\.mp4")
+        text = self.processor.apply_chat_template(
+            messages, tokenize=False, add_generation_prompt=True
+        )
+        img_in, vid_in, vid_kw = process_vision_info(
+            messages, return_video_kwargs=True, return_video_metadata=True
+        )
 
-    video_dir_to_path: dict[Path, list[Path]] = {}
-    total_calls = 0
+        if vid_in:
+            vid_in, vid_metas = zip(*vid_in, strict=True)
+            vid_in, vid_metas = list(vid_in), list(vid_metas)
+        else:
+            vid_metas = None
 
-    for video_dir in valid_dirs:
-        video_paths = [p for p in video_dir.iterdir() if video_pattern.fullmatch(p.name)]
-        video_dir_to_path[video_dir] = video_paths
+        inputs = self.processor(
+            text=[text],
+            images=img_in,
+            videos=vid_in,
+            video_metadata=vid_metas,
+            **vid_kw,  # ty:ignore[invalid-argument-type]
+            padding=True,
+            return_tensors="pt",
+        ).to(self.device)
 
-        with open(video_dir / "config.json") as f:
-            data = json.load(f)
-            num_videos = len(video_paths)
-            num_objs = len(data["prompt_data"]["bboxes"])
-            num_actions = len(data["prompt_data"]["action_prompts"]["split_sentences"]["segments"])
-            total_calls += num_objs * num_actions * num_videos
+        with torch.no_grad():
+            outputs = self.model(**inputs)
+        return outputs.logits[0, -1, :]
 
-    return video_dir_to_path, total_calls
+    def calculate_soft_score(
+        self, logits: torch.Tensor, target_tokens: list[str], target_weights: list[float]
+    ) -> float:
+        target_ids = [
+            self.processor.tokenizer.encode(t, add_special_tokens=False)[0] for t in target_tokens
+        ]
 
+        full_probs = torch.softmax(logits, dim=-1)
+        target_probs = full_probs[torch.tensor(target_ids, device=self.device)]
 
-def _aggregate_results(entries: list[DataEntry]) -> list[dict]:
-    """Groups entries by parameters and computes final statistics."""
-    grouped_entries = group_entries(entries)
-    output = []
-
-    for grouped_entry in grouped_entries:
-        params = grouped_entry["params"]
-        group = grouped_entry["values"]
-
-        margins = [m for entry in group for m in entry["margins"]]
-        correct_count = sum(entry["correct_count"] for entry in group)
-        total_count = sum(entry["total_count"] for entry in group)
-
-        statistics = compute_statistics(correct_count, total_count, margins)
-        output.append({"params": params, "statistics": statistics})
-
-    return output
-
-
-def evaluate_pipeline(
-    eval_config: dict,
-    videos_dir: Path,
-    output_dir: Path,
-    sam_model_id: str,
-    target_fps: int,
-    sam_margin: float,
-):
-    # Unpack our robust configuration
-    eval_func = eval_config["eval_func"]
-    desc_func = eval_config.get("description_func")  # Will be None for Direct methods
-
-    video_dir_to_path, total_calls = _prepare_evaluation_tasks(videos_dir)
-    print(f"num videos: {len(video_dir_to_path)}")
-
-    pbar = tqdm(total=total_calls, desc="Evaluating Actions", unit="call")
-    entries = []
-
-    print("num videos:", len(video_dir_to_path))
-
-    for video_dir, video_paths in video_dir_to_path.items():
-        margins = []
-        correct_count: int = 0
-        total_count: int = 0
-
-        with open(video_dir / "config.json") as f:
-            json_data = json.load(f)
-
-        params = json_data["params"]
-        bboxes = json_data["prompt_data"]["bboxes"]
-
-        current_output_dir = output_dir / video_dir.name
-        current_output_dir.mkdir(exist_ok=True, parents=True)
-
-        for video_path in video_paths:
-            cropped_videos = run_sam2_pipeline(
-                video_path,
-                current_output_dir,
-                bboxes,
-                sam_model_id,
-                target_fps,
-                sam_margin,
+        total_target_prob = target_probs.sum().item()
+        if total_target_prob < 0.5:
+            top_token_id = torch.argmax(logits).item()
+            top_token_text = repr(self.processor.tokenizer.decode([top_token_id]))
+            print(
+                f"\n[WARNING] Soft score math breaking! Model wants {top_token_text}. Mass: {total_target_prob:.3f}"
             )
 
+        normalized_probs = target_probs / (target_probs.sum() + 1e-9)
+        score_values = torch.tensor(target_weights, device=self.device)
+        return torch.sum(normalized_probs * score_values).item()
+
+
+class VideoAsset:
+    """Represents a video segment. Lazily generates a description only if needed."""
+
+    def __init__(self, path: Path, engine: QwenEngine):
+        self.path = path
+        self.engine = engine
+        self._description: str | None = None
+
+    @property
+    def description(self) -> str:
+        if self._description is None:
+            prompt = textwrap.dedent("""\
+                You are a forensic video analyst.
+                Provide a detailed, objective, chronological log of the video.
+
+                Guidelines:
+                1. Break the video down by visual changes and movements.
+                2. Describe specific body parts, objects, and interactions.
+                3. Do NOT interpret intent or purpose.
+                4. Focus purely on visual observables.
+
+                Output the log now.""")
+            self._description = self.engine.generate(prompt, video_path=self.path)
+        return self._description
+
+
+class ActionAuditor(ABC):
+    def __init__(self, engine: QwenEngine):
+        self.engine = engine
+
+    @abstractmethod
+    def _score(self, video: VideoAsset, action: str) -> float:
+        pass
+
+    def score_pair(self, video: VideoAsset, action_a: str, action_b: str) -> float:
+        score_a = self._score(video, action_a)
+        score_b = self._score(video, action_b)
+        return score_a - score_b
+
+    @staticmethod
+    def _extract_score(model_output: str) -> int:
+        if not model_output:
+            raise ValueError("Model output is empty.")
+        match = re.search(r"Score\**\s*[:\-]?\s*(\d)", model_output, re.IGNORECASE)
+        if match:
+            return max(1, min(5, int(match.group(1))))
+        match_start = re.match(r"^\s*(\d)", model_output)
+        if match_start:
+            return max(1, min(5, int(match_start.group(1))))
+        match_fraction = re.search(r"(\d)\s*/\s*5", model_output)
+        if match_fraction:
+            return max(1, min(5, int(match_fraction.group(1))))
+        raise ValueError(f"Could not extract score from: {model_output}")
+
+
+class SoftDirectAuditor(ActionAuditor):
+    def _score(self, video: VideoAsset, action: str) -> float:
+        prompt1 = textwrap.dedent(f"""\
+            You are a strict video auditor.
+            Analyze the video content and determine if the following action occurs.
+
+            Target Action: {action}
+
+            Provide a step-by-step reasoning based on the visual evidence.
+            Conclude by evaluating how well the video matches the action.""")
+
+        reasoning = self.engine.generate(prompt1, video_path=video.path)
+
+        prompt2 = textwrap.dedent("""\
+            Based on your reasoning, assign a match score on a scale of 1 to 5.
+
+            Criteria:
+            5: Perfect Match (Action is clearly the main focus).
+            4: Strong Match (Action occurs, minor noise).
+            3: Partial Match (Action is part of a larger sequence).
+            2: Weak Match (Ambiguous or hard to see).
+            1: No Match (Action does not happen).
+
+            CRITICAL INSTRUCTION: Output ONLY a single integer (1, 2, 3, 4, or 5). Do not output any words, punctuation, or spaces.""")
+
+        logits = self.engine.get_scoring_logits(prompt1, reasoning, prompt2, video.path)
+        return self.engine.calculate_soft_score(
+            logits,
+            target_tokens=["1", "2", "3", "4", "5"],
+            target_weights=[1.0, 2.0, 3.0, 4.0, 5.0],
+        )
+
+
+class SoftTwoAFCAuditor(ActionAuditor):
+    def _score(self, video: VideoAsset, action: str) -> float:
+        raise NotImplementedError(
+            "SoftTwoAFCAuditor is a pairwise evaluator and cannot score a single action. "
+            "Please call `score_pair(video, action_a, action_b)` instead."
+        )
+
+    def score_pair(self, video: VideoAsset, action_a: str, action_b: str) -> float:
+        prompt1 = textwrap.dedent(f"""\
+            You are an expert video evaluator.
+            I will provide you with a short video clip and two possible descriptions of the action occurring in the video.
+
+            Option A: {action_a}
+            Option B: {action_b}
+
+            Your task is to determine which of the two options best describes the action and movement being performed by the character in the video.
+
+            CRITICAL INSTRUCTIONS:
+            1. Focus strictly on the action, movement, and physical interactions.
+            2. Do NOT base your decision solely on the character's clothing, background, or static objects. Focus on what the character is doing.
+            3. You MUST choose either Option A or Option B.
+
+            Provide a step-by-step reasoning based on the visual evidence comparing the two options.""")
+
+        reasoning = self.engine.generate(prompt1, video_path=video.path)
+
+        prompt2 = textwrap.dedent("""\
+            Based on your reasoning, choose the option that best matches the video.
+
+            CRITICAL INSTRUCTION: Output ONLY a single uppercase letter ("A" or "B"). Do not output any words, punctuation, or spaces.""")
+
+        logits = self.engine.get_scoring_logits(prompt1, reasoning, prompt2, video.path)
+
+        prob_a = self.engine.calculate_soft_score(
+            logits, target_tokens=["A", "B"], target_weights=[1.0, 0.0]
+        )
+        prob_b = 1.0 - prob_a
+
+        # Return the margin.
+        # If prob_a is 0.9 and prob_b is 0.1, it returns 0.8.
+        return prob_a - prob_b
+
+
+class SoftBlindAuditor(ActionAuditor):
+    def _score(self, video: VideoAsset, action: str) -> float:
+        prompt1 = textwrap.dedent(f"""\
+            You are a strict action auditor.
+            Your task is to rate how well the 'Target Action' matches the 'Video Description'.
+
+            Target Action: {action}
+            Video Description: {video.description}
+
+            Reasoning Rules:
+            - Rely ONLY on the Video Description provided above. 
+            - Be skeptical: if a specific detail is missing from the description, assume it did not happen.
+            - Check for chronological consistency.
+
+            Output a brief step-by-step reasoning.""")
+
+        reasoning = self.engine.generate(prompt1, None)
+
+        prompt2 = textwrap.dedent("""\
+            Based on the reasoning above, assign a match score on a scale of 1 to 5.
+
+            Criteria:
+            5: Perfect Match (Unambiguous, clearly main focus).
+            4: Strong Match (Main event, minor noise).
+            3: Partial Match (Action occurred but mixed with others).
+            2: Weak Match (Ambiguous or minor detail).
+            1: No Match (Action not found or different action).
+
+            CRITICAL INSTRUCTION: Output ONLY a single integer (1, 2, 3, 4, or 5). Do not output any words, punctuation, or spaces.""")
+
+        logits = self.engine.get_scoring_logits(prompt1, reasoning, prompt2, None)
+        return self.engine.calculate_soft_score(
+            logits,
+            target_tokens=["1", "2", "3", "4", "5"],
+            target_weights=[1.0, 2.0, 3.0, 4.0, 5.0],
+        )
+
+
+class DiscreteDirectAuditor(ActionAuditor):
+    def _score(self, video: VideoAsset, action: str) -> float:
+        prompt = textwrap.dedent(f"""\
+            You are a strict action auditor and forensic video analyst.
+            Your task is to determine if the 'Target Action' occurs in the video based on visual evidence.
+
+            Target Action: {action}
+
+            Reasoning Rules:
+            - Focus purely on visual observables (movements, contacts, states).
+            - Do NOT interpret intent or purpose.
+            - Be skeptical: if the specific visual details are missing, assume it did not happen.
+
+            Scoring Criteria:
+            5: Perfect Match (Unambiguous, clearly main focus).
+            4: Strong Match (Main event, minor noise).
+            3: Partial Match (Action occurred but mixed with others).
+            2: Weak Match (Ambiguous or minor detail).
+            1: No Match (Action not found or different action).
+
+            Instructions:
+            1. Output a brief step-by-step reasoning based on the visual evidence.
+            2. End your response strictly with: "Score: X" (where X is 1-5).""")
+
+        return self._extract_score(self.engine.generate(prompt, video_path=video.path))
+
+
+class DiscreteBlindAuditor(ActionAuditor):
+    def _score(self, video: VideoAsset, action: str) -> float:
+        prompt = textwrap.dedent(f"""\
+            You are a strict action auditor.
+            Your task is to rate how well the 'Target Action' matches the 'Video Description'.
+
+            Target Action: {action}
+            Video Description: {video.description}
+
+            Reasoning Rules:
+            - Rely ONLY on the Video Description provided above. 
+            - Be skeptical: if a specific detail is missing from the description, assume it did not happen.
+            - Check for chronological consistency.
+
+            Scoring Criteria:
+            5: Perfect Match (Unambiguous, clearly main focus).
+            4: Strong Match (Main event, minor noise).
+            3: Partial Match (Action occurred but mixed with others).
+            2: Weak Match (Ambiguous or minor detail).
+            1: No Match (Action not found or different action).
+
+            Instructions:
+            1. Output a brief step-by-step reasoning.
+            2. End your response strictly with: "Score: X" (where X is 1-5).""")
+
+        return self._extract_score(self.engine.generate(prompt, None))
+
+
+class EvaluationPipeline:
+    def __init__(
+        self,
+        videos_dir: Path,
+        output_dir: Path,
+        sam_model_id: str,
+        target_fps: int,
+        sam_margin: float,
+    ):
+        self.videos_dir = videos_dir
+        self.output_dir = output_dir
+        self.sam_model_id = sam_model_id
+        self.target_fps = target_fps
+        self.sam_margin = sam_margin
+
+        # Precompute tasks and total calls once during initialization
+        self.video_tasks, self.total_calls = self._prepare_tasks()
+
+    def _prepare_tasks(self) -> tuple[dict[Path, list[Path]], int]:
+        """Scans directories, parses configs, and calculates the exact number of evaluation calls."""
+        valid_dirs = [d for d in self.videos_dir.iterdir() if d.is_dir() and d.name != "debug"]
+        video_pattern = re.compile(r"video_\d+\.mp4")
+
+        video_tasks: dict[Path, list[Path]] = {}
+        total_calls = 0
+
+        for video_dir in valid_dirs:
+            video_paths = [p for p in video_dir.iterdir() if video_pattern.fullmatch(p.name)]
+            video_tasks[video_dir] = video_paths
+
+            with open(video_dir / "config.json") as f:
+                data = json.load(f)
+                num_videos = len(video_paths)
+                num_crops = len(data["prompt_data"]["bboxes"])
+                num_actions = len(
+                    data["prompt_data"]["action_prompts"]["split_sentences"]["segments"]
+                )
+
+                total_calls += num_videos * num_crops * num_actions
+
+        return video_tasks, total_calls
+
+    def run(self, auditor: ActionAuditor):
+        entries = []
+
+        pbar = tqdm(
+            total=self.total_calls, desc=f"Running {auditor.__class__.__name__}", unit="call"
+        )
+
+        for video_dir, video_paths in self.video_tasks.items():
+            with open(video_dir / "config.json") as f:
+                json_data = json.load(f)
+
+            margins, correct_count, total_count = [], 0, 0
+            bboxes, params = json_data["prompt_data"]["bboxes"], json_data["params"]
             segments = json_data["prompt_data"]["action_prompts"]["split_sentences"]["segments"]
             action_descriptions = [s[0] for s in segments]
 
-            for j, cropped_video_path in enumerate(cropped_videos):
-                cached_description = None
-                if desc_func is not None:
-                    cached_description = desc_func(cropped_video_path)
+            current_output_dir = self.output_dir / video_dir.name
+            current_output_dir.mkdir(exist_ok=True, parents=True)
 
-                margin: float = 0.0
-                scores = {}
+            for video_path in video_paths:
+                cropped_videos = run_sam2_pipeline(
+                    video_path,
+                    current_output_dir,
+                    bboxes,
+                    self.sam_model_id,
+                    self.target_fps,
+                    self.sam_margin,
+                )
 
-                for k, action_descr in enumerate(action_descriptions):
-                    is_correct = j == k
-                    sign = 1 if is_correct else -1
+                assert len(cropped_videos) == 2
+                assert len(action_descriptions) == 2
+                for j, crop_path in enumerate(cropped_videos):
+                    video_asset = VideoAsset(crop_path, auditor.engine)
 
-                    if desc_func is not None:
-                        score = eval_func(cached_description, action_descr)
-                    else:
-                        score = eval_func(cropped_video_path, action_descr)
+                    true_action = action_descriptions[j]
+                    false_action = action_descriptions[1 - j]
 
-                    margin += sign * score
-                    scores[is_correct] = score
-                    pbar.update(1)
+                    margin = auditor.score_pair(video_asset, true_action, false_action)
 
-                margins.append(margin)
-                total_count += 1
+                    margins.append(margin)
+                    total_count += 1
 
-                if scores.get(True, 0) > scores.get(False, 0):
-                    correct_count += 1
+                    # Positive margin means the correct prompt scored higher
+                    if margin > 0:
+                        correct_count += 1
 
-        entries.append(
-            {
-                "params": params,
-                "values": {
-                    "margins": margins,
-                    "correct_count": correct_count,
-                    "total_count": total_count,
-                },
-            }
-        )
+                    pbar.update(2)
 
-    return _aggregate_results(entries)
+            entries.append(
+                {
+                    "params": params,
+                    "values": {
+                        "margins": margins,
+                        "correct_count": correct_count,
+                        "total_count": total_count,
+                    },
+                }
+            )
+
+        pbar.close()
+        return self._aggregate_results(entries)
+
+    def _aggregate_results(self, entries: list[DataEntry]) -> list[dict]:
+        grouped_entries = group_entries(entries)
+        output = []
+        for grouped in grouped_entries:
+            params, values = grouped["params"], grouped["values"]
+            margins = [m for entry in values for m in entry["margins"]]
+            correct = sum(entry["correct_count"] for entry in values)
+            total = sum(entry["total_count"] for entry in values)
+            output.append(
+                {"params": params, "statistics": self.compute_statistics(correct, total, margins)}
+            )
+        return output
+
+    @staticmethod
+    def compute_statistics(correct_count, total_count, margins):
+        binom_res = binomtest(correct_count, total_count, p=0.5, alternative="greater")
+        binom_ci = binom_res.proportion_ci(confidence_level=0.95)
+
+        m_arr = np.array(margins)
+        boot_means = [
+            np.random.choice(m_arr, size=m_arr.size, replace=True).mean() for _ in range(10_000)
+        ]
+        ci_low, ci_high = np.percentile(boot_means, [2.5, 97.5])
+
+        return {
+            "margin": {"avg": m_arr.mean(), "ci": [ci_low, ci_high]},
+            "discrimination": {
+                "avg": binom_res.statistic,
+                "p-value": binom_res.pvalue,
+                "ci": [binom_ci.low, binom_ci.high],
+            },
+        }
 
 
-def display_statistics(statistics):
-    discr_res = statistics["discrimination"]
-    print(f"Discrimination rate: {discr_res['avg']:.2f}")
-    print(f"p-value: {discr_res['p-value']:.4f}")
-    print(f"95% CI: {discr_res['ci']}")
+def set_seed(seed: int = 42):
+    random.seed(seed)
+    os.environ["PYTHONHASHSEED"] = str(seed)
+    np.random.seed(seed)
 
-    margin_res = statistics["margin"]
-    ci_low, ci_high = margin_res["ci"]
-    print(f"Mean margin: {margin_res['avg']:.3f} (95% CI: {ci_low:.3f}, {ci_high:.3f})")
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)  # for multi-GPU
+
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+    # Optional: Forces PyTorch to use deterministic algorithms
+    # Warning: May throw an error if a specific SAM2 operation doesn't have a deterministic version
+    # torch.use_deterministic_algorithms(True, warn_only=True)
 
 
 def main():
-    OUTPUT_DIR = Path("./evaluation/output/")
-    VIDEOS_DIR = Path("./multi_sample_inference/debug_output/")
+    parser = argparse.ArgumentParser(description="Evaluate video actions using QwenEngine")
+    parser.add_argument(
+        "--videos-dir",
+        type=Path,
+        default=Path("./multi_sample_inference/debug_output/"),
+        help="Path to the directory containing output videos",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=Path("./evaluation/output/"),
+        help="Path to the directory to store the evaluation output",
+    )
+    args = parser.parse_args()
 
-    MARGIN, TARGET_FPS = 0.2, 16
+    set_seed(42)
 
-    SAM_MODEL_ID = "facebook/sam2-hiera-large"
-
+    engine = QwenEngine("Qwen/Qwen3-VL-8B-Instruct")
     console = Console()
 
-    qwen_model, qwen_processor = load_qwen3_model()
+    pipeline = EvaluationPipeline(
+        videos_dir=args.videos_dir,
+        output_dir=args.output_dir,
+        sam_model_id="facebook/sam2-hiera-large",
+        target_fps=16,
+        sam_margin=0.2,
+    )
 
-    # qwen_engine = videobench.QwenVLEngine(qwen_model, qwen_processor)
-
-    # score_funcs = {}
-    # # score_funcs["videobench"] = lambda video_path, action_descr: videobench.evaluate_video(
-    # #     qwen_engine, video_path, action_descr
-    # # )
-    #
-    # score_funcs |= {
-    #     f.__name__: lambda video_path, action_descr, f=f: f(
-    #         qwen_model, qwen_processor, video_path, action_descr
-    #     )
-    #     for f in [
-    #         get_soft_score_direct,
-    #         get_soft_score_blind,
-    #         get_discrete_score_blind,
-    #         get_discrete_score_direct,
-    #     ]
-    # }
-    evaluators = {
-        "soft_direct": {
-            "eval_func": partial(get_soft_score_direct, qwen_model, qwen_processor),
-            "description_func": None,
-        },
-        "discrete_direct": {
-            "eval_func": partial(get_discrete_score_direct, qwen_model, qwen_processor),
-            "description_func": None,
-        },
-        "soft_blind": {
-            "eval_func": partial(get_soft_score_blind, qwen_model, qwen_processor),
-            "description_func": partial(get_blind_video_description, qwen_model, qwen_processor),
-        },
-        "discrete_blind": {
-            "eval_func": partial(get_discrete_score_blind, qwen_model, qwen_processor),
-            "description_func": partial(get_blind_video_description, qwen_model, qwen_processor),
-        },
+    auditors = {
+        "soft_direct": SoftDirectAuditor(engine),
+        # "soft_blind": SoftBlindAuditor(engine),
+        # "discrete_direct": DiscreteDirectAuditor(engine),
+        # "discrete_blind": DiscreteBlindAuditor(engine),
+        "soft_2afc": SoftTwoAFCAuditor(engine),
     }
 
-    # Set up the rich table
     results_table = Table(
         title="Evaluation Statistics", show_header=True, header_style="bold magenta"
     )
-    results_table.add_column("Score Function", style="cyan", no_wrap=True)
+    results_table.add_column("Score Function", style="cyan")
     results_table.add_column("Parameters", style="dim")
     results_table.add_column("Discrim. Rate", justify="right", style="green")
     results_table.add_column("p-value", justify="right")
@@ -669,43 +593,23 @@ def main():
     results_table.add_column("Mean Margin", justify="right", style="green")
     results_table.add_column("Margin 95% CI", justify="center")
 
-    for eval_name, eval_config in evaluators.items():
-        console.print(f"\n[bold blue]Evaluating score function:[/bold blue] {eval_name}")
-
-        results = evaluate_pipeline(
-            eval_config,
-            VIDEOS_DIR,
-            OUTPUT_DIR,
-            SAM_MODEL_ID,
-            TARGET_FPS,
-            MARGIN,
-        )
+    for name, auditor in auditors.items():
+        console.print(f"\n[bold blue]Evaluating:[/bold blue] {name}")
+        results = pipeline.run(auditor)
 
         for res in results:
-            params, statistics = res["params"], res["statistics"]
-            discr_res = statistics["discrimination"]
-            margin_res = statistics["margin"]
-
-            # Format parameters dictionary as a string
-            param_str = json.dumps(params) if isinstance(params, dict) else str(params)
-
-            # Add a row to the table for this set of results
+            s = res["statistics"]
+            d, m = s["discrimination"], s["margin"]
             results_table.add_row(
-                eval_name,
-                param_str,
-                f"{discr_res['avg']:.2f}",
-                f"{discr_res['p-value']:.4f}",
-                f"[{discr_res['ci'][0]:.2f}, {discr_res['ci'][1]:.2f}]",
-                f"{margin_res['avg']:.3f}",
-                f"[{margin_res['ci'][0]:.3f}, {margin_res['ci'][1]:.3f}]",
+                name,
+                json.dumps(res["params"]),
+                f"{d['avg']:.2f}",
+                f"{d['p-value']:.4f}",
+                f"[{d['ci'][0]:.2f}, {d['ci'][1]:.2f}]",
+                f"{m['avg']:.3f}",
+                f"[{m['ci'][0]:.3f}, {m['ci'][1]:.3f}]",
             )
-
-        console.print(f"\nCurrent results after finishing {eval_name}:")
         console.print(results_table)
-
-    # Print out the final cleanly formatted table
-    console.print("FINAL EVALUATION COMPLETED")
-    console.print(results_table)
 
 
 if __name__ == "__main__":
