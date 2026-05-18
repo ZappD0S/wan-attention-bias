@@ -24,6 +24,7 @@ from transformers import (
 
 from .sam2_pipeline import run_sam2_pipeline
 from .utils import DataEntry, group_entries
+from .videobench import VideoBenchAuditor
 
 
 class QwenEngine:
@@ -576,10 +577,11 @@ def main():
 
     auditors = {
         "soft_direct": SoftDirectAuditor(engine),
-        # "soft_blind": SoftBlindAuditor(engine),
-        # "discrete_direct": DiscreteDirectAuditor(engine),
-        # "discrete_blind": DiscreteBlindAuditor(engine),
+        "soft_blind": SoftBlindAuditor(engine),
+        "discrete_direct": DiscreteDirectAuditor(engine),
+        "discrete_blind": DiscreteBlindAuditor(engine),
         "soft_2afc": SoftTwoAFCAuditor(engine),
+        "videobench": VideoBenchAuditor(engine),
     }
 
     results_table = Table(
