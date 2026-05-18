@@ -15,6 +15,13 @@ nvidia-smi || {
   exit 1
 }
 
+PARAM_CONFIG_NAME=${1:-$PARAM_CONFIG_NAME}
+
+if [ -z "$PARAM_CONFIG_NAME" ]; then
+  echo "ERROR: PARAM_CONFIG_NAME environment variable is not set."
+  exit 1
+fi
+
 # paths and env
 STORAGE="/storage"
 VIDEOS_DIR="$STORAGE/attn_bias/output_videos/${PARAM_CONFIG_NAME}"
