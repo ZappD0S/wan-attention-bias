@@ -3,8 +3,8 @@
 #OAR -q abaca
 #OAR -p musa
 #OAR -l walltime=48:00:00
-#OAR -O logs/output_%j.log
-#OAR -E logs/error_%j.log
+#OAR -O logs/output_%jobid%.log
+#OAR -E logs/error_%jobid%.log
 #OAR --checkpoint 60
 #OAR -t idempotent
 
