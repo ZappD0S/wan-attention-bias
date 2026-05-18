@@ -1,31 +1,24 @@
-from pathlib import Path
+from evaluation import ActionAuditor
 
-from . import QwenVLEngine
 from .agents import TextAgent, VideoHost
 from .robust_parser import RobustParser
 
 
-def evaluate_video(engine: QwenVLEngine, video_path: str | Path, target_prompt: str):
+class VideoBenchAuditor(ActionAuditor):
+    def _score(self, video, action: str) -> float:
+        host = VideoHost(self.engine, video.path)
+        agent1 = TextAgent("Assistant-One", "Assistant-one", self.engine)
+        agent2 = TextAgent("Assistant-Two", "Assistant-two", self.engine)
 
-    # Initialize
-    host = VideoHost(engine, video_path)
-    agent1 = TextAgent("Assistant-One", "Assistant-one", engine)
-    agent2 = TextAgent("Assistant-Two", "Assistant-two", engine)
+        description = host.blind_observation()
 
-    # --- Step 1: Blind Observation ---
-    description = host.blind_observation()
+        q1 = agent1.generate_questions(action, description)
+        q2 = agent2.generate_questions(action, description, previous_question=q1)
 
-    # --- Step 2: Assistants Generate Questions ---
-    q1 = agent1.generate_questions(target_prompt, description)
-    q2 = agent2.generate_questions(target_prompt, description, previous_question=q1)
+        reflection_info = host.reflection(action, q1, q2)
 
-    # --- Step 3: Reflection ---
-    # Returns the 'Descriptions' section as requested
-    reflection_info = host.reflection(target_prompt, q1, q2)
+        raw_result = host.final_score(action, description, reflection_info)
 
-    # --- Step 4: Final Judgment ---
-    raw_result = host.final_score(target_prompt, description, reflection_info)
+        score = RobustParser.extract_score(raw_result)
 
-    # Extract Score
-    score = RobustParser.extract_score(raw_result)
-    return score
+        return float(score)

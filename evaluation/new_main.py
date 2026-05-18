@@ -1,3 +1,4 @@
+import argparse
 import json
 import os
 import random
@@ -44,7 +45,9 @@ class QwenEngine:
         cap.release()
         return (total_frames // 2) * 2
 
-    def generate(self, prompt: str, video_path: Path | None = None) -> str:
+    def generate(
+        self, prompt: str, system_prompt: str | None = None, video_path: Path | None = None
+    ) -> str:
         nframes = self._get_nframes(video_path)
         content: list[dict[str, Any]] = [{"type": "text", "text": prompt}]
 
@@ -52,6 +55,10 @@ class QwenEngine:
             content.append({"type": "video", "video": str(video_path), "nframes": nframes})
 
         messages = [{"role": "user", "content": content}]
+
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+
         input_text = self.processor.apply_chat_template(
             messages, tokenize=False, add_generation_prompt=True
         )
@@ -181,7 +188,7 @@ class VideoAsset:
                 4. Focus purely on visual observables.
 
                 Output the log now.""")
-            self._description = self.engine.generate(prompt, self.path)
+            self._description = self.engine.generate(prompt, video_path=self.path)
         return self._description
 
 
@@ -198,7 +205,8 @@ class ActionAuditor(ABC):
         score_b = self._score(video, action_b)
         return score_a - score_b
 
-    def _extract_score(self, model_output: str) -> int:
+    @staticmethod
+    def _extract_score(model_output: str) -> int:
         if not model_output:
             raise ValueError("Model output is empty.")
         match = re.search(r"Score\**\s*[:\-]?\s*(\d)", model_output, re.IGNORECASE)
@@ -224,7 +232,7 @@ class SoftDirectAuditor(ActionAuditor):
             Provide a step-by-step reasoning based on the visual evidence.
             Conclude by evaluating how well the video matches the action.""")
 
-        reasoning = self.engine.generate(prompt1, video.path)
+        reasoning = self.engine.generate(prompt1, video_path=video.path)
 
         prompt2 = textwrap.dedent("""\
             Based on your reasoning, assign a match score on a scale of 1 to 5.
@@ -270,7 +278,7 @@ class SoftTwoAFCAuditor(ActionAuditor):
 
             Provide a step-by-step reasoning based on the visual evidence comparing the two options.""")
 
-        reasoning = self.engine.generate(prompt1, video.path)
+        reasoning = self.engine.generate(prompt1, video_path=video.path)
 
         prompt2 = textwrap.dedent("""\
             Based on your reasoning, choose the option that best matches the video.
@@ -351,7 +359,7 @@ class DiscreteDirectAuditor(ActionAuditor):
             1. Output a brief step-by-step reasoning based on the visual evidence.
             2. End your response strictly with: "Score: X" (where X is 1-5).""")
 
-        return self._extract_score(self.engine.generate(prompt, video.path))
+        return self._extract_score(self.engine.generate(prompt, video_path=video.path))
 
 
 class DiscreteBlindAuditor(ActionAuditor):
@@ -538,17 +546,29 @@ def set_seed(seed: int = 42):
 
 
 def main():
-    set_seed(42)
+    parser = argparse.ArgumentParser(description="Evaluate video actions using QwenEngine")
+    parser.add_argument(
+        "--videos-dir",
+        type=Path,
+        default=Path("./multi_sample_inference/debug_output/"),
+        help="Path to the directory containing output videos",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=Path("./evaluation/output/"),
+        help="Path to the directory to store the evaluation output",
+    )
+    args = parser.parse_args()
 
-    OUTPUT_DIR = Path("./evaluation/output/")
-    VIDEOS_DIR = Path("./multi_sample_inference/debug_output/")
+    set_seed(42)
 
     engine = QwenEngine("Qwen/Qwen3-VL-8B-Instruct")
     console = Console()
 
     pipeline = EvaluationPipeline(
-        videos_dir=VIDEOS_DIR,
-        output_dir=OUTPUT_DIR,
+        videos_dir=args.videos_dir,
+        output_dir=args.output_dir,
         sam_model_id="facebook/sam2-hiera-large",
         target_fps=16,
         sam_margin=0.2,

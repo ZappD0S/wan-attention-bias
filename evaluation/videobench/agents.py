@@ -1,12 +1,13 @@
 from pathlib import Path
 
-from . import QwenVLEngine
+from evaluation import QwenEngine
+
 from .prompts import ACTION_PROMPTS
 from .robust_parser import RobustParser
 
 
 class TextAgent:
-    def __init__(self, name: str, prompt_key: str, engine: QwenVLEngine):
+    def __init__(self, name: str, prompt_key: str, engine: QwenEngine):
         self.name = name
         self.system_prompt = ACTION_PROMPTS[prompt_key]
         self.engine = engine
@@ -45,7 +46,7 @@ class TextAgent:
         )
 
         # Call engine without video_path -> Text Only mode
-        raw_response = self.engine.generate(self.system_prompt, user_text, video_path=None)
+        raw_response = self.engine.generate(user_text, system_prompt=self.system_prompt)
 
         return RobustParser.extract_question(raw_response)
 
@@ -53,7 +54,7 @@ class TextAgent:
 class VideoHost:
     def __init__(
         self,
-        engine: QwenVLEngine,
+        engine: QwenEngine,
         video_path: str | Path,
         modelname: str = "AI_Model",
         modelmessage: str = "Frames from the video.",
@@ -75,7 +76,11 @@ class VideoHost:
             + self.modelmessage
         )
 
-        raw = self.engine.generate(ACTION_PROMPTS["gpt4o-system"], user_text, self.video_path)
+        raw = self.engine.generate(
+            user_text,
+            system_prompt=ACTION_PROMPTS["gpt4o-system"],
+            video_path=Path(self.video_path),
+        )
         return RobustParser.extract_section(raw, "Video Description")
 
     def reflection(self, target_prompt: str, q1: str, q2: str) -> str:
@@ -99,8 +104,11 @@ class VideoHost:
             + f"{self.modelmessage}\n"
         )
 
-        raw = self.engine.generate(ACTION_PROMPTS["gpt4o-answer"], user_text, self.video_path)
-
+        raw = self.engine.generate(
+            user_text,
+            system_prompt=ACTION_PROMPTS["gpt4o-system"],
+            video_path=Path(self.video_path),
+        )
         desc_part = RobustParser.extract_section(raw, "Descriptions")
         if not desc_part:
             print("[Parsing Warning] Failed to extract 'Descriptions'. Returning full text.")
@@ -134,4 +142,8 @@ class VideoHost:
             message_ + f"{self.modelmessage}\n" + f"The name of the AI medel is {self.modelname}\n"
         )
 
-        return self.engine.generate(ACTION_PROMPTS["summer-system"], user_text, self.video_path)
+        return self.engine.generate(
+            user_text,
+            system_prompt=ACTION_PROMPTS["summer-system"],
+            video_path=Path(self.video_path),
+        )
