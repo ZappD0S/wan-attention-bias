@@ -47,7 +47,11 @@ class EvaluationPipeline:
 
     def _prepare_tasks(self) -> tuple[dict[Path, list[Path]], int]:
         """Scans directories, parses configs, and calculates the exact number of evaluation calls."""
-        valid_dirs = [d for d in self.videos_dir.iterdir() if d.is_dir() and d.name != "debug"]
+        valid_dirs = [
+            d
+            for d in self.videos_dir.iterdir()
+            if d.is_dir() and d.name != "debug" and not d.name.startswith(".")
+        ]
         video_pattern = re.compile(r"video_\d+\.mp4")
 
         video_tasks: dict[Path, list[Path]] = {}

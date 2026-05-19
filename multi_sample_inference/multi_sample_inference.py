@@ -345,7 +345,7 @@ def main():
         return
 
     tqdm.write(f"[Dispatcher] Serializing {len(tasks_list)} task files...")
-    task_dir = args.output_path / "temp_tasks"
+    task_dir = args.output_path / ".tasks"
     task_dir.mkdir(exist_ok=True)
     task_queue = queue.Queue()
 
