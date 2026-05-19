@@ -1,9 +1,12 @@
+import logging
 import re
 import textwrap
 from abc import ABC, abstractmethod
 from pathlib import Path
 
 from .engine import QwenEngine
+
+logger = logging.getLogger(__name__)
 
 
 class VideoAsset:
@@ -73,6 +76,7 @@ class SoftDirectAuditor(ActionAuditor):
             Conclude by evaluating how well the video matches the action.""")
 
         reasoning = self.engine.generate(prompt1, video_path=video.path)
+        logger.debug("[SoftDirectAuditor] Reasoning text generated:\n---\n%s\n---", reasoning)
 
         prompt2 = textwrap.dedent("""\
             Based on your reasoning, assign a match score on a scale of 1 to 5.

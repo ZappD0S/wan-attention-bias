@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -9,6 +10,8 @@ from transformers import (
     Qwen2_5_VLForConditionalGeneration,
     Qwen3VLForConditionalGeneration,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class QwenEngine:
@@ -63,7 +66,7 @@ class QwenEngine:
             images=image_inputs,
             videos=video_inputs,
             video_metadata=video_metadatas,
-            **video_kwargs,
+            **video_kwargs,  # ty:ignore[invalid-argument-type]
             padding=True,
             return_tensors="pt",
         ).to(self.device)
@@ -76,7 +79,7 @@ class QwenEngine:
                 temperature=None,
                 top_p=None,
                 top_k=None,
-            )
+            )  # ty:ignore[invalid-argument-type]
 
         trimmed_ids = [
             out[len(ins) :] for ins, out in zip(inputs.input_ids, generated_ids, strict=True)
@@ -84,6 +87,9 @@ class QwenEngine:
         output_text = self.processor.batch_decode(
             trimmed_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False
         )
+
+        logger.debug("Raw Model Output [generate]:\n---\n%s\n---", output_text[0])
+
         return output_text[0]
 
     def get_scoring_logits(
@@ -119,31 +125,67 @@ class QwenEngine:
             images=img_in,
             videos=vid_in,
             video_metadata=vid_metas,
-            **vid_kw,
+            **vid_kw,  # ty:ignore[invalid-argument-type]
             padding=True,
             return_tensors="pt",
         ).to(self.device)
 
         with torch.no_grad():
             outputs = self.model(**inputs)
-        return outputs.logits[0, -1, :]
+
+        seq_len = inputs.attention_mask[0].sum().item()
+
+        logger.debug("Actual end of sequence index: %d", seq_len - 1)
+        logger.debug("Raw Logits shape: %s", outputs.logits.shape)
+
+        # Decode the highest probability token the model ACTUALLY wanted to predict next
+        last_token_id = torch.argmax(outputs.logits[0, seq_len - 1, :]).item()
+        last_token_text = repr(self.processor.tokenizer.decode([last_token_id]))
+        logger.debug("Predicted top-1 token for sequence end: %s", last_token_text)
+
+        raw_last_token_logits = outputs.logits[0, seq_len - 1, :]
+        logger.debug(
+            "Raw logits for last token (first 10): %s", raw_last_token_logits[:10].tolist()
+        )
+
+        return outputs.logits[0, seq_len - 1, :]
 
     def calculate_soft_score(
         self, logits: torch.Tensor, target_tokens: list[str], target_weights: list[float]
     ) -> float:
-        target_ids = [
-            self.processor.tokenizer.encode(t, add_special_tokens=False)[0] for t in target_tokens
-        ]
+        logger.debug("Target tokens: %s", target_tokens)
+        target_ids = []
+        for t in target_tokens:
+            encoded = self.processor.tokenizer.encode(t, add_special_tokens=False)
+
+            if not encoded:
+                logger.warning("Target token '%s' encoded to empty list.", t)
+                continue
+
+            token_id = encoded[0]
+            target_ids.append(token_id)
+            logger.debug(
+                "Token: %r -> ID: %d -> Decoded: %r",
+                t,
+                token_id,
+                self.processor.tokenizer.decode([token_id]),
+            )
+
+        target_ids_tensor = torch.tensor(target_ids, device=self.device)
+        logger.debug("Collected target IDs: %s", target_ids_tensor.tolist())
 
         full_probs = torch.softmax(logits, dim=-1)
-        target_probs = full_probs[torch.tensor(target_ids, device=self.device)]
+        target_probs = full_probs[target_ids_tensor]
 
         total_target_prob = target_probs.sum().item()
         if total_target_prob < 0.5:
             top_token_id = torch.argmax(logits).item()
             top_token_text = repr(self.processor.tokenizer.decode([top_token_id]))
-            print(
-                f"\n[WARNING] Soft score math breaking! Model wants {top_token_text}. Mass: {total_target_prob:.3f}"
+
+            logger.warning(
+                "Soft score math breaking! Model wants %s. Mass: %.3f",
+                top_token_text,
+                total_target_prob,
             )
 
         normalized_probs = target_probs / (target_probs.sum() + 1e-9)

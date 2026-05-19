@@ -1,5 +1,6 @@
 import argparse
 import json
+import logging
 import os
 import random
 import re
@@ -186,6 +187,20 @@ def set_seed(seed: int = 42):
     # torch.use_deterministic_algorithms(True, warn_only=True)
 
 
+def setup_logging(log_path: Path):
+    """Configures logging to write DEBUG messages to a file."""
+    # Create the logger
+    logger = logging.getLogger()
+    logger.setLevel(logging.DEBUG)  # Capture everything at the root
+
+    # 1. File Handler for DEBUG logs (wipes previous run's log)
+    file_handler = logging.FileHandler(log_path, mode="w")
+    file_handler.setLevel(logging.DEBUG)
+    file_formatter = logging.Formatter("%(asctime)s | %(name)s | %(levelname)s | %(message)s")
+    file_handler.setFormatter(file_formatter)
+    logger.addHandler(file_handler)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Evaluate video actions using QwenEngine")
     parser.add_argument(
@@ -203,6 +218,7 @@ def main():
     args = parser.parse_args()
 
     set_seed(42)
+    setup_logging(args.output_dir / "debug_eval.log")
 
     engine = QwenEngine("Qwen/Qwen3-VL-8B-Instruct")
     console = Console()

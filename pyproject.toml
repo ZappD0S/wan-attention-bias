@@ -118,6 +118,7 @@ dependencies = [
     "yarl",
     "zipp",
     "sam2>=1.1.0",
+    "eva-decord",
     "msgspec>=0.21.1",
     "openai>=2.33.0",
 ]
