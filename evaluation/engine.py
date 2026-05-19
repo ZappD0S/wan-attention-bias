@@ -21,7 +21,9 @@ class QwenEngine:
         model_class = (
             Qwen3VLForConditionalGeneration if is_qwen3 else Qwen2_5_VLForConditionalGeneration
         )
-        self.model = model_class.from_pretrained(model_id, torch_dtype="auto", device_map="auto")
+        self.model = model_class.from_pretrained(
+            model_id, torch_dtype=torch.bfloat16, device_map="auto"
+        )
         self.processor = AutoProcessor.from_pretrained(model_id)
         self.device = self.model.device
 
@@ -42,10 +44,12 @@ class QwenEngine:
         if video_path:
             content.append({"type": "video", "video": str(video_path), "nframes": nframes})
 
-        messages = [{"role": "user", "content": content}]
+        messages = []
 
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
+
+        messages.append({"role": "user", "content": content})
 
         input_text = self.processor.apply_chat_template(
             messages, tokenize=False, add_generation_prompt=True
