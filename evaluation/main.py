@@ -179,8 +179,8 @@ def set_seed(seed: int = 42):
     torch.cuda.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)  # for multi-GPU
 
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
+    # torch.backends.cudnn.deterministic = True
+    # torch.backends.cudnn.benchmark = False
 
     # Optional: Forces PyTorch to use deterministic algorithms
     # Warning: May throw an error if a specific SAM2 operation doesn't have a deterministic version

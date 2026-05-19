@@ -39,10 +39,12 @@ class QwenEngine:
         self, prompt: str, system_prompt: str | None = None, video_path: Path | None = None
     ) -> str:
         nframes = self._get_nframes(video_path)
-        content: list[dict[str, Any]] = [{"type": "text", "text": prompt}]
+        content: list[dict[str, Any]] = []
 
         if video_path:
             content.append({"type": "video", "video": str(video_path), "nframes": nframes})
+
+        content.append({"type": "text", "text": prompt})
 
         messages = []
 
@@ -100,10 +102,12 @@ class QwenEngine:
         self, prompt1: str, reasoning: str, prompt2: str, video_path: Path | None = None
     ):
         nframes = self._get_nframes(video_path)
-        msg1_content: list[dict[str, Any]] = [{"type": "text", "text": prompt1}]
+        msg1_content: list[dict[str, Any]] = []
 
         if video_path:
             msg1_content.append({"type": "video", "video": str(video_path), "nframes": nframes})
+
+        msg1_content.append({"type": "text", "text": prompt1})
 
         messages = [
             {"role": "user", "content": msg1_content},
