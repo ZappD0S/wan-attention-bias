@@ -22,7 +22,7 @@ class QwenEngine:
             Qwen3VLForConditionalGeneration if is_qwen3 else Qwen2_5_VLForConditionalGeneration
         )
         self.model = model_class.from_pretrained(
-            model_id, torch_dtype=torch.bfloat16, device_map="auto"
+            model_id, torch_dtype=torch.bfloat16, device_map="cuda:0"
         )
         self.processor = AutoProcessor.from_pretrained(model_id)
         self.device = self.model.device
