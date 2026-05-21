@@ -25,7 +25,6 @@ from .auditor import (
 from .engine import QwenEngine
 from .sam2_pipeline import run_sam2_pipeline
 from .utils import DataEntry, group_entries
-from .videobench import VideoBenchAuditor
 
 
 class EvaluationPipeline:
@@ -188,17 +187,17 @@ def set_seed(seed: int = 42):
 
 
 def setup_logging(log_path: Path):
-    """Configures logging to write DEBUG messages to a file."""
-    # Create the logger
-    logger = logging.getLogger()
-    logger.setLevel(logging.DEBUG)  # Capture everything at the root
+    log_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # 1. File Handler for DEBUG logs (wipes previous run's log)
-    file_handler = logging.FileHandler(log_path, mode="w")
-    file_handler.setLevel(logging.DEBUG)
-    file_formatter = logging.Formatter("%(asctime)s | %(name)s | %(levelname)s | %(message)s")
-    file_handler.setFormatter(file_formatter)
-    logger.addHandler(file_handler)
+    logging.basicConfig(
+        filename=log_path,
+        filemode="w",
+        level=logging.DEBUG,
+        format="%(asctime)s | %(name)s | %(levelname)s | %(message)s",
+    )
+
+    for library in ["transformers", "torch", "sam2", "qwen_vl_utils", "urllib3"]:
+        logging.getLogger(library).setLevel(logging.WARNING)
 
 
 def main():
@@ -237,7 +236,7 @@ def main():
         "discrete_direct": DiscreteDirectAuditor(engine),
         "discrete_blind": DiscreteBlindAuditor(engine),
         "soft_2afc": SoftTwoAFCAuditor(engine),
-        "videobench": VideoBenchAuditor(engine),
+        # "videobench": VideoBenchAuditor(engine),
     }
 
     results_table = Table(

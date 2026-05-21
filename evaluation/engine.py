@@ -134,29 +134,22 @@ class QwenEngine:
             videos=vid_in,
             video_metadata=vid_metas,
             **vid_kw,  # ty:ignore[invalid-argument-type]
-            padding=True,
+            padding=False,
             return_tensors="pt",
         ).to(self.device)
 
         with torch.no_grad():
             outputs = self.model(**inputs)
 
-        seq_len = inputs.attention_mask[0].sum().item()
+        last_token_logits = outputs.logits[0, -1, :]
 
-        logger.debug("Actual end of sequence index: %d", seq_len - 1)
-        logger.debug("Raw Logits shape: %s", outputs.logits.shape)
-
-        # Decode the highest probability token the model ACTUALLY wanted to predict next
-        last_token_id = torch.argmax(outputs.logits[0, seq_len - 1, :]).item()
+        last_token_id = torch.argmax(last_token_logits).item()
         last_token_text = repr(self.processor.tokenizer.decode([last_token_id]))
         logger.debug("Predicted top-1 token for sequence end: %s", last_token_text)
 
-        raw_last_token_logits = outputs.logits[0, seq_len - 1, :]
-        logger.debug(
-            "Raw logits for last token (first 10): %s", raw_last_token_logits[:10].tolist()
-        )
+        logger.debug("Raw logits for last token (first 10): %s", last_token_logits[:10].tolist())
 
-        return outputs.logits[0, seq_len - 1, :]
+        return last_token_logits
 
     def calculate_soft_score(
         self, logits: torch.Tensor, target_tokens: list[str], target_weights: list[float]

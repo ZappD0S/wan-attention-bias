@@ -52,16 +52,20 @@ class ActionAuditor(ABC):
     def _extract_score(model_output: str) -> int:
         if not model_output:
             raise ValueError("Model output is empty.")
-        match = re.search(r"Score\**\s*[:\-]?\s*(\d)", model_output, re.IGNORECASE)
-        if match:
-            return max(1, min(5, int(match.group(1))))
-        match_start = re.match(r"^\s*(\d)", model_output)
-        if match_start:
-            return max(1, min(5, int(match_start.group(1))))
-        match_fraction = re.search(r"(\d)\s*/\s*5", model_output)
-        if match_fraction:
-            return max(1, min(5, int(match_fraction.group(1))))
-        raise ValueError(f"Could not extract score from: {model_output}")
+
+        # the * are just in case the the model uses bold formatting for Score
+        matches = re.findall(r"Score\**\s*:\s*(\d)", model_output, re.IGNORECASE)
+
+        if not matches:
+            raise ValueError(
+                f"Strict parsing failed. Could not find 'Score: X' in model output:\n{model_output}"
+            )
+
+        # take the last match to ensure we get the final conclusion, and avoid any scores in the reasoning
+        final_score = int(matches[-1])
+
+        # clamp the value between 1 and 5 in case the model hallucinates a weird number
+        return max(1, min(5, final_score))
 
 
 class SoftDirectAuditor(ActionAuditor):
