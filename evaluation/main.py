@@ -196,7 +196,17 @@ def setup_logging(log_path: Path):
         format="%(asctime)s | %(name)s | %(levelname)s | %(message)s",
     )
 
-    for library in ["transformers", "torch", "sam2", "qwen_vl_utils", "urllib3"]:
+    noisy_libraries = [
+        "transformers",
+        "torch",
+        "sam2",
+        "qwen_vl_utils",
+        "urllib3",
+        "httpcore",
+        "httpx",
+    ]
+
+    for library in noisy_libraries:
         logging.getLogger(library).setLevel(logging.WARNING)
 
 
