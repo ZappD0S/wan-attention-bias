@@ -31,7 +31,7 @@ echo "STATUS: Starting evaluation..."
 # Run in background so the shell can catch the signal immediately
 ./run.sh python -m evaluation.main \
   --videos-dir "$VIDEOS_DIR" \
-  --output-dir "$OUTPUT_DIR" &
+  --output-dir "$VIDEOS_DIR" &
 
 PYTHON_PID=$!
 
