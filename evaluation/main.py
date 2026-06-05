@@ -241,11 +241,11 @@ def main():
     )
 
     auditors = {
+        "soft_2afc": SoftTwoAFCAuditor(engine),
         "soft_direct": SoftDirectAuditor(engine),
         "soft_blind": SoftBlindAuditor(engine),
         "discrete_direct": DiscreteDirectAuditor(engine),
         "discrete_blind": DiscreteBlindAuditor(engine),
-        "soft_2afc": SoftTwoAFCAuditor(engine),
         # "videobench": VideoBenchAuditor(engine),
     }
 
