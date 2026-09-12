@@ -1,0 +1,81 @@
+\documentclass{article}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{bbm}
+
+\title{attention masking}
+\author{Gianluca Zappavigna}
+\date{December 2025}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+
+% \[
+% B_{ij} = \mathbbm{1}_{\{i \in \mathcal{S} \land j \in \mathcal{S}\}} = \begin{cases}
+% 1 & \text{if } i \in \mathcal{S} \text{ and } j \in \mathcal{S} \\
+% 0 & \text{otherwise}
+% \end{cases}
+% \]
+
+Let $ L = T \cdot H \cdot W$ be the sequence length of the video tokens in the latent space, and $S$ the sequence length of the text tokens (512 in our case).
+
+We construct the attentions mask by combining visual 3D masks (sequence of 2D masks for each frame of the video) with 1D text masks (mask that identifies a subtext (e.g. a sentence) within the entire prompt). \\
+
+
+In the initial image used to condition the model we have $N$ characters $c_i$.
+The text mask $M^{(t)}_{i} \in \mathbb{R}^{S}$ for each $c_i$ is 
+
+\[
+M^{(t)}_{i} = \begin{cases}
+1 & \text{if } \text{tok} \in \mathcal{P}_i  \\
+0 & \text{otherwise}
+\end{cases}
+\]
+where $\mathcal{P}_i$ is the prompt that describes the action of $c_i$
+
+The video mask $M^{(v)}_{i} \in \mathbb{R}^{L}$for $c_i$ is
+
+\[
+M^{(v)}_{i} = \text{Flattened sequence of 2D masks that track the position of character } c_i
+\]
+\subsection{How the video masks are computed}
+The video attention masks $M^{(v)}$ are obtained from the keys and queries of the self-attention layer of Wan2.1.
+
+First, the attention attention map between the subset of keys that correspond to the first frame $k_{ff} \in \mathbb{R}^{1\cdot H \cdot W}$ (This may be obvious, but I mean just SoftMax). The attention map is first average over the attention heads dimension.
+
+Then, for each $c_i$, the mask $M^{(ff)}_i \in \mathbb{R}^{1 \cdot H \cdot W}$ that identifies $c_i$ in the first frame is repeated, so that it matches the video tokens seq. length $L$ and applied to the attention map. So far the dimension of the masked attention map is still $(1 \cdot H \cdot W, L)$. Finally, this is averaged over the the keys dimension, so that we obtain a ``similarity score'' between each video token and each character $c_i$.
+
+Now we want to determine, for each video token, which is the character $c_i$ to which it has the highest similarity.
+
+So we stack all the similarity mask along a new dimension and compute the \texttt{argmax} along this dimensions. To take into accout that a video token might be part of the backgroud and not related to any of the character, we include an extra mask that is just the negation of the union of the first frame masks $M^{(ff)}$
+
+
+\subsection{The attention mask}
+The attention mask $M \in \mathbb{R}^{L \times S}$ is computed as the union of the outer product between the pairs of video and text masks for each $c_i$
+
+\[
+M = \bigcup_{i=0}^{N} M^{(v)}_i \otimes M^{(t)}_i
+\]
+In the cross-attention layer, this mask is used to compute the ``masked cross-attention'', defined as 
+
+\[
+\mathrm{Masked CrossAttnention}(Q, K, V, M) = \mathrm{SoftMax}\left(\frac{Q K^T }{q_k}\odot M\right) V
+\]
+
+The  output of the cross-attention layer is computed as
+
+\[
+z_t = \psi(\beta Attention(Q, K, V) + (1 - b) MaskedAttention(Q, K, V, M))
+\]
+
+where $\psi$ is a fully-connected layer (already present in the standard Wan2.1 architecture).
+
+An alternative way to compute $z_t$ is 
+\[
+z_t = \beta \psi(\mathrm{Attention}(Q, K, V)) + (1 - b) \psi( \mathrm{MaskedAttention}(Q, K, V, M))
+\]
+\end{document}

@@ -1,0 +1,319 @@
+\documentclass{article}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{xspace}
+\usepackage{mathtools}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage{soul}
+\usepackage[colorinlistoftodos]{todonotes}
+
+
+\title{Paper}
+\author{Gianluca Zappavigna}
+\date{\today}
+
+\newcommand{\Tfive}{\ensuremath{\mathsf{umT5}}}
+\newcommand{\CLIP}{\ensuremath{\mathsf{CLIP}}\xspace}
+
+\DeclareMathOperator{\Enc}{Enc}
+\DeclareMathOperator{\Dec}{Dec}
+
+\DeclareMathOperator*{\argmin}{\arg\!\min}
+\DeclareMathOperator*{\argmax}{\arg\!\max}
+
+\DeclareMathOperator{\CLIPimg}{\CLIP_{img}}
+\DeclareMathOperator{\CLIPtxt}{\CLIP_{txt}}
+
+\begin{document}
+
+\maketitle
+% NOTES:
+% attention scores (or logits) -> result from the dot product between Q and K (scaled a. s. if divided by the sqrt(d) factor)
+% attention weights -> normalized attention scores through the softmax
+% context vector -> sometimes used to refer to the final output of the full attention operation.
+% REMEMBER: queries attend to keys!
+
+\section{Introduction}
+
+A significant challenge in current video diffusion architectures involves the inability to achieve robust compositional generation, when prompts specify multiple entities engaged in distinct, independent actions.
+
+This limitation stems \todo{largely? maybe ``partly'' or ``in part'' is better?}largely  from the global nature of the cross-attention mechanism typically employed in Latent Diffusion Models (LDMs) and Diffusion Transformers (DiTs). In these frameworks, text embeddings are broadcast across all spatial and temporal patches, frequently leading to ``attribute leakage'' or ``semantic crosstalk'' where the motion dynamics of one subject are erroneously mapped onto another.
+
+Because the model lacks an explicit binding mechanism to anchor specific verbs to their corresponding nouns, it struggles to maintain the semantic integrity of independent entity-specific actions. Consequently, the generated video often exhibits conceptual blending, where the distinct trajectories of multiple entities are either averaged or or stochastically swapped during the denoising process.
+
+Parallel to this compositional failure is the models' frequent inability to adhere to locative expressions, such as ``on the left'', ``behind'', or ``in the center'', reflecting a broader deficiency in visuospatial grounding.
+This is exacerbated by a strong center-weighted inductive bias inherent in web-scale training datasets. Because human-captured video tends to prioritize central subjects, the model learns a spatial prior that heavily favors central compositions.
+
+Architecturally, this limitation arises because standard text-to-video cross-attention resolves spatial relationships implicitly, lacking a structured intermediate representation, such as explicit coordinate-based priors or bounding-box constraints, to enforce absolute positioning.
+
+While models employ positional encodings to provide spatial context, the influence of these encodings is frequently overridden by the dominant compositional priors learned during training.
+
+Furthermore, the reliance on spatially invariant data augmentations, such as horizontal flipping, during the pre-training of foundational image-text backbones further degrades the model's ability to learn absolute ego-centric orientations.
+
+Without the integration of regional attention masking or layout-conditioned guidance, the model consistently fails to map linguistic spatial relations to targeted regions of the latent space.
+
+% TODO: Talk about similar issues in text2image models, training-free solutions that have been proposed and how they can be adapted to video models.
+% TODO: short paragraph about diffusion/flow-matching? In any case we have to talk about DiT-based video diffusion model (brief overview of the architecture) base on DiTs.
+
+Although the methodology we present is broadly applicable to architectures for video diffusion based on Diffusion transformer (DiT), in this work we implement and evaluate our approach using \texttt{Wan2.1}. We selected this model because, at the time of our investigation, it stands as the state-of-the-art among open-weights models supporting the image-to-video (I2V) task, demonstrating performance benchmarks comparable to established closed-source contemporary counterparts.
+
+
+\section{Related Work}
+
+- Review methods for video where the masks are already fixed before inference
+- Our task is purely generative, therefore these methods are not well-suited for our study.
+- The goal is generation,  not to have a predefined trajectories for the characters
+
+
+\section{Method}
+
+% TODO: Informally I usually call the entities "characters". The concept weaver paper calls them "subjects". Should we use this interchangeably an mix them? Is it more clear if we always use the same term "entity"? Or does using different words adds some variation and makes the text less repetitive? Which of these is more important?
+
+To achieve robust compositional compositional control and mitigate semantic leakage, our approach isolates the attention computation for distinct entities within the scene. At the core of this method are spatio-temporal segmentation masks, which dynamically track the spatial regions occupied by each entity [subject?] across the generated frames. These masks serve as the primary means for explicitly binding entity-specific action descriptions to localized regions in the video latent space.
+
+We define a set of binary masks $\mathcal{M} = \{ \hat{M}^{(c)}\}_{c \in \mathcal{C}}$, where $\mathcal{C} = \{1, \dots, N, \text{bg}\}$ corresponds to the $N$ unique entities in the scene and the surrounding background.
+% TODO: is the following too fancy? The original version was "masks whose purpose is to track the position of the characters through time."
+Each mask $\hat{M}^{(c)} \in \{0, 1\}^L$ represents the spatio-temporal extent of an entity across the flattened latent space of length $L = F \times H \times W$.
+
+% TODO: we define what F, H, W are here or we'll define it earlier when we talk about diffusion models?
+
+We draw inspiration from the feature-level fusion strategy of \citet{kwonConceptWeaverEnabling2024}, an approach originally conceived to compose multiple personalized subjects in text-to-image models. To adapt this paradigm to the video domain, we extend their 2D spatial gating mechanism into a spatio-temporal formulation.
+
+In standard DiT architectures, the cross-attention mechanism relies on a single, global condition sequence, often referred to as the ``context'', to guide the denoising process. Instead of a single global attention pass, we define an independent conditioning context for each entity. This context comprises the entity's specific text prompt as well as its visual embeddings, which we obtain by masking and inpainting the surrounding entities in the initial frame (detailed in Section~\ref{cross_attention_gating}).
+
+% comprising its specific text and appearance embeddings.
+
+We then compute independent cross-attention outputs $Z^{(c)}$ for each context. Finally, we apply our spatio-temporal segmentation masks to selectively merge these outputs. This ensures that the latent representation at any given spatio-temporal coordinate is conditioned exclusively on the context of its assigned entity.
+
+% TODO: We need to say since we are specifically interested in the I2V generation task, we don't want a set of predetermined masks.
+Crucially, our method operates entirely at inference time. Rather than relying on predetermined video segmentation, the segmentation masks are generated dynamically at each sampling step. Specifically, during the forward pass of each DiT block, our pipeline consists of three main steps:
+
+\begin{enumerate}
+    \item We dynamically generate the tracking masks by reusing the query and key projections natively computed within the self-attention layer.
+    % TODO: we are basically introducing this step here... Should we say something more earlier on?
+    \item We apply these masks to compute a bias for the self-attention evaluation, preventing inter-entity feature leakage.
+    \item We utilize these same masks within the subsequent cross-attention layer to perform the spatial gating and merge the entity-specific contexts.
+\end{enumerate}
+
+
+% OLD SENTENCES:
+% Central to our method are spatio-temporal tracking masks, which serve as the primary means for anchoring specific textual descriptions to localized regions in the video.
+% These masks serve the primary mechanism for anchoring specific textual descriptions to localized regions in the video.
+% Specifically, we utilize the tracking masks as a spatial gating mechanism: independent feature representations are computed for each entity-prompt pair and then merged into a unified latent feature map.
+% Following the feature-level fusion strategy introduced by\citet{kwonConceptWeaverEnabling2024}, we utilize these masks to implement spatial gating within the cross-attention layers of the DiT transformer.
+% Instead of a single global attention pass, we compute independent feature maps $Z^{(c)}$ for each entity and integrate them such that the latent representation at any given spatio-temporal coordinate is conditioned exclusively on the prompt and appearance \todo{this is a reference to the CLIP embeddings, but is it too vague?} of the assigned entity.
+% This spatial partitioning ensures that the denoising process for one subject does not suffer from semantic leakage or attribute blending from other entities in the scene.
+
+\subsection{How the tracking masks are generated}\label{tracking_mask_gen}
+% TODO: better title...
+
+Our method assumes as input a set of 2D binary masks $\{M_1^{(c)\}_{c\in\mathcal{C}}}$ that identify the target entities in the first frame $I$. These masks are downscaled to match the spatial dimensionality of the latent space ($H \times W$). We assume that these masks are mutually exclusive and collectively exhaustive, satisfying:
+
+\begin{equation}\label{mece}
+  \sum_{c \in \mathcal{C}} M^{(c)}_{1} = \mathbf{1}
+\end{equation}
+
+To obtain the spatio-temporal masks for the full sequence, we propagate these first-frame masks to all subsequent frames using the tracking strategy from \textit{MultiTalk}~\cite{kongLetThemTalk2025}. This approach uses the model's own self-attention to track regions by comparing them to the reference frame.
+
+Instead of an external model, we reuse the video tokens $X \in \mathbb{R}^{F \times (HW) \times D}$ and the projection weights $W_Q, W_K$ already present in the DiT block. By intercepting the query and key tensors during the forward pass, the mechanism adds a marginal computational cost.
+
+% TODO: we need a phrase here that introduces the next formula, otherwise this feels too much out of the blue. Something like "let Q,K ...""
+
+\begin{align}
+Q = X W_Q && K = X W_K
+\end{align}
+
+In multi-head attention with $h$ heads, these tensors are reshaped such that $Q, K \in \mathbb{R}^{F \times h \times (HW) \times d}$. Let $Q_{f,l} \in \mathbb{R}^{(HW) \times d}$ be the spatial query matrix for frame $f$ and head $l$. Following \citet{kongLetThemTalk2025}, we estimate the position of entities by calculating how tokens in the current frame attend to the first frame, $K_{1,l} \in \mathbb{R}^{(HW) \times d}$.
+
+The spatial attention map $A_f \in \mathbb{R}^{(HW) \times (HW)}$ between frame $f$ and the first frame is computed as:
+% Instead of computing standard self-attention across all frames, we restrict the keys to the first frame, denoted as $K_{1,l} \in \mathbb{R}^{(HW) \times d}$.
+\begin{equation}
+    A_f = \frac{1}{h} \sum_{l=1}^{h} \text{softmax}\left(\frac{Q_{f,l} K_{1,l}^\top}{\sqrt{d}}\right)
+\end{equation}
+
+% To track the characters in a target frame $f$, we independently propagate each mask using the averaged spatial attention map $A_f$.
+Each mask is then propagated to frame $f$ via:
+
+\begin{equation}
+    M_{f,i}^{(c)} = \sum_{j=1}^{HW} M_{1,j}^{(c)} A_{f,i,j}
+\end{equation}
+
+Equivalently, this propagation can be expressed in matrix form as:
+
+\begin{equation}
+    M_f^{(c)} = M_1^{(c)} A_f^\top
+\end{equation}
+where $M_f^{(c)} \in \mathbb{R}^{HW}$ represents the continuous mask prediction. Given property\eqref{mece}, it's easy to show that the following is also true:
+
+\begin{equation}
+    \sum_{c\in\mathcal{C}} M_f^{(c)} = \mathbf{1}
+\end{equation}
+
+The final binary masks $\hat{M}^{(c)} \in \{0, 1\}^{L}$ are obtained by assigning each spatio-temporal location $(f, i)$ to the class with the highest probability:
+
+\begin{equation}
+  \hat{M}_{f,i}^{(c)} = \mathbb{I} \left( c = \mathop{\arg\max}_{c' \in \mathcal{C}} M_{f,i}^{(c')} \right)
+\end{equation}
+where $\mathbb{I}(\cdot)$ is the indicator function, which evaluates to 1 if the condition is true and 0 otherwise.
+Alternative notation:
+
+\begin{equation}
+  \hat{M}_{f,i}^{(c)} =
+  \begin{cases}
+    1 & \text{if } c = \underset{c' \in \mathcal{C}}{\operatorname*{argmax}}  M_{f,i}^{(c')} \\
+    0 & \text{otherwise}
+  \end{cases}
+\end{equation}
+
+By flattening the spatial and temporal dimensions, we produce the unified masks used for subsequent feature-level gating and self-attention masking.
+
+% We then convert $M_f^{(c)}$ masks into binary masks by assigning each spatial location to the character class with the highest probability. The final binary mask $\hat{M}^{(c)} \in \{0, 1\}^{F\times (HW)}$ for class $c$ at spatial location $i$ is computed as:
+% Finally, to match the dimensionality of the flattened token sequence used in the cross-attention and self-attention layers, we merge the spatial and temporal dimensions of our binary masks, yielding $M^(c) \in {0,1}^L$ for each class $c \in \matchcal{C}$.
+
+
+\subsection{Entity-Specific Context and Cross-Attention Gating}\label{cross_attention_gating}
+% TODO: better title...
+
+To perform the feature-level fusion within the cross-attention layer, we first prepare an entity-specific image-prompt pair $\left(I^{(c)}, D^{(c)}\right)$ prior to inference.
+
+The entity-specific conditioning image $I^{(c)}$ is generated by editing the original image $I$. Using the first-frame masks $\left\{M_1^{(c)}\right\}_{c\in\mathcal{C}}$ defined in Section~\ref{tracking_mask_gen}, we spatially mask all entities except the target entity $c$.
+We then employ the LaMa image inpainting technique~\cite{suvorovResolutionrobustLargeMask2021} to reconstruct the occluded regions, leaving only entity $c$ visible:
+\begin{equation}
+  I^{(c)} = \operatorname{LaMa}\left(I; \mathbf{1} - M_1^{(c)} - M_1^{(\text{bg})} \right)
+\end{equation}
+
+% TODO: at the moment $I^{(bg)}$ is just the original image $I$. Is this a good idea? And if we tried to remove all characters?
+
+Alongside this, we define an individual action prompt $D^{(c)}$ describing the specific entity's action, and encode it using the \Tfive{} encoder.
+%  TODO: include the prompt?
+The background prompt $D^{(\text{bg})}$ is a generic description of the scene that excludes any character identities or actions.
+
+Following the original Image-to-Video (I2V) conditioning sheme of \texttt{Wan2.1}, we then construct a multimodal context $y^{(c)} \in \mathbb{R}^{S \times d_{\text{ctx}}}$ for each entity by concatenating its visual and text token sequences:
+
+\begin{equation}
+y^{(c)} = \operatorname{Concat}\left( \CLIPimg(I^{(c)}), \Enc_{\Tfive}(D^{(c)}) \right)
+\end{equation}
+where $S$ is the combined sequence length and $d_{\text{ctx}}$ is the feature dimension.
+
+% By computing this independently for each entity rather than globally, we can localize the conditioning while maintaining the model's native multimodal processing.
+
+During the cross-attention evaluation, we project the sequence of latent video tokens $X \in \mathbb{R}^{L\times D}$ into queries, while the entity-specific context $y^{(c)}$ is projected into keys and values:
+\begin{align}
+Q = X W_Q && K^{(c)} = y^{(c)} W_K && V^{(c)} = y^{(c)} W_V
+\end{align}
+
+We compute the independent cross-attention output $Z^{(c)} \in \mathbb{R}^{L \times D}$ for each entity as:
+\begin{equation}
+Z^{(c)} = \operatorname{MultiHead}(Q, K^{(c)}, V^{(c)})
+\end{equation}
+where the standard multi-head attention is applied over the entity's specific key-value pairs.
+
+Finally, we apply our spatio-temporal gating. Using the binary tracking masks $\hat{M}^{(c)} \in \{0, 1\}^{L}$ generated upstream in the self-attention layer (detailed in Section~\ref{tracking_mask_gen}), we selectively merge the independent outputs into a unified feature map $Z \in \mathbb{R}^{L \times D}$. For any spatio-temporal index $i$ and feature dimension $j$, the merged output is:
+\begin{equation}
+    Z_{i,j} = \sum_{c\in\mathcal{C}}  \hat{M}^{(c)}_{i} Z^{(c)}_{i,j}
+\end{equation}
+
+% OLD SENTENCES:
+% By evaluating the cross-attention independently on each $\left(I^{(c)}, D^{(c)}\right)$ pair, we guarantee that the attention mechanism only pertains to a single character at a time.
+% This approach solidifies the association between a prompt and its corresponding character, aiming to disentangle their actions in the final output.
+
+\subsection{Self-attention masking}
+Since the goal is independence between characters, we apply masking within the self-attention layer so that the queries associated with one entity cannot attend to the keys belonging to another. Background tokens remain unmasked, acting as a common context to which all entities can attend to and which can attend to all entities.
+
+This attention constraint can be formally expressed as a matrix $J\in \{0,1\}^{(N+1)\times(N+1)}$, where for any two classes $c,c' \in \mathcal{C}$:
+
+\begin{equation}
+J_{c,c'} =
+\begin{cases}
+1 & \text{if } c = \text{bg} \text { or } c' = \text{bg} \text{ or } c = c' \\
+0 & \text{otherwise}
+\end{cases}
+\end{equation}
+
+For 2 characters, this corresponds to:
+
+\begin{equation}
+    J = \begin{pmatrix}
+    1 & 1 & 1 \\
+    1 & 1 & 0 \\
+    1 & 0 & 1 \\
+\end{pmatrix}
+\end{equation}
+
+To implement this constraint efficiently during the forward pass [there is no backward pass, is it worth to mention this?], we first aggregate our flattened entity-specific [spatio-temporal?] masks $\hat{M}^{(c)}$ int a single spatio-temporal matrix $\hat{M}\in\{0,1\}^{(N+1)\times L}$:
+
+\begin{equation}
+\hat{M} = \begin{bmatrix}
+\hat{M}^{(1)} \\
+\vdots \\
+\hat{M}^{(N)} \\
+\hat{M}^{(\text{bg})}
+\end{bmatrix}
+\end{equation}
+
+Using this matrix, we compute a spatio-temporal bias is added to the attention scores prior to softmax operation:
+
+% \begin{equation}
+%    \text{Bias}_{i,j} = \log\left(  \sum_{c,c' \in \mathcal{C}}\hat{M}_{c,i} J_{c,c'} \hat{M}_{c',j}\right)
+% \end{equation}
+% or equivalently in matrix notation:
+
+\begin{equation}
+   \text{Bias} =  \log\left(\hat{M}^\top J \hat{M}\right)
+\end{equation}
+
+This formulation ensures that $\text{Bias}_{i,j} = 0$ when attention between token $i$ and $j$ is permitted, and $\text{Bias}_{i,j} = -\infty$ when it is forbidden. The final masked self-attention is then computed as:
+
+
+\begin{equation}
+    \operatorname{MaskedAttention}(Q, K, V) = \text{softmax}\left(\frac{Q K^\top}{\sqrt{d}} + \text{Bias}\right)V
+\end{equation}
+% TODO: this also works if we want to use soft masks.  Should we say anything about it?
+
+
+% OLD SENTENCES:
+% Bias evaluates to $-\infty$ when attention is forbidden, which makes the attention weight for a give key-value pair to be null. Vice versa, when the attention is allowed, the bias evaluates to 0, which doesn't affect the attention weight.
+% \st{The temporal masks are generated once for each sampling step during the first DiT block evaluation. They are then stored and reused for all subsequent DiT blocks.} -> This won't probably the case anymore!
+
+\section{Experiments}
+
+- Although the mathematical approach described above is valid for an arbitrary number of entities, for simplicity, we restrict our analysis to the case of two entities.
+
+- We especially targeted conditioning images that include visually similar or identical characters to probe the intrinsic ability of the baseline model to differentiate them solely based on their spatial placement within the scene.
+
+\subsection{Evaluation}
+- We need to cite which approaches have been already proposed (focus on Video-Bench) for estimating [quantifying?] the alignment between a prompt describing an action and the video, and say there is nothing that quite fits our method because it relies on a series of local prompts.
+  - Some existing method have predefined prompts that are meant to be used to generate videos with the model being tested but we cannot use those directly.
+- use SAM2 to track the trajectory of the entities over time (how to say this better? Throughout the video? over the video frames?)
+- create 2 cropped videos (one for each character...) based on the segmentations masks generated by SAM2.
+- if the other character is partially visible in the cropped video, it is occluded by exploiting the SAM2 segmentation mask of that character
+- Use a VLM (Qwen3-VL), to rate the match between the prompt and the cropped video.
+  - Explain in detail the pipeline used: The several steps and the prompts used
+  - The final score is a number between 1 and 5
+  - For each cropped video [is "cropped video" sufficient or is there a more common and precise technical expression?]
+  % TODO: give a name to the cropped video that includes the superscript ^{(c)}
+  we run the evaluation pipeline with both the matching action prompt D^{(c)} and the action prompt of the other character. This produced two scores that we call respectively S_{correct} and S_{wrong} [this naming is not definitive, it probably can be improved! Let's think how...]
+  - We compute the margin as S_{correct} - S_{wrong}
+  - Provide some intuition on this [can we tie this to sensitivity/specificity?]
+
+
+Standard video generation metrics like FVD rely on open-domain datasets (e.g., WebVid) that predominantly feature single subjects and global actions. Because our method specifically targets multi-entity compositional generation, for which no large-scale ground-truth video dataset exists, traditional FVD is ill-suited.
+
+Instead, we evaluate our method using reference-free video quality assessment [...]
+- Say we use VBench
+
+
+% TODO: we have prepare two tables with results:
+% - one for the comparison of differen methods ("baselines")
+% For FVD we'd have to generate videos with a single prompt,
+% - one with the the reults of the ablation studies of the various features.
+
+
+{
+    \small
+    \bibliographystyle{ieeenat_fullname}
+    \bibliography{references}
+}
+
+\end{document}

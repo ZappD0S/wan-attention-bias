@@ -15,3 +15,14 @@
 /evaluation/logs/
 /.env
 /.cache/
+
+# Independent local repositories; checkpointed in their own Git histories.
+/apptainer_images/
+/preprocessing/
+/soft_mask_test/
+
+# Generated mask/latent artifacts (keep on disk, not in source history).
+/mask_visualization/*.npz
+/mask_visualization/*.pt
+/.venv-tests/
+/.pytest_cache/

@@ -1,0 +1,25 @@
+prompt_description = """You are an expert video analyst.
+Provide a chronological log of all visual changes, state transitions, and movements throughout the video from start to finish.
+Describe exactly what happens without interpreting the purpose or intent."""
+
+prompt_audit_template = """You are a expert action auditor. Your task is to determine how well the Target Action describes the core event in the video description.
+
+Target Action: {target_action}
+Video Description: {video_description}
+
+Output a brief, step-by-step reasoning analyzing the evidence.
+"""
+
+prompt_score = """
+Based on your reasoning above, evaluate the alignment on a strict scale of 1 to 5.
+Scoring Criteria:
+
+5: Perfect Match. The target action is the sole, clear focus. Any other movements (such as starting poses, natural side effects, or continuous physics) are just natural components of this one unified event.
+4: Strong Match. The target action is the main event, but there is minor unrelated noise or extra time before or after the action.
+3: Partial Match. The target action occurs, but it is part of a sequence of other distinct major events.
+2: Weak Match. The action is mentioned but is ambiguous, obscured, or not the primary focus.
+1: No Match. The action did not happen, or the description shows a fundamentally different activity.
+
+Score: """
+
+

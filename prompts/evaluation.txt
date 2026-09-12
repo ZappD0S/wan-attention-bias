@@ -1,0 +1,7 @@
+I'm using a diffusion model for generating videos. This videos contains two characters performing actions independently of each other.
+I want to evaluate the alignement between the video and two descriptions of the actions.
+I'm cropping the videos to include only one of the two charaters and using a VLM to evaluate if the performed actions
+correspond to the textual description. The VLM produce a score between 1 and 5. To cross-check I also try
+this test with the wrong action description. So for each video I get 4 scores. I then repeat this test for multiple samples.
+How do I combine all these values for all samples into a single concrete metric that captures the capacity of my model to
+align to the prompts? Do I need to do any statistical analysis? What are your recommendations?
