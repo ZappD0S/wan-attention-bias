@@ -1,0 +1,1 @@
+We ran out of tokens. Re-run the subagents that failed and continue. Make sure to never use astra for the subagents. At most you're allowed to use sol. If the subagent task if very easy you can use luna.

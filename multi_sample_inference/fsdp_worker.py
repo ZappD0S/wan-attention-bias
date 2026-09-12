@@ -16,44 +16,91 @@ from wan.regional_prompt import WanI2V
 from debug_utils import unscale, write_video_soft_masks
 from utils import normalize_video_tensor
 
-SAMPLING_STEPS, FRAME_NUM, TARGET_SIZE = 40, 81, (480, 832)
+from .task_contracts import (
+    build_subject_indices,
+    resolve_bool_schedule,
+    resolve_inference_settings,
+    validate_method_layout,
+    validate_worker_task,
+)
 
 
 @torch.inference_mode()
 def run_inference(wan_i2v, task):
-    num_layers = wan_i2v.model.num_layers
+    validate_worker_task(task)
+    settings = resolve_inference_settings(task.get("inference_settings"))
+    masks = task["masks"]
+    if masks.ndim != 3 or masks.shape[0] == 0:
+        raise ValueError("task masks must have shape [subjects, height, width]")
+    masks = masks.bool()
+    if (masks.sum(dim=0) > 1).any():
+        raise ValueError("task subject masks must be disjoint")
+    if not masks.flatten(1).any(dim=1).all():
+        raise ValueError("every task subject mask must be nonempty")
+
+    num_entities = masks.shape[0]
+    subject_indices = build_subject_indices(task["char_segments_list"], num_entities)
+    config = task["config"].copy()
+    config.pop("diffusion_seed", None)
+    config.pop("inference_settings", None)
+    for key in settings:
+        config.pop(key, None)
+    timestep_schedule = resolve_bool_schedule(
+        config.pop("timestep_bias_schedule", [True] * settings["sampling_steps"]),
+        settings["sampling_steps"],
+        "timestep_bias_schedule",
+    )
+    blocks_schedule = resolve_bool_schedule(
+        config.pop("blocks_bias_schedule", [True] * wan_i2v.model.num_layers),
+        wan_i2v.model.num_layers,
+        "blocks_bias_schedule",
+    )
+    validate_method_layout(config.get("bias_method"), subject_indices, num_entities)
+    use_isolated_images = config.pop("image_context_isolation", True) and config.get(
+        "bias_method"
+    ) == "concept_weaver"
+    if use_isolated_images and len(task["single_char_imgs"]) != num_entities:
+        raise ValueError("isolated image count must match subject mask count")
+
     bias_kwargs = {
         "general_prompt": task["general_prompt"],
         "prompt_data_list": [
             {
                 "control_prompts": [
-                    ((j,), {"prompt": seg, "char_descr_list": []}) for j, seg in enumerate(chars)
+                    ((subject_idx,), {"prompt": seg, "char_descr_list": []})
+                    for subject_idx, seg in zip(indices, chars, strict=True)
                 ],
                 "single_char_img": task["single_char_imgs"][i]
-                if task["single_char_imgs"]
+                if use_isolated_images
                 else None,
             }
-            for i, chars in enumerate(task["char_segments_list"])
+            for i, (indices, chars) in enumerate(
+                zip(subject_indices, task["char_segments_list"], strict=True)
+            )
         ],
-        "timestep_bias_schedule": torch.ones(SAMPLING_STEPS, dtype=torch.bool),
-        "blocks_bias_schedule": torch.ones(num_layers, dtype=torch.bool),
-        "face_masks": task["masks"].to(wan_i2v.device),
+        "timestep_bias_schedule": torch.tensor(timestep_schedule, dtype=torch.bool),
+        "blocks_bias_schedule": torch.tensor(blocks_schedule, dtype=torch.bool),
+        "face_masks": masks.to(wan_i2v.device),
         "wlw_matrix": torch.from_numpy(
             np.repeat(
-                np.eye(sum(len(c) for c in task["char_segments_list"]))[..., np.newaxis],
-                FRAME_NUM,
+                np.eye(num_entities)[..., np.newaxis],
+                settings["frame_num"],
                 axis=-1,
             )
         ).to(wan_i2v.param_dtype),
-    } | task["config"]
+    } | config
 
     return wan_i2v.generate(
         task["prompt_sentences"],
         task["img"],
         bias_kwargs,
-        max_area=TARGET_SIZE[0] * TARGET_SIZE[1],
-        sampling_steps=SAMPLING_STEPS,
-        frame_num=FRAME_NUM,
+        max_area=settings["target_size"][0] * settings["target_size"][1],
+        sampling_steps=settings["sampling_steps"],
+        frame_num=settings["frame_num"],
+        shift=settings["shift"],
+        sample_solver=settings["sample_solver"],
+        guide_scale=settings["guide_scale"],
+        seed=task["diffusion_seed"],
         offload_model=False,
     )
 
@@ -94,7 +141,10 @@ def save_outputs(video, extra_data, task, max_retries=5):
             step_simil_masks = simil_masks[step_idx].float().mean(dim=0)
 
             # upscale latent-space masks to match the real video resolution
-            step_simil_masks = unscale(step_simil_masks, (FRAME_NUM, h, w))
+            frame_num = resolve_inference_settings(
+                task.get("inference_settings")
+            )["frame_num"]
+            step_simil_masks = unscale(step_simil_masks, (frame_num, h, w))
 
             for char_idx, mask in enumerate(step_simil_masks):
                 mask_filename = f"video_{repeat_idx}_soft_masks_char_{char_idx}_step_{step_idx}.mp4"

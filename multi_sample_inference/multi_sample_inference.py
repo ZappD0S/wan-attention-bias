@@ -4,6 +4,7 @@ import json
 import os
 import pickle
 import queue
+import random
 import shutil
 import signal
 import subprocess
@@ -64,6 +65,31 @@ def run_repeat_loop(
             tqdm.write(f"Skipping existing: {video_path.name}")
             continue
 
+        configured_seed = config.get("diffusion_seed")
+        diffusion_seed = (
+            configured_seed
+            if configured_seed is not None
+            else random.SystemRandom().randrange(0, 2**63)
+        )
+        if (
+            not isinstance(diffusion_seed, int)
+            or diffusion_seed < 0
+            or diffusion_seed >= 2**63
+        ):
+            raise ValueError("diffusion_seed must be a nonnegative signed 64-bit integer")
+
+        inference_settings = config.get("inference_settings", {}).copy()
+        for key in (
+            "sampling_steps",
+            "frame_num",
+            "target_size",
+            "shift",
+            "sample_solver",
+            "guide_scale",
+        ):
+            if key in config:
+                inference_settings[key] = config[key]
+
         tasks_list.append(
             {
                 "prompt_sentences": prompt_sentences,
@@ -77,6 +103,8 @@ def run_repeat_loop(
                 "video_path": video_path,
                 "action_output_path": action_output_path,
                 "repeat_idx": repeat_idx,
+                "diffusion_seed": diffusion_seed,
+                "inference_settings": inference_settings,
             }
         )
     return False
@@ -308,6 +336,11 @@ def main():
     parser.add_argument("--prompts-file", required=True, type=Path)
     parser.add_argument("--param-grid-file", required=True, type=Path)
     parser.add_argument("--output-path", required=True, type=Path)
+    parser.add_argument(
+        "--checkpoint-dir",
+        type=Path,
+        help="Use an existing local Wan checkpoint instead of resolving one online.",
+    )
     args = parser.parse_args()
 
     with open(args.param_grid_file) as f:
@@ -321,13 +354,19 @@ def main():
     args.output_path.mkdir(exist_ok=True, parents=True)
     sync_param_grid(args.param_grid_file, args.output_path)
 
-    try:
-        checkpoint_dir = snapshot_download("Wan-AI/Wan2.1-I2V-14B-480P", local_files_only=False)
-        tqdm.write(f"[Dispatcher] Model resolved at: {checkpoint_dir}")
-    except Exception as e:
-        raise RuntimeError(
-            "Failed to resolve model path. Ensure you have internet or the model is cached."
-        ) from e
+    if args.checkpoint_dir is not None:
+        checkpoint_dir = args.checkpoint_dir.expanduser().resolve(strict=True)
+        tqdm.write(f"[Dispatcher] Using local model at: {checkpoint_dir}")
+    else:
+        try:
+            checkpoint_dir = snapshot_download(
+                "Wan-AI/Wan2.1-I2V-14B-480P", local_files_only=False
+            )
+            tqdm.write(f"[Dispatcher] Model resolved at: {checkpoint_dir}")
+        except Exception as e:
+            raise RuntimeError(
+                "Failed to resolve model path. Ensure you have internet or the model is cached."
+            ) from e
 
     tasks_list = []
 

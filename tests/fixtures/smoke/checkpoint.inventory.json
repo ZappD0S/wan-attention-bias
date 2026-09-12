@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "files": [
+    {
+      "path": "NOT_A_MODEL.txt",
+      "size": 148,
+      "sha256": "6e1ef7289a1b0fa4ebbc0a6273b31a764f291afae073550396e68c803348f339"
+    }
+  ]
+}

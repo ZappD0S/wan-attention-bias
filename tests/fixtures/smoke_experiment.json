@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "experiment_id": "NON-SCIENTIFIC-smoke-only",
+  "smoke_only": true,
+  "checkpoint": {
+    "path": "smoke/checkpoint",
+    "identifier": "NOT-A-MODEL-smoke-placeholder",
+    "inventory": "smoke/checkpoint.inventory.json"
+  },
+  "inference": {
+    "width": 16,
+    "height": 16,
+    "frame_num": 5,
+    "sampling_steps": 2,
+    "cfg": 5.0,
+    "shift": 5.0,
+    "solver": "unipc",
+    "rank_count": 1,
+    "num_layers": 40
+  },
+  "video_seeds": [
+    {"id": "seed-a", "value": 101},
+    {"id": "seed-b", "value": 202}
+  ],
+  "conditions": [
+    {
+      "id": "split-none",
+      "method": "none",
+      "prompt_representation": "split",
+      "mask_type": "fixed",
+      "mask_source": "fixed",
+      "mask_sharing": "current",
+      "self_attention_masking": false,
+      "image_context_isolation": false
+    },
+    {
+      "id": "fixed-regional",
+      "method": "regional_prompting",
+      "prompt_representation": "split",
+      "mask_type": "fixed",
+      "mask_source": "fixed",
+      "mask_sharing": "current",
+      "self_attention_masking": false,
+      "image_context_isolation": false,
+      "beta": 0.5
+    },
+    {
+      "id": "dynamic-regional",
+      "method": "regional_prompting",
+      "prompt_representation": "split",
+      "mask_type": "soft",
+      "mask_source": "dynamic",
+      "mask_sharing": "current",
+      "self_attention_masking": false,
+      "image_context_isolation": false,
+      "beta": 0.5
+    }
+  ],
+  "scenes": [
+    {
+      "id": "smoke-scene",
+      "reference_image": "smoke/reference.ppm",
+      "actors": [
+        {"id": "actor-left", "isolated_image": "smoke/actor-left.ppm"},
+        {"id": "actor-right", "isolated_image": "smoke/actor-right.ppm"}
+      ],
+      "fixed_boxes": {
+        "actor-left": [0, 0, 8, 16],
+        "actor-right": [8, 0, 16, 16]
+      },
+      "segmentation_masks": {
+        "actor-left": "smoke/mask-left.pgm",
+        "actor-right": "smoke/mask-right.pgm"
+      },
+      "assignments": [
+        {
+          "id": "ab",
+          "targets": {"actor-left": "waves", "actor-right": "nods"},
+          "prompts": {
+            "joint_sentence": "the red actor waves while the blue actor nods",
+            "joint_character_segments": ["the red actor waves", "the blue actor nods"],
+            "split_sentences": ["the red actor waves", "the blue actor nods"],
+            "split_character_segments": [["the red actor waves"], ["the blue actor nods"]],
+            "general_prompt": "simple static test scene"
+          }
+        },
+        {
+          "id": "ba",
+          "targets": {"actor-left": "nods", "actor-right": "waves"},
+          "prompts": {
+            "joint_sentence": "the red actor nods while the blue actor waves",
+            "joint_character_segments": ["the red actor nods", "the blue actor waves"],
+            "split_sentences": ["the red actor nods", "the blue actor waves"],
+            "split_character_segments": [["the red actor nods"], ["the blue actor waves"]],
+            "general_prompt": "simple static test scene"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,2 @@
+NON-SCIENTIFIC placeholder used only by validate/expand/dry-run CPU tests.
+It is not a Wan checkpoint and the source manifest is marked smoke_only.
