@@ -11,11 +11,11 @@ import torch
 import torch.distributed as dist
 from diffusers.utils.export_utils import export_to_video
 from wan.configs.wan_i2v_14B import i2v_14B
-from wan.regional_prompt import WanI2V
 
 from debug_utils import unscale, write_video_soft_masks
 from utils import normalize_video_tensor
 
+from .generation_routes import generation_route, rank_zero_output, run_generator
 from .task_contracts import (
     build_subject_indices,
     resolve_bool_schedule,
@@ -29,6 +29,9 @@ from .task_contracts import (
 def run_inference(wan_i2v, task):
     validate_worker_task(task)
     settings = resolve_inference_settings(task.get("inference_settings"))
+    if generation_route(task) == "upstream":
+        return run_generator(wan_i2v, task, settings)
+
     masks = task["masks"]
     if masks.ndim != 3 or masks.shape[0] == 0:
         raise ValueError("task masks must have shape [subjects, height, width]")
@@ -90,19 +93,7 @@ def run_inference(wan_i2v, task):
         ).to(wan_i2v.param_dtype),
     } | config
 
-    return wan_i2v.generate(
-        task["prompt_sentences"],
-        task["img"],
-        bias_kwargs,
-        max_area=settings["target_size"][0] * settings["target_size"][1],
-        sampling_steps=settings["sampling_steps"],
-        frame_num=settings["frame_num"],
-        shift=settings["shift"],
-        sample_solver=settings["sample_solver"],
-        guide_scale=settings["guide_scale"],
-        seed=task["diffusion_seed"],
-        offload_model=False,
-    )
+    return run_generator(wan_i2v, task, settings, bias_kwargs=bias_kwargs)
 
 
 def save_outputs(video, extra_data, task, max_retries=5):
@@ -160,6 +151,25 @@ def save_outputs(video, extra_data, task, max_retries=5):
                 )
 
 
+def _build_generator(task, *, local_rank, rank, t5_fsdp, dit_fsdp, t5_cpu):
+    if generation_route(task) == "upstream":
+        from wan.image2video import WanI2V  # noqa: PLC0415
+    else:
+        from wan.regional_prompt.image2video import WanI2V  # noqa: PLC0415
+
+    return WanI2V(
+        config=i2v_14B,
+        checkpoint_dir=task["checkpoint_dir"],
+        device_id=local_rank,
+        rank=rank,
+        t5_fsdp=t5_fsdp,
+        dit_fsdp=dit_fsdp,
+        use_usp=False,
+        t5_cpu=t5_cpu,
+        init_on_cpu=True,
+    )
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--task-file", required=True, type=Path)
@@ -183,24 +193,20 @@ def main():
     # If we are sharding, we only shard T5 if it's NOT on the CPU
     t5_fsdp = is_fsdp and not args.t5_cpu
 
-    checkpoint_dir = task["checkpoint_dir"]
-    wan_i2v = WanI2V(
-        config=i2v_14B,
-        checkpoint_dir=checkpoint_dir,
-        device_id=local_rank,
+    wan_i2v = _build_generator(
+        task,
+        local_rank=local_rank,
         rank=dist.get_rank(),
         t5_fsdp=t5_fsdp,
         dit_fsdp=is_fsdp,
-        use_usp=False,
         t5_cpu=args.t5_cpu,
-        init_on_cpu=True,
     )
 
     outputs = run_inference(wan_i2v, task)
 
-    if dist.get_rank() == 0:
-        assert outputs is not None
-        video, extra_data = outputs
+    output = rank_zero_output(outputs, dist.get_rank())
+    if output is not None:
+        video, extra_data = output
         save_outputs(video, extra_data, task)
 
     dist.destroy_process_group()

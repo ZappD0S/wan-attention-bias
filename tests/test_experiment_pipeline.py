@@ -25,6 +25,28 @@ def _expand(tmp_path):
     return manifests, paths
 
 
+def _write_portable_source(tmp_path, source):
+    source = copy.deepcopy(source)
+    source["checkpoint"]["path"] = str((SOURCE.parent / source["checkpoint"]["path"]).resolve())
+    source["checkpoint"]["inventory"] = str(
+        (SOURCE.parent / source["checkpoint"]["inventory"]).resolve()
+    )
+    for scene in source["scenes"]:
+        scene["reference_image"] = str((SOURCE.parent / scene["reference_image"]).resolve())
+        for actor in scene["actors"]:
+            actor["isolated_image"] = str(
+                (SOURCE.parent / actor["isolated_image"]).resolve()
+            )
+        scene["segmentation_masks"] = {
+            actor_id: str((SOURCE.parent / path).resolve())
+            for actor_id, path in scene["segmentation_masks"].items()
+        }
+    path = tmp_path / "source.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(source))
+    return path
+
+
 def test_cli_validate_expand_and_dry_run_are_cpu_only_and_deterministic(tmp_path):
     validate = subprocess.run(
         [sys.executable, "-m", "multi_sample_inference.experiment_pipeline", "validate", "--source", str(SOURCE)],
@@ -56,6 +78,64 @@ def test_concept_weaver_requires_split_singletons_at_source_contract():
         pipeline._validate_source(source, SOURCE)
 
 
+def test_upstream_requires_joint_prompt_and_explicit_negative_prompt():
+    source = json.loads(SOURCE.read_text())
+    condition = copy.deepcopy(source["conditions"][0])
+    condition.update({
+        "id": "upstream",
+        "method": "upstream",
+        "prompt_representation": "joint",
+    })
+    source["conditions"] = [condition]
+    source["inference"]["frame_num"] = 81
+    with pytest.raises(ValueError, match=r"explicit inference\.negative_prompt"):
+        pipeline._validate_source(source, SOURCE)
+    source["inference"]["negative_prompt"] = "predeclared shared negative prompt"
+    assert pipeline._validate_source(source, SOURCE)
+    source["inference"]["frame_num"] = 5
+    with pytest.raises(ValueError, match=r"requires inference\.frame_num=81"):
+        pipeline._validate_source(source, SOURCE)
+    source["inference"]["frame_num"] = 81
+    source["conditions"][0]["prompt_representation"] = "split"
+    with pytest.raises(ValueError, match="one joint prompt"):
+        pipeline._validate_source(source, SOURCE)
+
+
+def test_upstream_and_custom_none_are_distinct_matched_manifests(tmp_path):
+    source = json.loads(SOURCE.read_text())
+    custom = copy.deepcopy(source["conditions"][0])
+    custom.update({"id": "custom-none-joint", "prompt_representation": "joint"})
+    upstream = copy.deepcopy(custom)
+    upstream.update({"id": "upstream-joint", "method": "upstream"})
+    source["conditions"] = [custom, upstream]
+    source["inference"]["frame_num"] = 81
+    source["inference"]["negative_prompt"] = "predeclared shared negative prompt"
+    source_path = _write_portable_source(tmp_path, source)
+    manifests = pipeline.expand_source(source_path, tmp_path / "run")
+
+    assert len(manifests) == 8
+    grouped = {}
+    for manifest in manifests:
+        key = (
+            manifest["identity"]["scene_id"],
+            manifest["identity"]["assignment_id"],
+            manifest["video_seed"]["id"],
+        )
+        grouped.setdefault(key, {})[manifest["intervention"]["method"]] = manifest
+    assert all(set(pair) == {"none", "upstream"} for pair in grouped.values())
+    for pair in grouped.values():
+        custom_manifest, upstream_manifest = pair["none"], pair["upstream"]
+        assert custom_manifest["job_id"] != upstream_manifest["job_id"]
+        assert custom_manifest["prompts"] == upstream_manifest["prompts"]
+        assert custom_manifest["assets"] == upstream_manifest["assets"]
+        assert custom_manifest["checkpoint"] == upstream_manifest["checkpoint"]
+        assert custom_manifest["video_seed"] == upstream_manifest["video_seed"]
+        upstream_task = pipeline.worker_task_blueprint(upstream_manifest)
+        assert upstream_task["prompt_representation"] == "joint"
+        assert upstream_task["negative_prompt"] == "predeclared shared negative prompt"
+        assert upstream_task["config"]["bias_method"] == "upstream"
+
+
 def test_manifest_hashes_worker_schema_and_immutability(tmp_path):
     manifests, paths = _expand(tmp_path)
     manifest = manifests[0]
@@ -63,7 +143,7 @@ def test_manifest_hashes_worker_schema_and_immutability(tmp_path):
     assert manifest["prompts"]["sha256"] and manifest["masks"]["sha256"] and manifest["config_sha256"]
     blueprint = pipeline.worker_task_blueprint(manifest)
     task = blueprint | {"img": object(), "single_char_imgs": [object(), object()], "masks": object()}
-    assert set(task) == REQUIRED_WORKER_TASK_KEYS
+    assert set(task) == REQUIRED_WORKER_TASK_KEYS | {"prompt_representation", "negative_prompt"}
     assert validate_worker_task(task) is task
     assert resolve_bool_schedule([True, False], 2, "steps") == [True, False]
     with pytest.raises(ValueError, match="length 2"):

@@ -11,7 +11,7 @@ Task status is one of **PLANNED**, **IN PROGRESS**, or **COMPLETED**. A blocker 
 | P0 checkpoint | COMPLETED | — | Off-machine recovery still incomplete | `docs/checkpoint_manifest.md`; parent checkpoint `f092679`; Wan original `f7472d354e0cb46b2853f15bf97b8b283d4780f8` | Existing source was preserved before repair; historical efficacy remains unresolved. |
 | R1 correctness repair | COMPLETED | P0 | GPU/scientific integration is tracked separately as R3 | Repair diff; `tests/test_repair_contracts.py`; `docs/attention_method_audit.md` | Blocking source contracts repaired without intervention retuning; no efficacy conclusion. |
 | R2 CPU contracts | COMPLETED | R1 | None | 14 attention/helper tests; final focused suite including M1: 22 passed, no warnings (parent rerun: 1.86 s); syntax, focused lint and diff checks passed | Narrow CPU math/contracts pass; GPU behavior remains unmeasured. |
-| U1 upstream-Wan baseline adapter/parity | PLANNED | R2 | Full project environment and compatible local checkpoint | Baseline adapter plus identical-layer/custom-`none` parity records | Not implemented or run; required before cleanup can distinguish the retained baseline path from superseded variants. |
+| U1 upstream-Wan baseline adapter/parity | COMPLETED | R2 | None for the bounded U1 claim; the incomplete full-project `sam2` build and all generator/distributed execution remain R3 blockers | `docs/u1_parity_protocol.md`; SHA-256 inventory; two checkpoint-bound layer-0 records; 42 focused tests; GPT-6 Astra review | Upstream and custom-`none` layer outputs were bitwise identical for both frozen synthetic contexts on Bootes; this is not generator, CFG, FSDP, video-quality or efficacy parity. |
 | M1 immutable manifest infrastructure | COMPLETED | R2 | GPU task materialization remains blocked on the full project environment, checkpoint and approved compute | `multi_sample_inference/experiment_pipeline.py`; `manifest_adapter.py`; 8 infrastructure/mask CPU tests | Deterministic manifests, content-inventoried checkpoints, hash-verified task descriptors, selected-job launch wiring, status/results separation and annotation interchange are executable; no model run or scientific result occurred. |
 | K1 evidence-preserving repository cleanup | PLANNED | R2, U1, M1 | Complete path/dependency classification; uncertain provenance is retained or archived, not deleted | Reviewed retain/archive/delete inventory; deletion manifest; updated entry points/dependencies; clean-checkout CPU validation | Not started; must finish before R3 so GPU validation covers the reduced repository rather than obsolete paths. |
 | R3 GPU contracts | PLANNED | R2, U1, K1 | Compatible checkpoint, CUDA/flash/flex environment and approved compute | Per-job manifests and logs, including tensor hashes | Not run; helper tests do not exercise full attention blocks or the generator. |
@@ -25,6 +25,25 @@ Task status is one of **PLANNED**, **IN PROGRESS**, or **COMPLETED**. A blocker 
 | D3 gaze project | PLANNED | P1 | Separate geometry/observability validation | Separate plan; never folded into repair | Not run. |
 | D4 reproducible blog | PLANNED | H1 | Provenance and permissions | Full grids, failures and caveats | Not run. |
 
+### Difficulty estimates and outcomes
+
+Scores cover end-to-end difficulty, including implementation, environment setup, compute, human operations and scientific validity; they are planning aids, not evidence or schedule estimates. Add an estimate, brief rationale and recommended OpenAI model/role whenever a task is added, before implementation begins. Freeze the estimate and model recommendation once the task becomes **IN PROGRESS**. When a task becomes **COMPLETED**, preserve them and record its actual difficulty with a brief retrospective rationale, including the main sources of estimation error and any model substitution. Use the same 1–10 scale for both difficulty values so their reliability can be evaluated over time. Do not backfill already-completed tasks that lack a contemporaneous frozen estimate; retrospective estimates would not measure forecasting reliability.
+
+| Task | Estimated | Estimate rationale | Recommended OpenAI model / role | Actual | Completion rationale |
+|---|---:|---|---|---:|---|
+| U1 upstream-Wan baseline adapter/parity | 8/10 | Requires matching architectures, weights, inputs and CUDA-kernel tolerances closely enough to make a defensible parity claim. | GPT-5.6 Sol implementation; GPT-6 Astra parity review | 8/10 | The expected provenance, model-loading and GPU work materialized; unplanned effort came from transferring unpushed revisions, hashing 82.3 GB and isolating a system-nvcc/`sam2` mismatch. Both recommended models filled their planned roles; no substitution. |
+| K1 evidence-preserving repository cleanup | 7/10 | Requires broad provenance classification and safe removal of obsolete paths without destroying historical evidence or active dependencies. | GPT-5.6 Sol; GPT-6 Astra for ambiguous dispositions | — | Not completed. |
+| R3 GPU contracts | 9/10 | Exercises full generation, CUDA attention kernels and FSDP consistency, where environment-specific numerical and distributed failures are difficult to isolate. | GPT-6 Astra lead; GPT-5.6 Sol implementation | — | Not completed. |
+| H0 blinded annotation preparation | 6/10 | The implementation is moderate, but opaque IDs, private mappings, adjudication and endpoint consistency must preserve blinding and scientific validity. | GPT-5.6 Sol; optional GPT-6 Astra protocol review | — | Not completed. |
+| H1 human calibration | 8/10 | The main burden is unbiased clip selection, rater coordination, disagreement resolution and rubric refinement rather than code. | GPT-5.6 Sol for support only | — | Not completed. |
+| C1 action competence gates | 7/10 | Requires controlled GPU generation and defensible thresholds that distinguish model incompetence from action-binding failure. | GPT-5.6 Sol | — | Not completed. |
+| P1 128-video pilot | 8.5/10 | Coordinates matched generation, failure accounting, blinded labels and paired analysis without post-hoc protocol changes. | GPT-5.6 Sol execution; GPT-6 Astra design/review | — | Not completed. |
+| X1 held-out confirmation | 9/10 | Requires independent data, power analysis, frozen endpoints and publication-quality statistical interpretation. | GPT-6 Astra | — | Not completed. |
+| D1 uncertainty-aware routing | 9/10 | Introduces new algorithmic work and validation and is justified only by a specific fixed-success/dynamic-failure result. | GPT-6 Astra | — | Not completed. |
+| D2 cross-model benchmark | 9/10 | Requires fair integration across models with different APIs, conditioning mechanisms, versions and compute needs. | GPT-6 Astra | — | Not completed. |
+| D3 gaze project | 9.5/10 | Is effectively a separate research project requiring geometry, observability and explicit offscreen-state validation. | GPT-6 Astra | — | Not completed. |
+| D4 reproducible blog | 6/10 | Writing and packaging are moderate, but depend on complete provenance, permissions, results and honest failure reporting. | GPT-5.6 Sol | — | Not completed. |
+
 ## R1–R3: repair and executable contracts
 
 **Hypothesis.** Restoring schedule guards, consistent effective masks, fixed-mask execution, weighted regional gates, persistent entity mapping, early seed synchronization and validation removes known contract violations without retuning the intervention.
@@ -33,7 +52,7 @@ Task status is one of **PLANNED**, **IN PROGRESS**, or **COMPLETED**. A blocker 
 
 **Success criterion.** CPU contracts pass. GPU calls are finite; all rank initial-latent hashes match for each job; disabled custom `none` agrees with upstream within the predeclared tolerance; each block's self/cross consumers and exported used-mask hash agree; generated masks remain separately identifiable. Fixed masks do not call tracker code. Invalid batch, overlaps, empty masks after resizing, unsupported mapping, over-limit tokens and invalid schedules fail before output writing.
 
-**Stop criterion.** Any parity, finiteness, rank-hash or identity failure blocks generation experiments. Do not infer scientific efficacy from contract success. Current CPU tests exercise extracted helpers, not full attention blocks or the generation path; those layer/generator checks remain PLANNED under R3/U1.
+**Stop criterion.** Any parity, finiteness, rank-hash or identity failure blocks generation experiments. Do not infer scientific efficacy from contract success. U1 exercised one checkpoint-loaded layer with two synthetic contexts; full-model diffusion, actual positive/negative encoding and CFG, generator, rank-hash, mask-mode and distributed runtime checks remain blocked under R3.
 
 The repair did not change `_generate_noise` relative to Wan checkpoint `f7472d354e0cb46b2853f15bf97b8b283d4780f8`: it still makes one channel-major `[16, T, H, W]` `torch.randn` draw. Resolving/broadcasting the integer seed now happens before that same draw and preserves the post-draw generator for the scheduler. No new frame-major/channel-major same-seed incompatibility is introduced by this diff; checkpoint-backed confirmation remains part of R3.
 
@@ -114,49 +133,40 @@ Uncertainty-aware routing (D1) is conditional on fixed rescue/dynamic failure. C
 
 ## Exact next commands
 
-The isolated test environment used Python 3.12.3, CPU torch 2.14.0, pytest 9.1.1, NumPy 2.5.3, SciPy 1.18.1 and ruff 0.16.7. It is **not** the project's Python/CUDA generation environment and does not establish production compatibility. To recreate it separately:
+Historical R1/R2 evidence used an isolated Python 3.12.3 CPU environment with torch 2.14.0, pytest 9.1.1, NumPy 2.5.3, SciPy 1.18.1 and ruff 0.16.7. It was not the project's generation environment and is not a supported recreation path. Current work must use the checked-in `pyproject.toml` and `uv.lock`; run these commands only after `uv sync --locked` succeeds:
 
 ```bash
-uv venv --python 3.12 .venv-tests
-uv pip install --python .venv-tests/bin/python \
-  pytest==9.1.1 numpy==2.5.3 scipy==1.18.1 ruff==0.16.7
-uv pip install --python .venv-tests/bin/python \
-  torch==2.14.0 --index-url https://download.pytorch.org/whl/cpu
-```
-
-These commands exercise only CPU bookkeeping and tests; they do not start inference or claim indexing:
-
-```bash
-python -m multi_sample_inference.experiment_pipeline validate \
+uv run --locked python -m multi_sample_inference.experiment_pipeline validate \
   --source tests/fixtures/smoke_experiment.json
-python -m multi_sample_inference.experiment_pipeline dry-run \
+uv run --locked python -m multi_sample_inference.experiment_pipeline dry-run \
   --source tests/fixtures/smoke_experiment.json --output-dir /tmp/wan-smoke-run
-.venv-tests/bin/python -m pytest -q \
-  tests/test_repair_contracts.py tests/test_experiment_pipeline.py tests/test_mask_contracts.py
-python -m compileall -q wan2.1/wan multi_sample_inference tests
+uv run --locked --with pytest==9.0.3 python -m pytest -q \
+  tests/test_repair_contracts.py tests/test_experiment_pipeline.py tests/test_mask_contracts.py \
+  tests/test_generation_routes.py tests/test_parity_contracts.py
+uv run --locked python -m compileall -q wan2.1/wan multi_sample_inference tests
 ```
 
 For a real protocol, first copy the smoke JSON structure to a new research source, replace all assets and the placeholder with an existing local checkpoint, set `smoke_only` false, use target-sized dynamic masks, and choose a new output directory outside this repository. Then, in the existing full project CUDA environment:
 
 ```bash
-python -m multi_sample_inference.experiment_pipeline validate --source /path/protocol.json
-python -m multi_sample_inference.experiment_pipeline expand \
+uv run --locked python -m multi_sample_inference.experiment_pipeline validate --source /path/protocol.json
+uv run --locked python -m multi_sample_inference.experiment_pipeline expand \
   --source /path/protocol.json --output-dir /scratch/new-action-binding-run
-python -m multi_sample_inference.experiment_pipeline status \
+uv run --locked python -m multi_sample_inference.experiment_pipeline status \
   --jobs /scratch/new-action-binding-run/jobs
-python -m multi_sample_inference.experiment_pipeline run \
+uv run --locked python -m multi_sample_inference.experiment_pipeline run \
   --job /scratch/new-action-binding-run/jobs/JOB_ID.json --devices 0,1
-python -m multi_sample_inference.experiment_pipeline annotations-export \
+uv run --locked python -m multi_sample_inference.experiment_pipeline annotations-export \
   --jobs /scratch/new-action-binding-run/jobs --output /scratch/new-action-binding-run/annotations.csv
 # Operator interchange only: H0 must provide blinding before primary human labels.
 # After operator reconciliation fills every actor row:
-python -m multi_sample_inference.experiment_pipeline annotations-import \
+uv run --locked python -m multi_sample_inference.experiment_pipeline annotations-import \
   --template /scratch/new-action-binding-run/annotations.csv \
   --jobs /scratch/new-action-binding-run/jobs \
   --output /scratch/new-action-binding-run/annotations.json
 ```
 
-`run` launches exactly the selected job and requires the declared number of visible devices. It does not download a checkpoint. The adapter additionally requires the project's existing torch/NumPy/SciPy/diffusers stack; CUDA/flash/flex, checkpoint-backed execution and multi-rank validation remain pending. The current worker route records custom `none`, not an upstream-Wan numerical-equivalence claim; an unknown `upstream` method is rejected. The CLI intentionally does not compute inferential statistics.
+`run` launches exactly the selected job and requires the declared number of visible devices. It does not download a checkpoint. A distinct `upstream` route invokes `wan.image2video.WanI2V`; it fails closed unless `frame_num=81`, the prompt is one joint sentence and the negative prompt is explicit. The custom `none` route remains separate and uses the same manifest seed, image, settings and optional explicit negative prompt. The bounded U1 runner verified the 33-file SHA-256 inventory, concrete checkpoint loaders/types, selected-layer architecture and byte-identical state before executing exact input clones under the frozen BF16/FA2 protocol. Its two FP32 layer outputs were finite and bitwise identical (maximum absolute and relative error 0); records are in `docs/u1_evidence/`. The broader adapter still requires a successful full locked environment, and no generator, scheduler, CFG orchestration, FSDP or video run occurred. The CLI intentionally does not compute inferential statistics.
 
 After reference-document changes, run `qmd embed` as required by the workspace instructions. This repository currently is not a qmd collection; success for existing collections is not evidence that these documents were indexed.
 
@@ -168,5 +178,9 @@ After reference-document changes, run `qmd embed` as required by the workspace i
 - 2026-09-12 — Review repairs reject joint Concept-Weaver at source and worker contracts, tie actual checkpoint files to an approved inventory, hash-check reused task pickles, and freeze/record legacy dynamic-mask preprocessing evidence. The focused suite now has 22 passing CPU tests. U1 was added as an explicit PLANNED pilot dependency; full layer/generator, adapter materialization, CUDA, and scientific generations remain PLANNED. Standalone NumPy/SciPy preprocessing tests now pass.
 - 2026-09-12 — Independent final review found no remaining blocker in this bounded source/infrastructure slice; parent reran the focused suite (22 passed). Repository-wide pytest collection remains blocked by missing `diffusers` and `sync_batchnorm` in the isolated CPU environment. H0 was added after parent inspection confirmed that annotation interchange exposes condition metadata and does not yet enforce actor-to-joint scientific consistency. No human result or ready-to-run blinded study is claimed.
 - 2026-09-13 — K1 was added as an evidence-preserving repository-cleanup gate after U1 and before R3. It requires explicit retain/archive/replace/delete decisions, protects provenance and historical outputs, and makes the cleaned revision—not obsolete parallel paths—the target of GPU contract validation.
+- 2026-09-14 — U1 marked IN PROGRESS before implementation. The frozen 8/10 estimate and GPT-5.6 Sol implementation recommendation are unchanged; the current implementation model matches. Full-project checkpoint-backed parity remains blocked pending a compatible local checkpoint and CUDA environment.
+- 2026-09-14 — U1 source implementation added a distinct upstream generator route and an immutable, explicitly unverified one-layer comparison contract. GPT-6 Astra review found and the Sol fix pass repaired non-output-rank handling, pinned upstream frame-count validation, concrete architecture/type checks, contradictory record evidence and malformed digests. Parent validation added bounded-chunk tensor comparison/raw hashing to avoid full-output Python-list materialization, then passed 41 focused CPU tests, targeted Ruff, syntax compilation and whitespace checks. No checkpoint was loaded, no GPU call ran, no tolerance was selected and U1 remains IN PROGRESS.
+- 2026-09-14 — Bootes handoff: `bootes.alias` has two idle RTX PRO 6000 Blackwell Max-Q GPUs (97,887 MiB each), 251 GiB host RAM and writable `/local_scratch2/gzappavi` with about 2.7 TiB free; GPU peer access reports OK but topology is inter-socket `SYS` without NVLink. Use only the locked `uv` project environment, never system Python. The public ungated `Wan-AI/Wan2.1-I2V-14B-480P` snapshot at revision `6b73f84e66371cdfe870c72acd6826e1d61cf279` was downloaded to `/local_scratch2/gzappavi/hf/hub/models--Wan-AI--Wan2.1-I2V-14B-480P/snapshots/6b73f84e66371cdfe870c72acd6826e1d61cf279`: 33 resolved files, 82,272,036,045 bytes, no broken symlinks and all expected Wan/T5/CLIP/VAE/tokenizer paths present. The repository and locked environment were not yet synced to Bootes; cryptographic inventory, CUDA/import checks, tolerance predeclaration and all checkpoint/GPU/parity execution remain pending.
+- 2026-09-14 — U1 COMPLETED for its bounded adapter/one-layer claim. Before model loading, the protocol froze layer 0, two full 81-frame latent-grid synthetic contexts and PyTorch BF16 defaults (`atol=1e-5`, `rtol=0.016`). Bootes rehashed all 33 checkpoint files (82,272,036,045 bytes; content identity `80c954fb…`), loaded both concrete models with byte-identical selected-layer state and ran PyTorch 2.10.0+cu128/FA2 on the RTX PRO 6000. Both FP32 outputs were finite, shape/dtype matched and bitwise identical with maximum absolute/relative error 0; immutable records, log and reconstructed execution-source fingerprint are under `docs/u1_evidence/`. The post-run Sol fix also rejects contradictory snapshot/inventory binding fields; 42 focused tests and targeted checks pass. GPT-6 Astra independently recommended completion with no blocker. Full `uv sync --locked` still fails because system nvcc 12.0 cannot compile `sam2` for `sm_120`; the bounded run omitted that unrelated package, so full generator/CFG/FSDP/video readiness remains explicitly unclaimed and blocked under R3.
 
 Final review evidence: `/home/gzappavi/.pi/agent/sessions/--home-gzappavi-Documents-wan_experiments--/subagent-artifacts/outputs/ba6ee532-e9cd-4518-a833-920a1239b263/repair-sol/final-review.md`. Sibling `contracts.md`, `infrastructure.md`, `review.md` and `resolution.md` record implementation, findings and dispositions. All five children in this retry used Sol; no GPU jobs were launched.

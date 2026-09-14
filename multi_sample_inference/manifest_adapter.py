@@ -16,6 +16,7 @@ from .experiment_pipeline import (
     verify_task_descriptor,
     worker_task_blueprint,
 )
+from .generation_routes import generation_route
 from .mask_contracts import process_subject_masks, resolved_mask_evidence
 from .task_contracts import validate_worker_task
 
@@ -46,11 +47,16 @@ def build_task(manifest):
     actor_order = manifest["identity"]["actor_order"]
     task["video_path"] = Path(task["video_path"])
     task["action_output_path"] = Path(task["action_output_path"])
-    task.update({
-        "img": load_image(manifest["assets"]["reference_image"]["path"]),
-        "single_char_imgs": [load_image(manifest["assets"]["isolated_images"][actor_id]["path"]) for actor_id in actor_order],
-        "masks": _build_masks(manifest),
-    })
+    task["img"] = load_image(manifest["assets"]["reference_image"]["path"])
+    if generation_route(task) == "upstream":
+        task["single_char_imgs"] = []
+        task["masks"] = None
+    else:
+        task["single_char_imgs"] = [
+            load_image(manifest["assets"]["isolated_images"][actor_id]["path"])
+            for actor_id in actor_order
+        ]
+        task["masks"] = _build_masks(manifest)
     validate_worker_task(task)
     return task
 
@@ -74,12 +80,19 @@ def materialize(manifest_path):
             pickle.dump(task, handle)
             handle.flush()
             os.fsync(handle.fileno())
-        masks = task["masks"].cpu().numpy()
-        resolved_masks = resolved_mask_evidence(
-            masks,
-            manifest["identity"]["actor_order"],
-            manifest["masks"]["processing"],
-        )
+        if task["masks"] is None:
+            resolved_masks = {
+                "processing_variant": "not_materialized_upstream_v1",
+                "actors": {},
+                "reason": "upstream route does not consume intervention masks",
+            }
+        else:
+            masks = task["masks"].cpu().numpy()
+            resolved_masks = resolved_mask_evidence(
+                masks,
+                manifest["identity"]["actor_order"],
+                manifest["masks"]["processing"],
+            )
         metadata = task_descriptor_metadata(manifest, task_path, resolved_masks)
         fd = os.open(metadata_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
         with os.fdopen(fd, "wb") as handle:

@@ -20,8 +20,10 @@ import sys
 import uuid
 from pathlib import Path
 
+from .generation_routes import UPSTREAM_FRAME_NUM
+
 SCHEMA_VERSION = 1
-METHODS = {"none", "regional_prompting", "concept_weaver", "ediff-i"}
+METHODS = {"upstream", "none", "regional_prompting", "concept_weaver", "ediff-i"}
 MASK_TYPES = {"fixed", "hard", "soft"}
 SOLVERS = {"unipc", "dpm++"}
 LABELS = {"true", "false", "uncertain", "missing"}
@@ -179,6 +181,12 @@ def _validate_source(source, source_path):
     _require(inference.get("solver") in SOLVERS, "unsupported inference.solver")
     for key in ("cfg", "shift"):
         _require(type(inference.get(key)) in (int, float) and inference[key] > 0, f"inference.{key} must be positive")
+    negative_prompt = inference.get("negative_prompt")
+    if negative_prompt is not None:
+        _require(
+            isinstance(negative_prompt, str) and negative_prompt,
+            "inference.negative_prompt must be a nonempty string when supplied",
+        )
     seeds = source.get("video_seeds", [])
     _require(seeds, "at least one video seed is required")
     seed_ids = [item.get("id") for item in seeds]
@@ -196,6 +204,17 @@ def _validate_source(source, source_path):
         _require(representation in {"joint", "split"}, "prompt_representation must be joint or split")
         if method == "concept_weaver":
             _require(representation == "split", "concept_weaver requires split singleton prompts")
+        if method == "upstream":
+            _require(representation == "joint", "upstream requires one joint prompt sentence")
+            _require(
+                inference["frame_num"] == UPSTREAM_FRAME_NUM,
+                "pinned upstream Wan generation requires "
+                f"inference.frame_num={UPSTREAM_FRAME_NUM}",
+            )
+            _require(
+                negative_prompt is not None,
+                "upstream requires an explicit inference.negative_prompt",
+            )
         mask_type = condition.get("mask_type")
         _require(mask_type in MASK_TYPES, f"unsupported mask_type: {mask_type!r}")
         _require(condition.get("mask_source") in {"fixed", "dynamic"}, "mask_source must be fixed or dynamic")
@@ -303,7 +322,12 @@ def expand_source(source_path, output_dir, write=True):
             }
             job_id = _stable_id("job", identity)
             output_base = output_dir / "outputs" / job_id
-            prompt_payload = {"sentences": sentences, "character_segments": character_segments, "general_prompt": prompts["general_prompt"]}
+            prompt_payload = {
+                "representation": condition["prompt_representation"],
+                "sentences": sentences,
+                "character_segments": character_segments,
+                "general_prompt": prompts["general_prompt"],
+            }
             mask_payload = {
                 "source": condition["mask_source"], "type": condition["mask_type"],
                 "actor_order": actor_ids,
@@ -344,6 +368,7 @@ def expand_source(source_path, output_dir, write=True):
                     "width": inference["width"], "height": inference["height"],
                     "frame_num": inference["frame_num"], "sampling_steps": inference["sampling_steps"],
                     "cfg": inference["cfg"], "shift": inference["shift"], "solver": inference["solver"],
+                    "negative_prompt": inference.get("negative_prompt"),
                     "rank_count": inference["rank_count"], "num_layers": inference["num_layers"],
                 },
                 "config_sha256": _hash_bytes(_canonical({"intervention": intervention, "inference": inference})),
@@ -422,6 +447,8 @@ def worker_task_blueprint(manifest):
     """Return the exact path/scalar portion consumed by manifest_adapter/worker."""
     return {
         "prompt_sentences": manifest["prompts"]["sentences"],
+        "prompt_representation": manifest["prompts"].get("representation"),
+        "negative_prompt": manifest["inference"].get("negative_prompt"),
         "checkpoint_dir": manifest["checkpoint"]["path"],
         "char_segments_list": manifest["prompts"]["character_segments"],
         "general_prompt": manifest["prompts"]["general_prompt"],

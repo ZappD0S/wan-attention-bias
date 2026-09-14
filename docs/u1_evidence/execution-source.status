@@ -1,0 +1,14 @@
+ M AGENTS.md
+ M docs/experiment_plan.md
+ M multi_sample_inference/experiment_pipeline.py
+ M multi_sample_inference/fsdp_worker.py
+ M multi_sample_inference/manifest_adapter.py
+ M tests/test_experiment_pipeline.py
+?? docs/u1_checkpoint_inventory.json
+?? docs/u1_parity_protocol.md
+?? multi_sample_inference/generation_routes.py
+?? multi_sample_inference/parity_contracts.py
+?? multi_sample_inference/u1_parity_runner.py
+?? multi_sample_inference/upstream_parity.py
+?? tests/test_generation_routes.py
+?? tests/test_parity_contracts.py
