@@ -2,7 +2,7 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Python: Multi Sample Inference",
+      "name": "[HISTORICAL/NONCANONICAL] Python: Multi Sample Inference",
       "type": "debugpy",
       "request": "launch",
       "module": "multi_sample_inference.multi_sample_inference",

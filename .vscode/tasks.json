@@ -1,0 +1,72 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "M1: validate non-scientific smoke fixture",
+      "type": "process",
+      "command": "uv",
+      "args": [
+        "run",
+        "--locked",
+        "python",
+        "-m",
+        "multi_sample_inference.experiment_pipeline",
+        "validate",
+        "--source",
+        "tests/fixtures/smoke_experiment.json"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "M1: dry-run non-scientific smoke fixture (no generation)",
+      "type": "process",
+      "command": "uv",
+      "args": [
+        "run",
+        "--locked",
+        "python",
+        "-m",
+        "multi_sample_inference.experiment_pipeline",
+        "dry-run",
+        "--source",
+        "tests/fixtures/smoke_experiment.json",
+        "--output-dir",
+        "/tmp/wan-smoke-vscode"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "M1: validate explicit production source (no generation)",
+      "type": "process",
+      "command": "uv",
+      "args": [
+        "run",
+        "--locked",
+        "python",
+        "-m",
+        "multi_sample_inference.experiment_pipeline",
+        "validate",
+        "--source",
+        "${input:productionSource}"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "productionSource",
+      "type": "promptString",
+      "description": "Absolute path to an approved production M1 source JSON",
+      "default": ""
+    }
+  ]
+}
