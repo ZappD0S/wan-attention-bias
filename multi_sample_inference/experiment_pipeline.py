@@ -29,7 +29,12 @@ from .r3_contracts import (
     sha256_file,
     validate_worker_observation,
 )
-from .r3_runtime import validate_source_observations
+from .r3_runtime import (
+    build_self_attention_dispatch_contract,
+    validate_backend_request,
+    validate_source_observations,
+    validate_worker_dispatch_binding,
+)
 
 SCHEMA_VERSION = 1
 METHODS = {"upstream", "none", "regional_prompting", "concept_weaver", "ediff-i"}
@@ -205,7 +210,7 @@ def _r3_source_contract(source, source_path):
     parity_pair = declaration.get("parity_pair")
     if "parity_pair" in declaration:
         _require(
-            bundle["protocol"]["schema_version"] == 2
+            bundle["protocol"]["schema_version"] >= 2
             and isinstance(parity_pair, dict)
             and set(parity_pair)
             == {"pair_id", "upstream_condition_id", "custom_none_condition_id"}
@@ -292,6 +297,18 @@ def _validate_source(source, source_path):
             _require(type(condition.get("beta")) in (int, float) and 0 <= condition["beta"] <= 1, "regional_prompting requires beta in [0,1]")
         if method == "ediff-i":
             _require(type(condition.get("strength")) in (int, float), "ediff-i requires numeric strength")
+        for schedule_name, expected_length in (
+            ("timestep_bias_schedule", inference["sampling_steps"]),
+            ("blocks_bias_schedule", inference["num_layers"]),
+        ):
+            schedule = condition.get(schedule_name)
+            if schedule is not None:
+                _require(
+                    isinstance(schedule, list)
+                    and len(schedule) == expected_length
+                    and all(type(value) is bool for value in schedule),
+                    f"condition {schedule_name} must be a boolean list of length {expected_length}",
+                )
     scenes = source.get("scenes", [])
     _require(scenes, "at least one scene is required")
     scene_ids = [item.get("id") for item in scenes]
@@ -334,6 +351,40 @@ def validate_source(path):
     source = _read_json(path)
     _validate_source(source, path)
     return source
+
+
+def _manifest_inference(source_inference):
+    return {
+        "width": source_inference["width"],
+        "height": source_inference["height"],
+        "frame_num": source_inference["frame_num"],
+        "sampling_steps": source_inference["sampling_steps"],
+        "cfg": source_inference["cfg"],
+        "shift": source_inference["shift"],
+        "solver": source_inference["solver"],
+        "negative_prompt": source_inference.get("negative_prompt"),
+        "rank_count": source_inference["rank_count"],
+        "num_layers": source_inference["num_layers"],
+    }
+
+
+def _manifest_intervention(condition, source_inference):
+    return {
+        "method": condition["method"],
+        "mask_type": condition["mask_type"],
+        "mask_source": condition["mask_source"],
+        "mask_sharing": condition["mask_sharing"],
+        "self_attention_masking": condition["self_attention_masking"],
+        "image_context_isolation": False,
+        "beta": condition.get("beta"),
+        "strength": condition.get("strength"),
+        "timestep_bias_schedule": condition.get(
+            "timestep_bias_schedule", [True] * source_inference["sampling_steps"]
+        ),
+        "blocks_bias_schedule": condition.get(
+            "blocks_bias_schedule", [True] * source_inference["num_layers"]
+        ),
+    }
 
 
 def _asset(path):
@@ -434,15 +485,7 @@ def expand_source(source_path, output_dir, write=True):
                     "threshold": 128,
                 },
             }
-            intervention = {
-                "method": condition["method"], "mask_type": condition["mask_type"],
-                "mask_source": condition["mask_source"], "mask_sharing": condition["mask_sharing"],
-                "self_attention_masking": condition["self_attention_masking"],
-                "image_context_isolation": False, "beta": condition.get("beta"),
-                "strength": condition.get("strength"),
-                "timestep_bias_schedule": [True] * inference["sampling_steps"],
-                "blocks_bias_schedule": [True] * inference["num_layers"],
-            }
+            intervention = _manifest_intervention(condition, inference)
             manifest = {
                 "schema_version": SCHEMA_VERSION, "job_id": job_id,
                 "experiment_id": source["experiment_id"], "smoke_only": bool(source.get("smoke_only", False)),
@@ -455,13 +498,7 @@ def expand_source(source_path, output_dir, write=True):
                 "assets": {"reference_image": _asset(reference), "isolated_images": isolated},
                 "masks": mask_payload | {"sha256": _hash_bytes(_canonical(mask_payload))},
                 "intervention": intervention,
-                "inference": {
-                    "width": inference["width"], "height": inference["height"],
-                    "frame_num": inference["frame_num"], "sampling_steps": inference["sampling_steps"],
-                    "cfg": inference["cfg"], "shift": inference["shift"], "solver": inference["solver"],
-                    "negative_prompt": inference.get("negative_prompt"),
-                    "rank_count": inference["rank_count"], "num_layers": inference["num_layers"],
-                },
+                "inference": _manifest_inference(inference),
                 "config_sha256": _hash_bytes(_canonical({"intervention": intervention, "inference": inference})),
                 "outputs": {
                     "video_path": str(output_base / "video.mp4"),
@@ -492,13 +529,42 @@ def expand_source(source_path, output_dir, write=True):
                         "rank_mode": r3_contract["rank_mode"],
                     }
                 case = matrix_case_for_request(r3_contract["matrix"], family, selection)
+                dispatch_contract = None
+                if r3_contract["protocol"]["schema_version"] == 3:
+                    disposition = case["lineage_disposition"]
+                    _require(
+                        disposition["disposition"] == "runnable",
+                        "R3 matrix case is rejected before materialization: "
+                        + disposition["reason"],
+                    )
+                    declarations = r3_contract["protocol"]["runtime_declarations"]
+                    dispatch_contract = build_self_attention_dispatch_contract(
+                        execution_route="upstream"
+                        if condition["method"] == "upstream"
+                        else "custom",
+                        method=condition["method"],
+                        self_attention_masking=condition["self_attention_masking"],
+                        timestep_bias_schedule=intervention[
+                            "timestep_bias_schedule"
+                        ],
+                        blocks_bias_schedule=intervention["blocks_bias_schedule"],
+                        backend_versions={
+                            "flash_attention_2": declarations[
+                                "flash_attention_version"
+                            ],
+                            "flex_attention": declarations["flex_attention_version"],
+                        },
+                    )
+                    validate_backend_request(
+                        dispatch_contract, r3_contract["attention_backend"]
+                    )
                 observation_path = None
                 if condition["method"] != "upstream":
                     observation_path = str(
                         output_base / "r3-rank-zero-worker-observation.json"
                     )
                     manifest["outputs"]["r3_worker_observation_path"] = observation_path
-                if r3_contract["protocol"]["schema_version"] == 2:
+                if r3_contract["protocol"]["schema_version"] >= 2:
                     manifest["outputs"]["r3_source_observation_path"] = str(
                         output_base / "r3-source-observations.json"
                     )
@@ -520,6 +586,8 @@ def expand_source(source_path, output_dir, write=True):
                         "num_layers": inference["num_layers"],
                     },
                 }
+                if dispatch_contract is not None:
+                    manifest["r3_evidence"]["dispatch_contract"] = dispatch_contract
                 parity_pair = r3_contract["parity_pair"]
                 if parity_pair is not None and condition["id"] in {
                     parity_pair["upstream_condition_id"],
@@ -629,8 +697,12 @@ def worker_task_blueprint(manifest):
             "image_context_isolation": manifest["intervention"]["image_context_isolation"],
             "beta": manifest["intervention"]["beta"],
             "strength": manifest["intervention"]["strength"],
-            "timestep_bias_schedule": manifest["intervention"]["timestep_bias_schedule"],
-            "blocks_bias_schedule": manifest["intervention"]["blocks_bias_schedule"],
+            "timestep_bias_schedule": list(
+                manifest["intervention"]["timestep_bias_schedule"]
+            ),
+            "blocks_bias_schedule": list(
+                manifest["intervention"]["blocks_bias_schedule"]
+            ),
         },
     }
     if "r3_evidence" in manifest:
@@ -656,6 +728,147 @@ def worker_task_blueprint(manifest):
                 else "custom",
             },
         }
+        bundle = load_protocol_bundle(
+            r3["protocol"]["path"], r3["matrix"]["path"]
+        )
+        _require(
+            bundle["protocol_sha256"] == r3["protocol"]["sha256"]
+            and bundle["matrix_sha256"] == r3["matrix"]["sha256"],
+            "R3 manifest protocol or matrix binding differs from disk",
+        )
+        dispatch_contract = r3.get("dispatch_contract")
+        if bundle["protocol"]["schema_version"] == 3:
+            _require(
+                isinstance(dispatch_contract, dict),
+                "R3 v3 manifest dispatch contract is missing",
+            )
+            declarations = bundle["protocol"]["runtime_declarations"]
+            source_path = Path(manifest["source"]["path"])
+            _require(
+                source_path.is_file()
+                and _hash_file(source_path) == manifest["source"]["sha256"],
+                "R3 manifest source binding changed or is missing",
+            )
+            source = _read_json(source_path)
+            source_contract = _r3_source_contract(source, source_path)
+            _require(
+                source_contract is not None
+                and source_contract["protocol_sha256"] == bundle["protocol_sha256"]
+                and source_contract["matrix_sha256"] == bundle["matrix_sha256"],
+                "R3 manifest protocol or matrix differs from its source",
+            )
+            source_conditions = [
+                condition
+                for condition in source["conditions"]
+                if condition["id"] == manifest["identity"]["condition_id"]
+            ]
+            _require(
+                len(source_conditions) == 1,
+                "R3 manifest condition is not uniquely bound to its source",
+            )
+            source_condition = source_conditions[0]
+            source_inference = source["inference"]
+            expected_inference = _manifest_inference(source_inference)
+            expected_intervention = _manifest_intervention(
+                source_condition, source_inference
+            )
+            _require(
+                manifest["inference"] == expected_inference,
+                "R3 manifest inference differs from its source",
+            )
+            _require(
+                manifest["intervention"] == expected_intervention,
+                "R3 manifest intervention differs from its source",
+            )
+            _require(
+                _hash_bytes(
+                    _canonical(
+                        {
+                            "intervention": expected_intervention,
+                            "inference": source_inference,
+                        }
+                    )
+                )
+                == manifest["config_sha256"],
+                "R3 manifest configuration differs from its source-bound hash",
+            )
+            if source_condition["method"] == "upstream":
+                expected_family = "upstream-generator"
+                expected_selection = {
+                    "solver": source_inference["solver"],
+                    "attention_backend": source_contract["attention_backend"],
+                    "rank_mode": source_contract["rank_mode"],
+                }
+            else:
+                expected_family = "custom-generator"
+                expected_selection = {
+                    "method": source_condition["method"],
+                    "mask_configuration": (
+                        f"{source_condition['mask_type']}:"
+                        f"{source_condition['mask_source']}"
+                    ),
+                    "mask_sharing": source_condition["mask_sharing"],
+                    "self_attention_masking": source_condition[
+                        "self_attention_masking"
+                    ],
+                    "solver": source_inference["solver"],
+                    "attention_backend": source_contract["attention_backend"],
+                    "rank_mode": source_contract["rank_mode"],
+                }
+            selection = r3["case"]["selection"]
+            _require(
+                r3["case"]["family"] == expected_family
+                and selection == expected_selection,
+                "R3 manifest case selection differs from its source",
+            )
+            expected_case = matrix_case_for_request(
+                bundle["matrix"], expected_family, expected_selection
+            )
+            _require(
+                expected_case == r3["case"],
+                "R3 manifest case differs from the validated matrix",
+            )
+            expected_cardinalities = {
+                "rank_count": source_inference["rank_count"],
+                "sampling_steps": source_inference["sampling_steps"],
+                "num_layers": source_inference["num_layers"],
+            }
+            _require(
+                r3["expected"] == expected_cardinalities,
+                "R3 manifest expected cardinalities differ from its source",
+            )
+            expected_dispatch = build_self_attention_dispatch_contract(
+                execution_route=(
+                    "upstream"
+                    if source_condition["method"] == "upstream"
+                    else "custom"
+                ),
+                method=source_condition["method"],
+                self_attention_masking=source_condition[
+                    "self_attention_masking"
+                ],
+                timestep_bias_schedule=expected_intervention[
+                    "timestep_bias_schedule"
+                ],
+                blocks_bias_schedule=expected_intervention[
+                    "blocks_bias_schedule"
+                ],
+                backend_versions={
+                    "flash_attention_2": declarations["flash_attention_version"],
+                    "flex_attention": declarations["flex_attention_version"],
+                },
+            )
+            _require(
+                dispatch_contract == expected_dispatch,
+                "R3 manifest dispatch contract differs from its source",
+            )
+            validate_backend_request(
+                dispatch_contract, selection["attention_backend"]
+            )
+            task["r3_evidence"]["protocol_schema_version"] = 3
+            task["r3_evidence"]["requested"]["dispatch_contract"] = (
+                dispatch_contract
+            )
         if "r3_source_observation_path" in manifest["outputs"]:
             task["r3_evidence"]["source_observation_path"] = manifest["outputs"][
                 "r3_source_observation_path"
@@ -697,6 +910,44 @@ def worker_task_blueprint(manifest):
                 },
             }
     return task
+
+
+def validate_r3_worker_task_binding(task, manifest):
+    """Bind a v3 task to its manifest without trusting task version markers."""
+    evidence = task.get("r3_evidence")
+    task_claims_v3 = (
+        isinstance(evidence, dict)
+        and evidence.get("protocol_schema_version") == 3
+    )
+    task_has_dispatch = (
+        isinstance(evidence, dict)
+        and isinstance(evidence.get("requested"), dict)
+        and "dispatch_contract" in evidence["requested"]
+    )
+    expected = worker_task_blueprint(manifest)
+    expected_evidence = expected.get("r3_evidence")
+    manifest_requires_v3 = (
+        isinstance(expected_evidence, dict)
+        and expected_evidence.get("protocol_schema_version") == 3
+    )
+    if not manifest_requires_v3:
+        _require(
+            not task_claims_v3 and not task_has_dispatch,
+            "R3 worker task claims v3 without a v3 manifest binding",
+        )
+        return None
+    _require(
+        task_claims_v3,
+        "R3 v3 worker task discriminator is missing or downgraded",
+    )
+    _require(
+        evidence == expected_evidence
+        and task.get("config") == expected.get("config")
+        and task.get("inference_settings") == expected.get("inference_settings"),
+        "R3 worker task differs from its immutable manifest binding",
+    )
+    validate_worker_dispatch_binding(task)
+    return evidence["requested"]["dispatch_contract"]
 
 
 def _append_status(path, event):
@@ -767,7 +1018,8 @@ def _verify_declared_r3_worker_evidence(manifest):
                 "observations",
                 "r3_acceptance",
             }
-            and source_record.get("schema_version") == 2
+            and source_record.get("schema_version")
+            == bundle["protocol"]["schema_version"]
             and source_record.get("record_kind") == "r3-source-hook-observations"
             and source_record.get("evidence_class") == GENUINE_RUNTIME_EVIDENCE
             and source_record.get("bindings") == binding["bindings"]
@@ -794,6 +1046,7 @@ def _verify_declared_r3_worker_evidence(manifest):
                 backend_key
             ],
             expected_seed=binding["requested"]["diffusion_seed"],
+            dispatch_contract=binding["requested"].get("dispatch_contract"),
         )
         evidence["source_observations"] = {
             "path": source_path,
@@ -860,7 +1113,8 @@ def _pipeline_commands(manifest_path, manifest, t5_cpu=False):
     worker = [
         sys.executable, "-m", "torch.distributed.run",
         f"--nproc_per_node={manifest['inference']['rank_count']}",
-        "-m", "multi_sample_inference.fsdp_worker", "--task-file", outputs["task_path"], "--mode", mode,
+        "-m", "multi_sample_inference.fsdp_worker", "--task-file", outputs["task_path"],
+        "--manifest-file", str(manifest_path), "--mode", mode,
     ]
     if t5_cpu:
         worker.append("--t5-cpu")
@@ -890,6 +1144,13 @@ def execute_job(manifest_path, t5_cpu=False, devices=None, command_factory=None)
         )
         blockers = execution_blockers(bundle["protocol"])
         _require(not blockers, "R3 execution preflight blocked: " + ", ".join(blockers))
+        if bundle["protocol"]["schema_version"] == 3:
+            disposition = r3["case"].get("lineage_disposition", {})
+            _require(
+                disposition.get("disposition") == "runnable",
+                "R3 matrix case is rejected before launch",
+            )
+            worker_task_blueprint(manifest)
     if job_status(manifest) == "completed":
         return "skipped-completed"
     lock_path = Path(manifest["outputs"]["status_path"] + ".lock")

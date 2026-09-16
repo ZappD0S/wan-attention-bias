@@ -25,6 +25,8 @@ WORKER_OBSERVATION_KIND = "r3-rank-zero-worker-observation"
 RUNTIME_RECORD_KIND = "r3-runtime-contract-evidence"
 V1_PROTOCOL_SHA256 = "1b45951b65fc757615dfb91c9e07859084457a2dba34c18a4f9c4e3f83f3488b"
 V1_MATRIX_SHA256 = "381fd9c5829fbe405e17ec77da57a5c3b14e60c325e653571b4c4d3a4043b1a5"
+V2_PROTOCOL_SHA256 = "1adb1508be962d140070283a45dc092713e56b3b00029c406947d4989ee058b6"
+V2_MATRIX_SHA256 = "ecad41461cd43db148af70d91a798f2342263ceee073ce92d1ae8d12b90bc643"
 _SHA256 = re.compile(r"[0-9a-f]{64}")
 
 REQUIRED_CUSTOM_AXES = {
@@ -147,26 +149,85 @@ def enumerate_matrix_cases(matrix):
     return cases
 
 
+def _v3_case_disposition(case):
+    selection = case["selection"]
+    backend = selection["attention_backend"]
+    if case["family"] in {"upstream-generator", "upstream-custom-none-parity"}:
+        runnable = backend == "flash_attention_2"
+        reason = (
+            "upstream-and-custom-none-use-unmodified-flash-path"
+            if runnable
+            else "route-cannot-dispatch-flex-attention"
+        )
+    else:
+        can_dispatch_flex = (
+            selection["method"] != "none"
+            and selection["self_attention_masking"] is True
+        )
+        runnable = backend == "flash_attention_2" or can_dispatch_flex
+        if backend == "flex_attention" and not can_dispatch_flex:
+            reason = "method-or-self-routing-cannot-dispatch-flex-attention"
+        elif backend == "flex_attention":
+            reason = "requires-at-least-one-active-timestep-block-coordinate"
+        elif can_dispatch_flex:
+            reason = "requires-no-active-flex-coordinate"
+        else:
+            reason = "configuration-has-flash-only-self-route"
+    return {
+        "case_id": case["case_id"],
+        "family": case["family"],
+        "selection": case["selection"],
+        "disposition": "runnable" if runnable else "rejected",
+        "reason": reason,
+    }
+
+
+def _validate_v3_case_lineage(matrix, cases):
+    lineage_cases = matrix.get("lineage_cases")
+    _require(
+        isinstance(lineage_cases, list) and len(lineage_cases) == len(cases),
+        "R3 matrix v3 must explicitly disposition every frozen case",
+    )
+    expected = [_v3_case_disposition(case) for case in cases]
+    _require(
+        lineage_cases == expected,
+        "R3 matrix v3 case lineage or dispositions differ from the frozen inventory",
+    )
+    counts = {
+        disposition: sum(
+            item["disposition"] == disposition for item in lineage_cases
+        )
+        for disposition in ("runnable", "rejected")
+    }
+    _require(counts == {"runnable": 404, "rejected": 188}, "unexpected R3 v3 disposition counts")
+    return counts
+
+
 def validate_matrix(matrix):
     _require(isinstance(matrix, dict), "matrix must be a JSON object")
     schema_version = matrix.get("schema_version")
-    _require(schema_version in {1, 2}, "unsupported R3 matrix schema_version")
+    _require(schema_version in {1, 2, 3}, "unsupported R3 matrix schema_version")
     _require(
         matrix.get("matrix_id") == f"r3-gpu-contract-matrix-v{schema_version}",
         "unexpected R3 matrix_id",
     )
-    if schema_version == 2:
+    if schema_version in {2, 3}:
         lineage = matrix.get("lineage")
+        expected_lineage = (
+            ("r3-gpu-contract-matrix-v1", V1_MATRIX_SHA256)
+            if schema_version == 2
+            else ("r3-gpu-contract-matrix-v2", V2_MATRIX_SHA256)
+        )
         _require(
             isinstance(lineage, dict)
-            and lineage.get("matrix_id") == "r3-gpu-contract-matrix-v1"
+            and lineage.get("matrix_id") == expected_lineage[0]
             and isinstance(lineage.get("sha256"), str),
-            "R3 matrix v2 lineage is missing",
+            f"R3 matrix v{schema_version} lineage is missing",
         )
-        _require_sha256(lineage["sha256"], "R3 matrix v2 lineage.sha256")
+        _require_sha256(lineage["sha256"], f"R3 matrix v{schema_version} lineage.sha256")
         _require(
-            lineage["sha256"] == V1_MATRIX_SHA256,
-            "R3 matrix v2 lineage differs from frozen v1",
+            lineage["sha256"] == expected_lineage[1],
+            f"R3 matrix v{schema_version} lineage differs from frozen v{schema_version - 1}",
         )
     families = matrix.get("families")
     _require(isinstance(families, list) and families, "matrix families must be nonempty")
@@ -232,28 +293,40 @@ def validate_matrix(matrix):
     invalid_ids = {item.get("id") for item in invalid_checks if isinstance(item, dict)}
     _require(invalid_ids >= REQUIRED_INVALID_CHECKS, "matrix lacks required invalid-input checks")
     cases = enumerate_matrix_cases(matrix)
-    return {"case_count": len(cases), "invalid_check_count": len(invalid_checks)}
+    summary = {"case_count": len(cases), "invalid_check_count": len(invalid_checks)}
+    if schema_version == 3:
+        counts = _validate_v3_case_lineage(matrix, cases)
+        summary |= {
+            "runnable_case_count": counts["runnable"],
+            "rejected_case_count": counts["rejected"],
+        }
+    return summary
 
 
 def validate_protocol(protocol, matrix, *, matrix_sha256):
     _require(isinstance(protocol, dict), "protocol must be a JSON object")
     schema_version = protocol.get("schema_version")
-    _require(schema_version in {1, 2}, "unsupported R3 protocol schema_version")
+    _require(schema_version in {1, 2, 3}, "unsupported R3 protocol schema_version")
     _require(
         protocol.get("protocol_id") == f"r3-gpu-contracts-v{schema_version}",
         "unexpected R3 protocol_id",
     )
-    if schema_version == 2:
+    if schema_version in {2, 3}:
         lineage = protocol.get("lineage")
+        expected_lineage = (
+            ("r3-gpu-contracts-v1", V1_PROTOCOL_SHA256)
+            if schema_version == 2
+            else ("r3-gpu-contracts-v2", V2_PROTOCOL_SHA256)
+        )
         _require(
             isinstance(lineage, dict)
-            and lineage.get("protocol_id") == "r3-gpu-contracts-v1",
-            "R3 protocol v2 lineage is missing",
+            and lineage.get("protocol_id") == expected_lineage[0],
+            f"R3 protocol v{schema_version} lineage is missing",
         )
-        _require_sha256(lineage.get("sha256"), "R3 protocol v2 lineage.sha256")
+        _require_sha256(lineage.get("sha256"), f"R3 protocol v{schema_version} lineage.sha256")
         _require(
-            lineage["sha256"] == V1_PROTOCOL_SHA256,
-            "R3 protocol v2 lineage differs from frozen v1",
+            lineage["sha256"] == expected_lineage[1],
+            f"R3 protocol v{schema_version} lineage differs from frozen v{schema_version - 1}",
         )
     _require(protocol.get("status") == "in-progress", "R3 protocol must remain in-progress")
     matrix_ref = protocol.get("matrix")
@@ -278,7 +351,7 @@ def validate_protocol(protocol, matrix, *, matrix_sha256):
     }
     _require(isinstance(hooks, dict) and set(hooks) == required_hooks, "runtime hook declarations are incomplete or unexpected")
     allowed_hook_states = {"required-not-implemented", "implemented"}
-    if schema_version == 2:
+    if schema_version >= 2:
         allowed_hook_states.add("implemented-source-hook-gpu-unvalidated")
     _require(
         all(value in allowed_hook_states for value in hooks.values()),
@@ -317,7 +390,7 @@ def validate_protocol(protocol, matrix, *, matrix_sha256):
         isinstance(tolerance, dict)
         and set(tolerance) == {"atol", "rtol", "amendment_required"}
         and type(tolerance["amendment_required"]) is bool
-        and (schema_version == 2 or tolerance["amendment_required"] is True),
+        and (schema_version >= 2 or tolerance["amendment_required"] is True),
         "full-generator parity tolerance declaration is incomplete",
     )
     for key in ("atol", "rtol"):
@@ -333,6 +406,18 @@ def validate_protocol(protocol, matrix, *, matrix_sha256):
         and exact.get("cardinality") == "exact",
         "CPU-independent exact contracts are not frozen",
     )
+    if schema_version == 3:
+        _require(
+            protocol.get("backend_contract")
+            == {
+                "request_semantics": "expected-self-attention-coverage",
+                "flash_attention_3": "unsupported-fail-before-model-load",
+                "flash_attention_2": "required-for-all-routes",
+                "flex_attention": "declared-and-available-dispatched-only-when-derived",
+                "dispatch_derivation": "trusted-route-method-self-routing-and-schedules",
+            },
+            "R3 protocol v3 backend contract is missing or unexpected",
+        )
     return validate_matrix(matrix)
 
 
@@ -362,7 +447,7 @@ def execution_blockers(protocol):
         if value is None:
             blockers.append(f"runtime-declaration:{key}")
     executable_hook_states = {"implemented"}
-    if protocol["schema_version"] == 2:
+    if protocol["schema_version"] >= 2:
         executable_hook_states.add("implemented-source-hook-gpu-unvalidated")
     for key, value in protocol["runtime_hooks"].items():
         if value not in executable_hook_states:
@@ -394,7 +479,13 @@ def matrix_case_for_request(matrix, family, selection):
         if case["family"] == family and case["selection"] == selection
     ]
     _require(len(matches) == 1, "requested R3 settings do not identify exactly one matrix case")
-    return matches[0]
+    case = matches[0]
+    if matrix["schema_version"] == 3:
+        disposition = next(
+            item for item in matrix["lineage_cases"] if item["case_id"] == case["case_id"]
+        )
+        case = case | {"lineage_disposition": disposition}
+    return case
 
 
 def _tensor_finite(value):

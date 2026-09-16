@@ -15,13 +15,21 @@ from wan.configs.wan_i2v_14B import i2v_14B
 from debug_utils import unscale, write_video_soft_masks
 from utils import normalize_video_tensor
 
+from .experiment_pipeline import (
+    _read_json,
+    validate_r3_worker_task_binding,
+)
 from .generation_routes import generation_route, rank_zero_output, run_generator
 from .r3_contracts import (
     GENUINE_RUNTIME_EVIDENCE,
     build_worker_observation,
     write_immutable_json,
 )
-from .r3_runtime import R3RuntimeCollector, gather_rank_observations
+from .r3_preflight import validate_backend_runtime
+from .r3_runtime import (
+    R3RuntimeCollector,
+    gather_rank_observations,
+)
 from .task_contracts import (
     build_subject_indices,
     resolve_bool_schedule,
@@ -165,6 +173,48 @@ def save_outputs(video, extra_data, task, max_retries=5):
         write_immutable_json(task["r3_evidence"]["path"], record)
 
 
+def _observed_attention_runtime():
+    """Read helper state without accepting caller-supplied availability claims."""
+    from wan.modules import attention  # noqa: PLC0415
+
+    try:
+        from torch.nn.attention.flex_attention import flex_attention  # noqa: PLC0415
+    except ImportError:
+        flex_attention = None
+    flash_attn = getattr(attention, "flash_attn", None)
+    return {
+        "flash_attention_2_available": attention.FLASH_ATTN_2_AVAILABLE,
+        "flash_attention_3_available": attention.FLASH_ATTN_3_AVAILABLE,
+        "flash_attention_version": getattr(flash_attn, "__version__", None),
+        "flex_attention_available": callable(flex_attention),
+        "flex_attention_version": torch.__version__ if callable(flex_attention) else None,
+    }
+
+
+def _validate_r3_before_model_load(task, manifest_path):
+    evidence = task.get("r3_evidence")
+    task_has_v3_material = (
+        isinstance(evidence, dict)
+        and (
+            evidence.get("protocol_schema_version") == 3
+            or (
+                isinstance(evidence.get("requested"), dict)
+                and "dispatch_contract" in evidence["requested"]
+            )
+        )
+    )
+    if manifest_path is None:
+        if task_has_v3_material:
+            raise ValueError("R3 v3 worker requires its immutable manifest binding")
+        return
+    dispatch_contract = validate_r3_worker_task_binding(
+        task, _read_json(manifest_path)
+    )
+    if dispatch_contract is None:
+        return
+    validate_backend_runtime(dispatch_contract, _observed_attention_runtime())
+
+
 def _build_generator(task, *, local_rank, rank, t5_fsdp, dit_fsdp, t5_cpu):
     if generation_route(task) == "upstream":
         from wan.image2video import WanI2V  # noqa: PLC0415
@@ -187,6 +237,7 @@ def _build_generator(task, *, local_rank, rank, t5_fsdp, dit_fsdp, t5_cpu):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--task-file", required=True, type=Path)
+    parser.add_argument("--manifest-file", type=Path)
     parser.add_argument("--mode", choices=["fsdp", "solo"], required=True)
     parser.add_argument("--t5-cpu", action="store_true")
     args = parser.parse_args()
@@ -202,6 +253,8 @@ def main():
 
     with open(args.task_file, "rb") as f:
         task = pickle.load(f)
+    validate_worker_task(task)
+    _validate_r3_before_model_load(task, args.manifest_file)
 
     is_fsdp = args.mode == "fsdp"
     # If we are sharding, we only shard T5 if it's NOT on the CPU
@@ -241,7 +294,9 @@ def main():
             write_immutable_json(
                 source_path,
                 {
-                    "schema_version": 2,
+                    "schema_version": task["r3_evidence"].get(
+                        "protocol_schema_version", 2
+                    ),
                     "record_kind": "r3-source-hook-observations",
                     "evidence_class": GENUINE_RUNTIME_EVIDENCE,
                     "bindings": task["r3_evidence"]["bindings"],

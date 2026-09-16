@@ -185,3 +185,61 @@ failures prevent valid completed evidence and may terminate peers at collectives
 partial immutable artifacts are preserved.
 
 R3 stays **IN PROGRESS**, and actual difficulty remains pending.
+
+## V3 backend-compatibility preparation — 2026-09-16
+
+The Astra-approved, Sol-implemented CPU-only slice added lineage-bound v3
+preparation contracts without changing the frozen v1/v2 files. Their SHA-256
+values remain exactly those recorded above. V3 protocol SHA-256 is
+`91a34240c8a9d4d13caa0f6579de523f1d2ca3cb9c387cca17734c18fd2030f5`;
+v3 matrix SHA-256 is
+`e1776af152b3b0594c3af7497ffe95ec31db263fc9e3974bc9ea3c1d838fbd86`.
+The v3 matrix explicitly dispositions all 592 inherited cases: 404 are runnable
+only when their concrete route and schedules are compatible, and 188 are
+source-infeasible and rejected. All 13 invalid-input checks remain.
+
+CPU fixtures cover source-expansion rejection of impossible and concrete
+incompatible requests; mixed flex/FA2 schedules; negative-CFG FA2 routing;
+exact self-site counts, coordinates and versions; wrong sites, versions and
+all-flash masquerading as flex; schedule/config substitution; and the pre-model
+FA3/unavailable/version-mismatch guard. The unchanged seven-file suite passed
+**94 tests in 3.13 seconds**. V1, v2 and v3 preparation preflights passed; all
+three execution preflights rejected as expected. Syntax compilation and focused
+Ruff passed, including only the previously documented integration-file ignores.
+M1 validated the non-scientific smoke source and dry-ran 12 jobs without
+creating the output directory. Both repository whitespace checks passed.
+
+No GPU, SSH, checkpoint access/loading/download, generation, kernel execution,
+or environment/lock change occurred. The v3 template leaves approvals,
+checkpoint/hardware/runtime/backend identities, intended ranks and tolerances
+unpopulated. FA3 remains unsupported rather than being worked around, and no
+attention call/default was rewritten. Full-record/comparator acceptance remains
+out of scope and passed full-generator parity claims still fail closed. R3 stays
+**IN PROGRESS**, with its frozen estimate/models unchanged and actual difficulty
+pending.
+
+### Bounded Astra review and Sol correction
+
+Under the operator's updated routing policy, a read-only GPT-6 Astra subagent
+reviewed only the v3 trust boundary with an 18-tool, 28,000-token and 30-minute
+hard bound. It returned `BLOCK` with two P1 findings: a removable task schema
+marker could skip the pre-model v3 guard, and manifest inference could diverge
+from the hash-bound source while retaining the source configuration claim.
+
+The Sol main-agent fix derives v3 from the validated manifest independently of
+task markers; requires the v3 dispatch contract; reconstructs inference and the
+complete intervention from the hash-bound source; and binds exact case selection
+and expected rank/step/layer cardinalities. Added regressions reject discriminator
+removal, missing dispatch contracts, solver/case substitution and cardinality
+substitution. After the fix, the focused R3 suite passed **52 tests in 2.60
+seconds** and the seven-file suite passed **94 tests in 3.40 seconds**. Syntax,
+focused Ruff, all three preparation preflights, all three expected-blocked
+execution preflights, M1 validation/12-job no-output dry-run and whitespace
+checks passed. The v1/v2/v3 hashes above remained unchanged. Initial review:
+`/home/gzappavi/.pi/agent/sessions/--home-gzappavi-Documents-wan_experiments--/subagent-artifacts/outputs/e9410c24-c944-4861-af30-ffbab575eed2/r3-astra/v3-critical-review.md`.
+Because that reviewer was not retained, a fresh same-role Astra fallback rechecked
+only the two fixes and their immediate blast radius under a smaller 9-tool,
+11,000-token and 15-minute hard bound. It found both P1s resolved, no adjacent
+defect and returned `Merge verdict: OK`:
+`/home/gzappavi/.pi/agent/sessions/--home-gzappavi-Documents-wan_experiments--/subagent-artifacts/outputs/806e7684-05f1-4df8-8a74-f8aba318727a/r3-astra/v3-fix-followup.md`.
+No GPU, checkpoint or generation activity occurred.

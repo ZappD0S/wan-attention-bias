@@ -219,6 +219,46 @@ pending; no prior U1 values are adopted. Full-record/comparator integration and
 independent acceptance review remain required even after real GPU hook validation.
 No R3 completion or execution-readiness claim follows from this lead review.
 
+## Lineage-preserving v3 backend preparation — 2026-09-16
+
+The approved CPU-only compatibility slice is implemented in
+`r3_protocol_v3.json` and `r3_test_matrix_v3.json`. It preserves the byte-exact
+v1/v2 files and explicitly dispositions all 592 inherited cases: **404 runnable
+subject to concrete configuration validation** and **188 rejected** because the
+unmodified route can never provide the requested backend coverage. The 13
+invalid-input checks remain present. These dispositions are preparation
+inventory, not GPU passes or execution approval.
+
+V3 treats the backend request as expected self-attention coverage, not a kernel
+selector. Upstream, custom `none`, disabled self routing, inactive schedule
+coordinates, and every negative-CFG self call derive FlashAttention 2. A custom
+non-`none` conditional coordinate derives flex only when self routing and both
+schedule guards are active. A flex request therefore requires at least one real
+flex coordinate; an FA2 request requires no derived flex coordinate. Mixed flex
+and FA2 schedules are valid flex-coverage configurations. Expansion and the
+worker both bind the route, method, self-routing flag, full schedules, case and
+backend versions, and reject incompatible or substituted configurations before
+model loading. The worker derives the v3 requirement from the validated manifest
+rather than a removable task marker. Before producing or accepting the task, v3
+also reconstructs inference, intervention, case selection and expected
+cardinalities from the hash-bound source and requires exact equality.
+
+The opt-in v3 worker reads actual helper availability and versions. It fails
+closed before model construction if FA3 is available (because the unchanged
+helper would auto-select it), or if declared FA2/flex availability or versions
+do not match the actual helpers. Flex is dispatched only on derived flex routes. Runtime
+validation requires exactly one self dispatch per rank/step/CFG branch/block,
+including negative CFG, with the derived backend and declared version; wrong
+sites, duplicates, missing coordinates, or all-flash evidence for flex coverage
+fail. No call/default was rewritten to force a backend.
+
+The checked-in v3 protocol remains a preparation template: approvals,
+checkpoint identity, observed hardware/runtime/backend versions, intended rank
+count, and numerical tolerances are null or unapproved. Full-record/comparator
+acceptance is deliberately unchanged and passed `full_generator_parity` claims
+remain rejected pending separate integration and review. No R3 completion or
+execution-readiness claim follows.
+
 ## Safe CPU commands now
 
 ```bash

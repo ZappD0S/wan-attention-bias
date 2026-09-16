@@ -216,6 +216,123 @@ def _validate_cfg(records, expected_ranks, sampling_steps):
         raise ValueError("CFG output identities are missing or nonfinite")
 
 
+def build_self_attention_dispatch_contract(
+    *,
+    execution_route,
+    method,
+    self_attention_masking,
+    timestep_bias_schedule,
+    blocks_bias_schedule,
+    backend_versions,
+):
+    """Freeze the inputs that determine the unmodified self-attention route."""
+    if execution_route not in {"upstream", "custom"}:
+        raise ValueError("R3 dispatch execution route is unsupported")
+    if not isinstance(method, str) or not method:
+        raise ValueError("R3 dispatch method is missing")
+    if type(self_attention_masking) is not bool:
+        raise ValueError("R3 self-attention routing flag must be boolean")
+    for name, schedule in (
+        ("timestep_bias_schedule", timestep_bias_schedule),
+        ("blocks_bias_schedule", blocks_bias_schedule),
+    ):
+        if not isinstance(schedule, list) or not schedule or any(
+            type(value) is not bool for value in schedule
+        ):
+            raise ValueError(f"R3 {name} must be a nonempty boolean list")
+    if not isinstance(backend_versions, dict) or set(backend_versions) != {
+        "flash_attention_2",
+        "flex_attention",
+    }:
+        raise ValueError("R3 dispatch backend version declarations are incomplete")
+    if any(
+        value is not None and (not isinstance(value, str) or not value)
+        for value in backend_versions.values()
+    ):
+        raise ValueError("R3 dispatch backend version declaration is invalid")
+    return {
+        "execution_route": execution_route,
+        "method": method,
+        "self_attention_masking": self_attention_masking,
+        "timestep_bias_schedule": list(timestep_bias_schedule),
+        "blocks_bias_schedule": list(blocks_bias_schedule),
+        "backend_versions": dict(backend_versions),
+    }
+
+
+def expected_self_attention_backend(dispatch_contract, *, step, branch, block):
+    if branch not in {"conditional", "negative"}:
+        raise ValueError("R3 dispatch branch is unsupported")
+    if not 0 <= step < len(dispatch_contract["timestep_bias_schedule"]):
+        raise ValueError("R3 dispatch step is out of range")
+    if not 0 <= block < len(dispatch_contract["blocks_bias_schedule"]):
+        raise ValueError("R3 dispatch block is out of range")
+    uses_flex = (
+        dispatch_contract["execution_route"] == "custom"
+        and branch == "conditional"
+        and dispatch_contract["method"] != "none"
+        and dispatch_contract["self_attention_masking"]
+        and dispatch_contract["timestep_bias_schedule"][step]
+        and dispatch_contract["blocks_bias_schedule"][block]
+    )
+    return "flex_attention" if uses_flex else "flash_attention_2"
+
+
+def validate_backend_request(dispatch_contract, requested_backend):
+    if requested_backend not in {"flash_attention_2", "flex_attention"}:
+        raise ValueError("R3 requested attention backend is unsupported")
+    conditional_backends = {
+        expected_self_attention_backend(
+            dispatch_contract, step=step, branch="conditional", block=block
+        )
+        for step in range(len(dispatch_contract["timestep_bias_schedule"]))
+        for block in range(len(dispatch_contract["blocks_bias_schedule"]))
+    }
+    compatible = (
+        "flex_attention" in conditional_backends
+        if requested_backend == "flex_attention"
+        else "flex_attention" not in conditional_backends
+    )
+    if not compatible:
+        raise ValueError(
+            "requested attention coverage is incompatible with the concrete route and schedules"
+        )
+    return True
+
+
+def validate_worker_dispatch_binding(task):
+    """Reject task/config substitutions before an opt-in R3 model is loaded."""
+    evidence = task.get("r3_evidence")
+    if not isinstance(evidence, dict) or evidence.get("protocol_schema_version") != 3:
+        return True
+    requested = evidence.get("requested")
+    if not isinstance(requested, dict):
+        raise ValueError("R3 worker requested binding is missing")
+    config = task.get("config")
+    settings = task.get("inference_settings")
+    if not isinstance(config, dict) or not isinstance(settings, dict):
+        raise ValueError("R3 worker configuration is missing")
+    expected = build_self_attention_dispatch_contract(
+        execution_route=requested.get("execution_route"),
+        method=config.get("bias_method"),
+        self_attention_masking=config.get("self_attention_masking"),
+        timestep_bias_schedule=config.get("timestep_bias_schedule"),
+        blocks_bias_schedule=config.get("blocks_bias_schedule"),
+        backend_versions=requested.get("dispatch_contract", {}).get(
+            "backend_versions"
+        ),
+    )
+    if expected != requested.get("dispatch_contract"):
+        raise ValueError("R3 worker route or schedule differs from its immutable binding")
+    if len(expected["timestep_bias_schedule"]) != settings.get("sampling_steps"):
+        raise ValueError("R3 worker timestep schedule cardinality differs from inference settings")
+    expected_cardinality = evidence.get("expected", {})
+    if len(expected["blocks_bias_schedule"]) != expected_cardinality.get("num_layers"):
+        raise ValueError("R3 worker block schedule cardinality differs from expected layers")
+    validate_backend_request(expected, requested.get("attention_backend"))
+    return True
+
+
 def _dispatch_coordinates(expected_ranks, sampling_steps, num_layers):
     return {
         (rank, step, branch, block)
@@ -233,6 +350,7 @@ def _validate_dispatches(
     num_layers,
     requested_backend,
     expected_backend_version,
+    dispatch_contract,
 ):
     dispatches = [item for item in records if item.get("event") == "attention-dispatch"]
     expected = _dispatch_coordinates(expected_ranks, sampling_steps, num_layers)
@@ -264,29 +382,53 @@ def _validate_dispatches(
         raise ValueError(
             "self-attention dispatch coordinates are incomplete or duplicated"
         )
-    target_coordinates = {
-        (item["rank"], item["step"], item["block"])
-        for item in self_dispatches
-        if item["branch"] == "conditional"
-        and item["backend"] == requested_backend
-    }
-    expected_targets = {
-        (rank, step, block)
-        for rank in expected_ranks
-        for step in range(sampling_steps)
-        for block in range(num_layers)
-    }
-    if target_coordinates != expected_targets:
-        raise ValueError("requested attention backend was not actually dispatched at every rank/step/block")
-    if expected_backend_version is not None and any(
-        item["backend_version"] != expected_backend_version
-        for item in self_dispatches
-        if item["branch"] == "conditional"
-        and item["backend"] == requested_backend
-    ):
-        raise ValueError(
-            "requested attention backend version differs from the protocol declaration"
+    if dispatch_contract is None:
+        target_coordinates = {
+            (item["rank"], item["step"], item["block"])
+            for item in self_dispatches
+            if item["branch"] == "conditional"
+            and item["backend"] == requested_backend
+        }
+        expected_targets = {
+            (rank, step, block)
+            for rank in expected_ranks
+            for step in range(sampling_steps)
+            for block in range(num_layers)
+        }
+        if target_coordinates != expected_targets:
+            raise ValueError("requested attention backend was not actually dispatched at every rank/step/block")
+        if expected_backend_version is not None and any(
+            item["backend_version"] != expected_backend_version
+            for item in self_dispatches
+            if item["branch"] == "conditional"
+            and item["backend"] == requested_backend
+        ):
+            raise ValueError(
+                "requested attention backend version differs from the protocol declaration"
+            )
+        return
+
+    validate_backend_request(dispatch_contract, requested_backend)
+    versions = dispatch_contract["backend_versions"]
+    if any(not isinstance(value, str) or not value for value in versions.values()):
+        raise ValueError("R3 dispatch backend versions must be declared before validation")
+    for item in self_dispatches:
+        expected_backend = expected_self_attention_backend(
+            dispatch_contract,
+            step=item["step"],
+            branch=item["branch"],
+            block=item["block"],
         )
+        if item["backend"] != expected_backend:
+            raise ValueError("self-attention dispatch differs from the trusted route and schedule")
+        if item["backend_version"] != versions[expected_backend]:
+            raise ValueError("self-attention dispatch version differs from the protocol declaration")
+    if any(
+        item["backend"] not in versions
+        or item["backend_version"] != versions[item["backend"]]
+        for item in dispatches
+    ):
+        raise ValueError("attention dispatch backend or version is undeclared or mismatched")
 
 
 def _validate_trackers(records, expected, mask_configuration):
@@ -365,6 +507,7 @@ def validate_source_observations(
     expected_backend_version=None,
     require_masks=True,
     mask_configuration=None,
+    dispatch_contract=None,
 ):
     """Validate lifecycle and exact source coordinates without claiming GPU success."""
     cardinalities = (rank_count, sampling_steps, num_layers)
@@ -382,6 +525,14 @@ def validate_source_observations(
         raise ValueError("source-hook expected backend version is invalid")
     if type(expected_seed) is not int:
         raise ValueError("source-hook expected seed is invalid")
+    if dispatch_contract is not None:
+        rebuilt = build_self_attention_dispatch_contract(**dispatch_contract)
+        if rebuilt != dispatch_contract:
+            raise ValueError("source-hook dispatch contract is not canonical")
+        if len(dispatch_contract["timestep_bias_schedule"]) != sampling_steps or len(
+            dispatch_contract["blocks_bias_schedule"]
+        ) != num_layers:
+            raise ValueError("source-hook schedules differ from expected cardinalities")
 
     expected_ranks = set(range(rank_count))
     _validate_gathered_stream_order(records, expected_ranks)
@@ -394,6 +545,7 @@ def validate_source_observations(
         num_layers,
         requested_backend,
         expected_backend_version,
+        dispatch_contract,
     )
     if require_masks:
         expected_dispatches = _dispatch_coordinates(

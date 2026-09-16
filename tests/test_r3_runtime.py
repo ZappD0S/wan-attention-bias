@@ -13,8 +13,11 @@ from multi_sample_inference.r3_parity import (
     validate_parity_artifact,
     write_parity_tensor_artifact,
 )
+from multi_sample_inference.r3_preflight import validate_backend_runtime
 from multi_sample_inference.r3_runtime import (
     R3RuntimeCollector,
+    build_self_attention_dispatch_contract,
+    expected_self_attention_backend,
     gather_rank_observations,
 )
 from multi_sample_inference.r3_runtime import (
@@ -75,6 +78,165 @@ def _source_records(
             output_tensor=tensor if final_tensor is None else final_tensor,
         )
     return collector.snapshot()
+
+
+def _mixed_dispatch_records(contract):
+    hooks = _load_source_observer_module()
+    collector = R3RuntimeCollector()
+    tensor = np.ones((1, 2), dtype=np.float32)
+    with hooks.install_runtime_observer(collector, rank=0):
+        hooks.emit_runtime_observation(
+            "initial-latent", seed=101, latent_tensor=tensor
+        )
+        for step in range(len(contract["timestep_bias_schedule"])):
+            for branch in ("conditional", "negative"):
+                with hooks.runtime_observation_scope(step=step, branch=branch):
+                    hooks.emit_runtime_observation(
+                        "cfg-branch-output", output_tensor=tensor
+                    )
+                    for block in range(len(contract["blocks_bias_schedule"])):
+                        backend = expected_self_attention_backend(
+                            contract, step=step, branch=branch, block=block
+                        )
+                        with hooks.runtime_observation_scope(
+                            block=block, attention_site="self"
+                        ):
+                            hooks.emit_runtime_observation(
+                                "attention-dispatch",
+                                backend=backend,
+                                backend_version=contract["backend_versions"][backend],
+                            )
+                            hooks.emit_runtime_observation(
+                                "self-mask-consumer",
+                                used_mask_tensor=tensor,
+                                generated_mask_tensor=tensor,
+                            )
+                            hooks.emit_runtime_observation(
+                                "cross-mask-consumer", used_mask_tensor=tensor
+                            )
+        hooks.emit_runtime_observation("final-latent", output_tensor=tensor)
+    return collector.snapshot()
+
+
+def test_v3_mixed_dispatch_contract_enforces_route_negative_cfg_sites_and_versions():
+    contract = build_self_attention_dispatch_contract(
+        execution_route="custom",
+        method="regional_prompting",
+        self_attention_masking=True,
+        timestep_bias_schedule=[True, False],
+        blocks_bias_schedule=[True, False],
+        backend_versions={
+            "flash_attention_2": "test-fa2",
+            "flex_attention": "test-flex",
+        },
+    )
+    records = _mixed_dispatch_records(contract)
+    assert validate_source_observations(
+        records,
+        rank_count=1,
+        sampling_steps=2,
+        num_layers=2,
+        mask_configuration="fixed:fixed",
+        requested_backend="flex_attention",
+        dispatch_contract=contract,
+    )
+    self_dispatches = [
+        item
+        for item in records
+        if item.get("event") == "attention-dispatch"
+        and item.get("attention_site") == "self"
+    ]
+    assert len(self_dispatches) == 8
+    assert {
+        item["backend"] for item in self_dispatches if item["branch"] == "conditional"
+    } == {"flash_attention_2", "flex_attention"}
+    assert {
+        item["backend"] for item in self_dispatches if item["branch"] == "negative"
+    } == {"flash_attention_2"}
+
+    all_flash = copy.deepcopy(records)
+    for item in all_flash:
+        if item.get("event") == "attention-dispatch":
+            item["backend"] = "flash_attention_2"
+            item["backend_version"] = "test-fa2"
+    with pytest.raises(ValueError, match="trusted route and schedule"):
+        validate_source_observations(
+            all_flash,
+            rank_count=1,
+            sampling_steps=2,
+            num_layers=2,
+            mask_configuration="fixed:fixed",
+            requested_backend="flex_attention",
+            dispatch_contract=contract,
+        )
+
+    wrong_version = copy.deepcopy(records)
+    next(
+        item
+        for item in wrong_version
+        if item.get("event") == "attention-dispatch"
+        and item.get("backend") == "flex_attention"
+    )["backend_version"] = "wrong-flex"
+    with pytest.raises(ValueError, match="version differs"):
+        validate_source_observations(
+            wrong_version,
+            rank_count=1,
+            sampling_steps=2,
+            num_layers=2,
+            mask_configuration="fixed:fixed",
+            requested_backend="flex_attention",
+            dispatch_contract=contract,
+        )
+
+    wrong_site = copy.deepcopy(records)
+    next(
+        item
+        for item in wrong_site
+        if item.get("event") == "attention-dispatch"
+        and item.get("backend") == "flex_attention"
+    )["attention_site"] = "cross"
+    with pytest.raises(ValueError, match="self-attention dispatch coordinates"):
+        validate_source_observations(
+            wrong_site,
+            rank_count=1,
+            sampling_steps=2,
+            num_layers=2,
+            mask_configuration="fixed:fixed",
+            requested_backend="flex_attention",
+            dispatch_contract=contract,
+        )
+
+
+def test_v3_backend_runtime_guard_fails_closed_on_fa3_and_mismatches():
+    contract = build_self_attention_dispatch_contract(
+        execution_route="custom",
+        method="regional_prompting",
+        self_attention_masking=True,
+        timestep_bias_schedule=[True],
+        blocks_bias_schedule=[True],
+        backend_versions={
+            "flash_attention_2": "test-fa2",
+            "flex_attention": "test-flex",
+        },
+    )
+    observations = {
+        "flash_attention_2_available": True,
+        "flash_attention_3_available": False,
+        "flash_attention_version": "test-fa2",
+        "flex_attention_available": True,
+        "flex_attention_version": "test-flex",
+    }
+    assert validate_backend_runtime(contract, observations)
+    for key, value, message in (
+        ("flash_attention_3_available", True, "forbids FlashAttention 3"),
+        ("flash_attention_2_available", False, "requires available"),
+        ("flash_attention_version", "wrong", "version differs"),
+        ("flex_attention_available", False, "flex attention helper is unavailable"),
+        ("flex_attention_version", "wrong", "flex attention version differs"),
+    ):
+        changed = observations | {key: value}
+        with pytest.raises(RuntimeError, match=message):
+            validate_backend_runtime(contract, changed)
 
 
 def test_source_observer_is_noop_uninstalled_and_restores_lifecycle():

@@ -19,12 +19,15 @@ from multi_sample_inference.r3_contracts import (
     write_immutable_json,
 )
 from multi_sample_inference.r3_preflight import preflight
+from multi_sample_inference.r3_runtime import validate_worker_dispatch_binding
 
 ROOT = Path(__file__).parents[1]
 PROTOCOL = ROOT / "docs/r3_protocol.json"
 MATRIX = ROOT / "docs/r3_test_matrix.json"
 PROTOCOL_V2 = ROOT / "docs/r3_protocol_v2.json"
 MATRIX_V2 = ROOT / "docs/r3_test_matrix_v2.json"
+PROTOCOL_V3 = ROOT / "docs/r3_protocol_v3.json"
+MATRIX_V3 = ROOT / "docs/r3_test_matrix_v3.json"
 SOURCE = ROOT / "tests/fixtures/smoke_experiment.json"
 DIGEST = "a" * 64
 
@@ -201,6 +204,138 @@ def test_v2_template_preserves_v1_lineage_and_remains_execution_blocked():
     assert result["execution_ready"] is False
     with pytest.raises(RuntimeError, match="execution preflight blocked"):
         preflight(PROTOCOL_V2, MATRIX_V2, execution=True)
+
+
+def test_v3_preserves_frozen_lineage_with_explicit_case_dispositions():
+    assert hashlib.sha256(PROTOCOL.read_bytes()).hexdigest() == (
+        "1b45951b65fc757615dfb91c9e07859084457a2dba34c18a4f9c4e3f83f3488b"
+    )
+    assert hashlib.sha256(MATRIX.read_bytes()).hexdigest() == (
+        "381fd9c5829fbe405e17ec77da57a5c3b14e60c325e653571b4c4d3a4043b1a5"
+    )
+    assert hashlib.sha256(PROTOCOL_V2.read_bytes()).hexdigest() == (
+        "1adb1508be962d140070283a45dc092713e56b3b00029c406947d4989ee058b6"
+    )
+    assert hashlib.sha256(MATRIX_V2.read_bytes()).hexdigest() == (
+        "ecad41461cd43db148af70d91a798f2342263ceee073ce92d1ae8d12b90bc643"
+    )
+    bundle = load_protocol_bundle(PROTOCOL_V3, MATRIX_V3)
+    assert bundle["summary"] == {
+        "case_count": 592,
+        "invalid_check_count": 13,
+        "runnable_case_count": 404,
+        "rejected_case_count": 188,
+    }
+    dispositions = bundle["matrix"]["lineage_cases"]
+    assert len(dispositions) == len({item["case_id"] for item in dispositions}) == 592
+    assert all(item["reason"] for item in dispositions)
+    result = preflight(PROTOCOL_V3, MATRIX_V3)
+    assert result["execution_ready"] is False
+    with pytest.raises(RuntimeError, match="execution preflight blocked"):
+        preflight(PROTOCOL_V3, MATRIX_V3, execution=True)
+
+
+def test_v3_source_expansion_rejects_impossible_and_concrete_incompatible_requests(
+    tmp_path,
+):
+    source_path = _portable_r3_source(tmp_path)
+    source = json.loads(source_path.read_text())
+    source["conditions"] = [source["conditions"][0]]
+    source["r3_evidence"].update(
+        {
+            "protocol": str(PROTOCOL_V3),
+            "matrix": str(MATRIX_V3),
+            "attention_backend": "flex_attention",
+        }
+    )
+    source_path.write_text(json.dumps(source))
+    with pytest.raises(ValueError, match="matrix case is rejected"):
+        pipeline.expand_source(source_path, tmp_path / "impossible", write=False)
+
+    condition = source["conditions"][0]
+    condition.update(
+        {
+            "method": "regional_prompting",
+            "self_attention_masking": True,
+            "beta": 0.5,
+            "timestep_bias_schedule": [True, False],
+            "blocks_bias_schedule": [True] + [False] * 39,
+        }
+    )
+    source_path.write_text(json.dumps(source))
+    manifests = pipeline.expand_source(source_path, tmp_path / "mixed", write=False)
+    contract = manifests[0]["r3_evidence"]["dispatch_contract"]
+    assert contract["timestep_bias_schedule"] == [True, False]
+    assert contract["blocks_bias_schedule"] == [True] + [False] * 39
+    task = pipeline.worker_task_blueprint(manifests[0])
+    assert validate_worker_dispatch_binding(task)
+
+    source["r3_evidence"]["attention_backend"] = "flash_attention_2"
+    source_path.write_text(json.dumps(source))
+    with pytest.raises(ValueError, match="incompatible with the concrete route"):
+        pipeline.expand_source(source_path, tmp_path / "incompatible", write=False)
+
+
+def test_v3_worker_binding_rejects_schedule_and_config_tampering(tmp_path):
+    source_path = _portable_r3_source(tmp_path)
+    source = json.loads(source_path.read_text())
+    condition = source["conditions"][0]
+    condition.update(
+        {
+            "method": "regional_prompting",
+            "self_attention_masking": True,
+            "beta": 0.5,
+            "timestep_bias_schedule": [True, False],
+            "blocks_bias_schedule": [True] + [False] * 39,
+        }
+    )
+    source["conditions"] = [condition]
+    source["r3_evidence"].update(
+        {
+            "protocol": str(PROTOCOL_V3),
+            "matrix": str(MATRIX_V3),
+            "attention_backend": "flex_attention",
+        }
+    )
+    source_path.write_text(json.dumps(source))
+    manifest = pipeline.expand_source(source_path, tmp_path / "run", write=False)[0]
+    task = pipeline.worker_task_blueprint(manifest)
+    task["config"]["blocks_bias_schedule"][0] = False
+    with pytest.raises(ValueError, match="route or schedule differs"):
+        validate_worker_dispatch_binding(task)
+    task = pipeline.worker_task_blueprint(manifest)
+    task["config"]["bias_method"] = "none"
+    with pytest.raises(ValueError, match="route or schedule differs"):
+        validate_worker_dispatch_binding(task)
+
+    downgraded_task = pipeline.worker_task_blueprint(manifest)
+    downgraded_task["r3_evidence"].pop("protocol_schema_version")
+    with pytest.raises(ValueError, match="discriminator is missing or downgraded"):
+        pipeline.validate_r3_worker_task_binding(downgraded_task, manifest)
+
+    missing_dispatch = copy.deepcopy(manifest)
+    missing_dispatch["r3_evidence"].pop("dispatch_contract")
+    with pytest.raises(ValueError, match="dispatch contract is missing"):
+        pipeline.worker_task_blueprint(missing_dispatch)
+
+    substituted_solver = copy.deepcopy(manifest)
+    substituted_solver["inference"]["solver"] = "dpm++"
+    with pytest.raises(ValueError, match="inference differs from its source"):
+        pipeline.worker_task_blueprint(substituted_solver)
+
+    substituted_case = copy.deepcopy(manifest)
+    substituted_case["r3_evidence"]["case"]["selection"]["solver"] = "dpm++"
+    with pytest.raises(ValueError, match="case selection differs from its source"):
+        pipeline.worker_task_blueprint(substituted_case)
+
+    substituted_cardinality = copy.deepcopy(manifest)
+    substituted_cardinality["r3_evidence"]["expected"]["sampling_steps"] += 1
+    with pytest.raises(ValueError, match="expected cardinalities differ"):
+        pipeline.worker_task_blueprint(substituted_cardinality)
+
+    manifest["intervention"]["timestep_bias_schedule"][0] = False
+    with pytest.raises(ValueError, match=r"intervention differs|route or schedule"):
+        pipeline.worker_task_blueprint(manifest)
 
 
 def test_amended_v2_can_authorize_contract_validation_before_evidence_acceptance(
