@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "protocol_id": "r3-gpu-contracts-v1",
+  "status": "in-progress",
+  "frozen_at": "2026-09-15",
+  "claim_boundary": "CPU preparation only. No GPU, checkpoint, generator, scheduler, attention-kernel, or distributed result is recorded by this file.",
+  "matrix": {
+    "path": "docs/r3_test_matrix.json",
+    "matrix_id": "r3-gpu-contract-matrix-v1",
+    "sha256": "381fd9c5829fbe405e17ec77da57a5c3b14e60c325e653571b4c4d3a4043b1a5"
+  },
+  "approvals": {
+    "gpu_execution": "required-not-approved",
+    "hardware_environment": "required-not-approved"
+  },
+  "runtime_hooks": {
+    "initial_latent_all_rank": "required-not-implemented",
+    "all_rank_masks_and_self_cross": "required-not-implemented",
+    "cfg_branch_outputs": "required-not-implemented",
+    "actual_attention_backend": "required-not-implemented",
+    "fixed_tracker_call_count": "required-not-implemented",
+    "full_generator_parity": "required-not-implemented"
+  },
+  "runtime_declarations": {
+    "checkpoint_content_sha256": null,
+    "hardware_identifier": null,
+    "torch_version": null,
+    "cuda_version": null,
+    "flash_attention_version": null,
+    "flex_attention_version": null,
+    "intended_fsdp_rank_count": null
+  },
+  "numerical_tolerances": {
+    "full_generator_parity": {
+      "atol": null,
+      "rtol": null,
+      "amendment_required": true
+    }
+  },
+  "exact_contracts": {
+    "rank_initial_latent_hashes": "exact-equality",
+    "mask_identity_hashes": "exact-equality",
+    "finiteness": "all-values-finite",
+    "cardinality": "exact"
+  },
+  "execution_state": {
+    "cpu_schema_and_preflight": "passed-cpu-only",
+    "checkpoint_bound_gpu_runtime": "not-run",
+    "flash_attention_2": "not-run",
+    "flex_attention": "not-run",
+    "single_rank": "not-run",
+    "intended_fsdp_ranks": "not-run",
+    "full_generator_parity": "not-run"
+  },
+  "amendment_rule": "Before any execution, create a new versioned protocol that declares approvals, exact checkpoint/environment/backend versions, intended FSDP rank count, and full-generator parity tolerances. Do not edit a runtime record after execution."
+}

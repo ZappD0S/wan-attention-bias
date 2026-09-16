@@ -21,6 +21,15 @@ import uuid
 from pathlib import Path
 
 from .generation_routes import UPSTREAM_FRAME_NUM
+from .r3_contracts import (
+    GENUINE_RUNTIME_EVIDENCE,
+    execution_blockers,
+    load_protocol_bundle,
+    matrix_case_for_request,
+    sha256_file,
+    validate_worker_observation,
+)
+from .r3_runtime import validate_source_observations
 
 SCHEMA_VERSION = 1
 METHODS = {"upstream", "none", "regional_prompting", "concept_weaver", "ediff-i"}
@@ -165,6 +174,63 @@ def repository_identity(repo):
     return {"revision": revision, "dirty": True, "dirty_fingerprint": digest.hexdigest()}
 
 
+def _r3_source_contract(source, source_path):
+    if "r3_evidence" not in source:
+        return None
+    declaration = source["r3_evidence"]
+    required = {"protocol", "matrix", "attention_backend", "rank_mode"}
+    _require(
+        isinstance(declaration, dict)
+        and frozenset(declaration)
+        in {frozenset(required), frozenset(required | {"parity_pair"})},
+        "r3_evidence must declare protocol, matrix, attention_backend, and rank_mode",
+    )
+    protocol_path = _resolve_file(source_path, declaration["protocol"], "r3_evidence.protocol")
+    matrix_path = _resolve_file(source_path, declaration["matrix"], "r3_evidence.matrix")
+    bundle = load_protocol_bundle(protocol_path, matrix_path)
+    _require(
+        declaration["attention_backend"] in {"flash_attention_2", "flex_attention"},
+        "r3_evidence.attention_backend is unsupported",
+    )
+    rank_mode = declaration["rank_mode"]
+    rank_count = source.get("inference", {}).get("rank_count")
+    if rank_mode == "single":
+        _require(rank_count == 1, "R3 single rank_mode requires inference.rank_count=1")
+    elif rank_mode == "intended_fsdp":
+        intended = bundle["protocol"]["runtime_declarations"]["intended_fsdp_rank_count"]
+        _require(intended is not None, "R3 intended FSDP rank count is undeclared and blocks execution")
+        _require(rank_count == intended, "inference.rank_count differs from the frozen intended FSDP rank count")
+    else:
+        raise ValueError("r3_evidence.rank_mode must be single or intended_fsdp")
+    parity_pair = declaration.get("parity_pair")
+    if "parity_pair" in declaration:
+        _require(
+            bundle["protocol"]["schema_version"] == 2
+            and isinstance(parity_pair, dict)
+            and set(parity_pair)
+            == {"pair_id", "upstream_condition_id", "custom_none_condition_id"}
+            and isinstance(parity_pair["pair_id"], str)
+            and parity_pair["pair_id"],
+            "R3 parity_pair requires a valid v2 declaration",
+        )
+        conditions = {item["id"]: item for item in source.get("conditions", [])}
+        upstream = conditions.get(parity_pair["upstream_condition_id"])
+        custom = conditions.get(parity_pair["custom_none_condition_id"])
+        _require(
+            isinstance(upstream, dict)
+            and upstream.get("method") == "upstream"
+            and isinstance(custom, dict)
+            and custom.get("method") == "none"
+            and upstream["id"] != custom["id"],
+            "R3 parity_pair must identify distinct upstream and custom-none conditions",
+        )
+    return bundle | {
+        "attention_backend": declaration["attention_backend"],
+        "rank_mode": rank_mode,
+        "parity_pair": parity_pair,
+    }
+
+
 def _validate_source(source, source_path):
     _require(source.get("schema_version") == SCHEMA_VERSION, "unsupported source schema_version")
     _require(isinstance(source.get("experiment_id"), str) and source["experiment_id"], "experiment_id is required")
@@ -230,6 +296,7 @@ def _validate_source(source, source_path):
     _require(scenes, "at least one scene is required")
     scene_ids = [item.get("id") for item in scenes]
     _require(len(scene_ids) == len(set(scene_ids)) and all(scene_ids), "scene IDs must be nonempty and unique")
+    _r3_source_contract(source, source_path)
     for scene in scenes:
         actors = scene.get("actors", [])
         _require(len(actors) >= 2, f"scene {scene.get('id')} requires at least two actors")
@@ -293,6 +360,30 @@ def expand_source(source_path, output_dir, write=True):
     # Validation already checked every checkpoint file against the approved inventory.
     checkpoint = checkpoint_identity(source_path, source["checkpoint"], verify_contents=False)
     inference = source["inference"]
+    r3_contract = _r3_source_contract(source, source_path)
+    r3_environment_sha256 = None
+    if r3_contract is not None:
+        declarations = r3_contract["protocol"]["runtime_declarations"]
+        declared_checkpoint = declarations["checkpoint_content_sha256"]
+        _require(
+            declared_checkpoint is None
+            or declared_checkpoint == checkpoint["content_sha256"],
+            "R3 protocol checkpoint declaration differs from the source checkpoint",
+        )
+        backend_key = (
+            "flash_attention_version"
+            if r3_contract["attention_backend"] == "flash_attention_2"
+            else "flex_attention_version"
+        )
+        environment = {
+            "hardware_identifier": declarations["hardware_identifier"],
+            "torch_version": declarations["torch_version"],
+            "cuda_version": declarations["cuda_version"],
+            "attention_backend": r3_contract["attention_backend"],
+            "backend_version": declarations[backend_key],
+        }
+        if all(value is not None for value in environment.values()):
+            r3_environment_sha256 = _hash_bytes(_canonical(environment))
     manifests = []
     # Assignments belong to each scene, so the Cartesian product is per scene.
     for scene in source["scenes"]:
@@ -381,6 +472,72 @@ def expand_source(source_path, output_dir, write=True):
                     "result_path": str(output_dir / "results" / f"{job_id}.json"),
                 },
             }
+            if r3_contract is not None:
+                if condition["method"] == "upstream":
+                    family = "upstream-generator"
+                    selection = {
+                        "solver": inference["solver"],
+                        "attention_backend": r3_contract["attention_backend"],
+                        "rank_mode": r3_contract["rank_mode"],
+                    }
+                else:
+                    family = "custom-generator"
+                    selection = {
+                        "method": condition["method"],
+                        "mask_configuration": f"{condition['mask_type']}:{condition['mask_source']}",
+                        "mask_sharing": condition["mask_sharing"],
+                        "self_attention_masking": condition["self_attention_masking"],
+                        "solver": inference["solver"],
+                        "attention_backend": r3_contract["attention_backend"],
+                        "rank_mode": r3_contract["rank_mode"],
+                    }
+                case = matrix_case_for_request(r3_contract["matrix"], family, selection)
+                observation_path = None
+                if condition["method"] != "upstream":
+                    observation_path = str(
+                        output_base / "r3-rank-zero-worker-observation.json"
+                    )
+                    manifest["outputs"]["r3_worker_observation_path"] = observation_path
+                if r3_contract["protocol"]["schema_version"] == 2:
+                    manifest["outputs"]["r3_source_observation_path"] = str(
+                        output_base / "r3-source-observations.json"
+                    )
+                manifest["r3_evidence"] = {
+                    "protocol": {
+                        "path": str(r3_contract["protocol_path"]),
+                        "sha256": r3_contract["protocol_sha256"],
+                    },
+                    "matrix": {
+                        "path": str(r3_contract["matrix_path"]),
+                        "sha256": r3_contract["matrix_sha256"],
+                    },
+                    "case": case,
+                    "worker_observation_required": observation_path is not None,
+                    "declared_environment_sha256": r3_environment_sha256,
+                    "expected": {
+                        "rank_count": inference["rank_count"],
+                        "sampling_steps": inference["sampling_steps"],
+                        "num_layers": inference["num_layers"],
+                    },
+                }
+                parity_pair = r3_contract["parity_pair"]
+                if parity_pair is not None and condition["id"] in {
+                    parity_pair["upstream_condition_id"],
+                    parity_pair["custom_none_condition_id"],
+                }:
+                    route = (
+                        "upstream"
+                        if condition["id"] == parity_pair["upstream_condition_id"]
+                        else "custom-none"
+                    )
+                    parity_path = str(output_base / f"r3-parity-{route}.npy")
+                    manifest["outputs"]["r3_parity_tensor_path"] = parity_path
+                    manifest["r3_evidence"]["parity_artifact"] = {
+                        "pair_id": parity_pair["pair_id"],
+                        "route": route,
+                        "path": parity_path,
+                        "metadata_path": parity_path + ".json",
+                    }
             manifests.append(manifest)
     if write:
         for manifest in manifests:
@@ -445,7 +602,7 @@ def verify_job_inputs(manifest):
 
 def worker_task_blueprint(manifest):
     """Return the exact path/scalar portion consumed by manifest_adapter/worker."""
-    return {
+    task = {
         "prompt_sentences": manifest["prompts"]["sentences"],
         "prompt_representation": manifest["prompts"].get("representation"),
         "negative_prompt": manifest["inference"].get("negative_prompt"),
@@ -476,6 +633,70 @@ def worker_task_blueprint(manifest):
             "blocks_bias_schedule": manifest["intervention"]["blocks_bias_schedule"],
         },
     }
+    if "r3_evidence" in manifest:
+        r3 = manifest["r3_evidence"]
+        task["r3_evidence"] = {
+            "path": manifest["outputs"].get("r3_worker_observation_path"),
+            "bindings": {
+                "protocol_sha256": r3["protocol"]["sha256"],
+                "matrix_sha256": r3["matrix"]["sha256"],
+                "manifest_sha256": _manifest_hash(manifest),
+                "checkpoint_content_sha256": manifest["checkpoint"]["content_sha256"],
+                "source_sha256": manifest["source"]["sha256"],
+                "config_sha256": manifest["config_sha256"],
+            },
+            "case_id": r3["case"]["case_id"],
+            "expected": r3["expected"],
+            "requested": {
+                **r3["case"]["selection"],
+                "diffusion_seed": manifest["video_seed"]["value"],
+                "cfg": manifest["inference"]["cfg"],
+                "execution_route": "upstream"
+                if manifest["intervention"]["method"] == "upstream"
+                else "custom",
+            },
+        }
+        if "r3_source_observation_path" in manifest["outputs"]:
+            task["r3_evidence"]["source_observation_path"] = manifest["outputs"][
+                "r3_source_observation_path"
+            ]
+        parity = r3.get("parity_artifact")
+        if parity is not None:
+            route_source_sha256 = _hash_bytes(
+                _canonical(
+                    {
+                        "route": parity["route"],
+                        "wan_repository": manifest["repositories"]["wan"],
+                    }
+                )
+            )
+            task["r3_evidence"]["parity_artifact"] = parity | {
+                "job_id": manifest["job_id"],
+                "evidence_class": GENUINE_RUNTIME_EVIDENCE,
+                "bindings": {
+                    "input_sha256": _hash_bytes(
+                        _canonical(
+                            {
+                                "prompts": manifest["prompts"],
+                                "assets": manifest["assets"],
+                                "video_seed": manifest["video_seed"],
+                            }
+                        )
+                    ),
+                    "checkpoint_content_sha256": manifest["checkpoint"][
+                        "content_sha256"
+                    ],
+                    "source_sha256": manifest["source"]["sha256"],
+                    "environment_sha256": r3["declared_environment_sha256"],
+                    "diffusion_seed": manifest["video_seed"]["value"],
+                    "inference_settings_sha256": _hash_bytes(
+                        _canonical(manifest["inference"])
+                    ),
+                    "config_sha256": manifest["config_sha256"],
+                    "route_source_sha256": route_source_sha256,
+                },
+            }
+    return task
 
 
 def _append_status(path, event):
@@ -497,6 +718,105 @@ def _events(path):
         return [json.loads(line) for line in handle if line.strip()]
 
 
+def _verify_declared_r3_worker_evidence(manifest):
+    r3 = manifest.get("r3_evidence")
+    if r3 is None:
+        return None
+    _require(
+        r3.get("worker_observation_required") in {True, False},
+        "R3 worker evidence declaration is invalid",
+    )
+    for key in ("protocol", "matrix"):
+        declared = r3[key]
+        _require(
+            Path(declared["path"]).is_file() and sha256_file(declared["path"]) == declared["sha256"],
+            f"declared R3 {key} changed or is missing",
+        )
+    bundle = load_protocol_bundle(r3["protocol"]["path"], r3["matrix"]["path"])
+    _require(
+        bundle["protocol_sha256"] == r3["protocol"]["sha256"]
+        and bundle["matrix_sha256"] == r3["matrix"]["sha256"],
+        "declared R3 protocol or matrix identity changed",
+    )
+    binding = worker_task_blueprint(manifest)["r3_evidence"]
+    evidence = {"r3_acceptance": False}
+    if r3["worker_observation_required"]:
+        path = Path(manifest["outputs"]["r3_worker_observation_path"])
+        _require(path.is_file(), "declared R3 worker observation is missing")
+        record = _read_json(path)
+        validate_worker_observation(record, binding)
+        evidence["worker_observation"] = {
+            "path": str(path),
+            "sha256": _hash_file(path),
+            "record_kind": record["record_kind"],
+        }
+    source_path = manifest["outputs"].get("r3_source_observation_path")
+    if source_path is not None:
+        _require(Path(source_path).is_file(), "declared R3 source observations are missing")
+        source_record = _read_json(source_path)
+        _require(
+            set(source_record)
+            == {
+                "schema_version",
+                "record_kind",
+                "evidence_class",
+                "bindings",
+                "case_id",
+                "expected",
+                "requested",
+                "observations",
+                "r3_acceptance",
+            }
+            and source_record.get("schema_version") == 2
+            and source_record.get("record_kind") == "r3-source-hook-observations"
+            and source_record.get("evidence_class") == GENUINE_RUNTIME_EVIDENCE
+            and source_record.get("bindings") == binding["bindings"]
+            and source_record.get("case_id") == binding["case_id"]
+            and source_record.get("expected") == binding["expected"]
+            and source_record.get("requested") == binding["requested"]
+            and source_record.get("r3_acceptance") is False,
+            "declared R3 source observations differ from the job binding",
+        )
+        backend_key = (
+            "flash_attention_version"
+            if binding["requested"]["attention_backend"] == "flash_attention_2"
+            else "flex_attention_version"
+        )
+        validate_source_observations(
+            source_record.get("observations"),
+            rank_count=binding["expected"]["rank_count"],
+            sampling_steps=binding["expected"]["sampling_steps"],
+            num_layers=binding["expected"]["num_layers"],
+            require_masks=binding["requested"]["execution_route"] == "custom",
+            mask_configuration=binding["requested"].get("mask_configuration"),
+            requested_backend=binding["requested"]["attention_backend"],
+            expected_backend_version=bundle["protocol"]["runtime_declarations"][
+                backend_key
+            ],
+            expected_seed=binding["requested"]["diffusion_seed"],
+        )
+        evidence["source_observations"] = {
+            "path": source_path,
+            "sha256": _hash_file(source_path),
+            "record_kind": source_record.get("record_kind"),
+        }
+    parity = r3.get("parity_artifact")
+    if parity is not None:
+        from .r3_parity import validate_parity_artifact  # noqa: PLC0415
+
+        declaration = binding.get("parity_artifact")
+        _require(declaration is not None, "trusted R3 parity declaration is missing")
+        metadata, _array = validate_parity_artifact(declaration)
+        parity_path = Path(declaration["path"])
+        metadata_path = Path(declaration["metadata_path"])
+        evidence["parity_artifact"] = {
+            "path": str(parity_path),
+            "sha256": metadata["artifact_sha256"],
+            "metadata_sha256": _hash_file(metadata_path),
+        }
+    return evidence
+
+
 def job_status(manifest):
     events = _events(manifest["outputs"]["status_path"])
     result_path = Path(manifest["outputs"]["result_path"])
@@ -505,9 +825,31 @@ def job_status(manifest):
     if state == "completed":
         if not result_path.is_file() or not video_path.is_file() or video_path.stat().st_size == 0:
             return "invalid-completed"
+        completed_event = events[-1]
         result = _read_json(result_path)
-        if result.get("manifest_sha256") != _manifest_hash(manifest) or result.get("video_sha256") != _hash_file(video_path):
+        manifest_sha256 = _manifest_hash(manifest)
+        video_sha256 = _hash_file(video_path)
+        if (
+            result.get("schema_version") != SCHEMA_VERSION
+            or result.get("state") != "completed"
+            or result.get("job_id") != manifest["job_id"]
+            or result.get("manifest_sha256") != manifest_sha256
+            or result.get("video_path") != str(video_path)
+            or result.get("video_sha256") != video_sha256
+            or completed_event.get("schema_version") != SCHEMA_VERSION
+            or completed_event.get("job_id") != manifest["job_id"]
+            or completed_event.get("manifest_sha256") != manifest_sha256
+            or completed_event.get("attempt_id") != result.get("attempt_id")
+            or completed_event.get("video_sha256") != video_sha256
+        ):
             return "invalid-completed"
+        if "r3_evidence" in manifest:
+            try:
+                evidence = _verify_declared_r3_worker_evidence(manifest)
+            except (KeyError, OSError, TypeError, ValueError):
+                return "invalid-completed"
+            if result.get("r3_worker_observation") != evidence:
+                return "invalid-completed"
     return state
 
 
@@ -530,6 +872,24 @@ def execute_job(manifest_path, t5_cpu=False, devices=None, command_factory=None)
     manifest = _read_json(manifest_path)
     _require(not manifest.get("smoke_only"), "NON-SCIENTIFIC smoke fixtures cannot be run")
     verify_job_inputs(manifest)
+    if "r3_evidence" in manifest:
+        r3 = manifest["r3_evidence"]
+        bundle = load_protocol_bundle(r3["protocol"]["path"], r3["matrix"]["path"])
+        _require(
+            bundle["protocol_sha256"] == r3["protocol"]["sha256"]
+            and bundle["matrix_sha256"] == r3["matrix"]["sha256"],
+            "declared R3 protocol or matrix identity changed",
+        )
+        declared_checkpoint = bundle["protocol"]["runtime_declarations"][
+            "checkpoint_content_sha256"
+        ]
+        _require(
+            declared_checkpoint is None
+            or declared_checkpoint == manifest["checkpoint"]["content_sha256"],
+            "R3 protocol checkpoint declaration differs from the manifest checkpoint",
+        )
+        blockers = execution_blockers(bundle["protocol"])
+        _require(not blockers, "R3 execution preflight blocked: " + ", ".join(blockers))
     if job_status(manifest) == "completed":
         return "skipped-completed"
     lock_path = Path(manifest["outputs"]["status_path"] + ".lock")
@@ -567,7 +927,10 @@ def _execute_job_locked(manifest_path, manifest, t5_cpu, devices, command_factor
         for command in commands:
             subprocess.run(command, check=True, cwd=Path(__file__).resolve().parents[1], env=env)
         _require(video_path.is_file() and video_path.stat().st_size > 0, "worker exited successfully without a nonempty declared video")
+        r3_evidence = _verify_declared_r3_worker_evidence(manifest)
         result = base | {"state": "completed", "video_path": str(video_path), "video_sha256": _hash_file(video_path)}
+        if r3_evidence is not None:
+            result["r3_worker_observation"] = r3_evidence
         _write_immutable(result_path, _canonical(result))
         _append_status(manifest["outputs"]["status_path"], base | {"state": "completed", "timestamp": now(), "video_sha256": result["video_sha256"]})
         return "completed"

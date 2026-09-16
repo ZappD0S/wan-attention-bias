@@ -16,6 +16,12 @@ from debug_utils import unscale, write_video_soft_masks
 from utils import normalize_video_tensor
 
 from .generation_routes import generation_route, rank_zero_output, run_generator
+from .r3_contracts import (
+    GENUINE_RUNTIME_EVIDENCE,
+    build_worker_observation,
+    write_immutable_json,
+)
+from .r3_runtime import R3RuntimeCollector, gather_rank_observations
 from .task_contracts import (
     build_subject_indices,
     resolve_bool_schedule,
@@ -150,6 +156,14 @@ def save_outputs(video, extra_data, task, max_retries=5):
                     16,
                 )
 
+    if "r3_evidence" in task and task["r3_evidence"]["path"] is not None:
+        record = build_worker_observation(
+            task["r3_evidence"],
+            extra_data,
+            observed_rank=dist.get_rank(),
+        )
+        write_immutable_json(task["r3_evidence"]["path"], record)
+
 
 def _build_generator(task, *, local_rank, rank, t5_fsdp, dit_fsdp, t5_cpu):
     if generation_route(task) == "upstream":
@@ -202,11 +216,48 @@ def main():
         t5_cpu=args.t5_cpu,
     )
 
-    outputs = run_inference(wan_i2v, task)
+    collector = None
+    if "r3_evidence" in task:
+        from wan.utils.runtime_evidence import install_runtime_observer  # noqa: PLC0415
+
+        collector = R3RuntimeCollector(
+            parity_artifact=task["r3_evidence"].get("parity_artifact")
+        )
+        with install_runtime_observer(collector, rank=dist.get_rank()):
+            outputs = run_inference(wan_i2v, task)
+        gathered = gather_rank_observations(
+            collector.snapshot(),
+            rank=dist.get_rank(),
+            world_size=dist.get_world_size(),
+            gather_object=dist.gather_object,
+        )
+    else:
+        outputs = run_inference(wan_i2v, task)
+        gathered = None
+
+    if gathered is not None and dist.get_rank() == 0:
+        source_path = task["r3_evidence"].get("source_observation_path")
+        if source_path is not None:
+            write_immutable_json(
+                source_path,
+                {
+                    "schema_version": 2,
+                    "record_kind": "r3-source-hook-observations",
+                    "evidence_class": GENUINE_RUNTIME_EVIDENCE,
+                    "bindings": task["r3_evidence"]["bindings"],
+                    "case_id": task["r3_evidence"]["case_id"],
+                    "expected": task["r3_evidence"]["expected"],
+                    "requested": task["r3_evidence"]["requested"],
+                    "observations": gathered,
+                    "r3_acceptance": False,
+                },
+            )
 
     output = rank_zero_output(outputs, dist.get_rank())
     if output is not None:
         video, extra_data = output
+        if gathered is not None:
+            extra_data["r3_source_observations"] = gathered
         save_outputs(video, extra_data, task)
 
     dist.destroy_process_group()

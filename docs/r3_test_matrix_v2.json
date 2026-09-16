@@ -1,0 +1,226 @@
+{
+  "schema_version": 2,
+  "matrix_id": "r3-gpu-contract-matrix-v2",
+  "claim_boundary": "Unapproved future checkpoint-bound GPU coverage with CPU-testable source-hook and paired-artifact schema; enumeration and CPU fixtures are not execution evidence.",
+  "families": [
+    {
+      "id": "custom-generator",
+      "axes": [
+        {
+          "name": "method",
+          "values": [
+            "none",
+            "regional_prompting",
+            "concept_weaver",
+            "ediff-i"
+          ]
+        },
+        {
+          "name": "mask_configuration",
+          "values": [
+            "fixed:fixed",
+            "hard:dynamic",
+            "soft:dynamic"
+          ]
+        },
+        {
+          "name": "mask_sharing",
+          "values": [
+            "current",
+            "first",
+            "previous_generated"
+          ]
+        },
+        {
+          "name": "self_attention_masking",
+          "values": [
+            false,
+            true
+          ]
+        },
+        {
+          "name": "solver",
+          "values": [
+            "unipc",
+            "dpm++"
+          ]
+        },
+        {
+          "name": "attention_backend",
+          "values": [
+            "flash_attention_2",
+            "flex_attention"
+          ]
+        },
+        {
+          "name": "rank_mode",
+          "values": [
+            "single",
+            "intended_fsdp"
+          ]
+        }
+      ],
+      "required_observations": [
+        "environment_binding",
+        "checkpoint_binding",
+        "full_generator_all_blocks",
+        "conditional_cfg_branch",
+        "negative_cfg_branch",
+        "solver_execution",
+        "attention_backend_execution",
+        "initial_latent_rank_identity",
+        "used_generated_mask_identity",
+        "self_cross_used_mask_identity",
+        "rank_mask_identity",
+        "finiteness",
+        "early_rejection"
+      ],
+      "conditional_observations": [
+        {
+          "axis": "mask_configuration",
+          "values": [
+            "fixed:fixed"
+          ],
+          "observations": [
+            "fixed_mask_no_tracker"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "upstream-generator",
+      "axes": [
+        {
+          "name": "solver",
+          "values": [
+            "unipc",
+            "dpm++"
+          ]
+        },
+        {
+          "name": "attention_backend",
+          "values": [
+            "flash_attention_2",
+            "flex_attention"
+          ]
+        },
+        {
+          "name": "rank_mode",
+          "values": [
+            "single",
+            "intended_fsdp"
+          ]
+        }
+      ],
+      "required_observations": [
+        "environment_binding",
+        "checkpoint_binding",
+        "full_generator_all_blocks",
+        "conditional_cfg_branch",
+        "negative_cfg_branch",
+        "solver_execution",
+        "attention_backend_execution",
+        "initial_latent_rank_identity",
+        "finiteness",
+        "early_rejection"
+      ]
+    },
+    {
+      "id": "upstream-custom-none-parity",
+      "axes": [
+        {
+          "name": "solver",
+          "values": [
+            "unipc",
+            "dpm++"
+          ]
+        },
+        {
+          "name": "attention_backend",
+          "values": [
+            "flash_attention_2",
+            "flex_attention"
+          ]
+        },
+        {
+          "name": "rank_mode",
+          "values": [
+            "single",
+            "intended_fsdp"
+          ]
+        }
+      ],
+      "required_observations": [
+        "environment_binding",
+        "checkpoint_binding",
+        "full_generator_all_blocks",
+        "conditional_cfg_branch",
+        "negative_cfg_branch",
+        "solver_execution",
+        "attention_backend_execution",
+        "initial_latent_rank_identity",
+        "finiteness",
+        "early_rejection",
+        "full_generator_parity"
+      ]
+    }
+  ],
+  "invalid_input_checks": [
+    {
+      "id": "invalid-batch",
+      "expected": "reject-before-output"
+    },
+    {
+      "id": "overlapping-masks",
+      "expected": "reject-before-output"
+    },
+    {
+      "id": "empty-mask-after-resolution",
+      "expected": "reject-before-output"
+    },
+    {
+      "id": "unsupported-entity-mapping",
+      "expected": "reject-before-output"
+    },
+    {
+      "id": "over-limit-tokens",
+      "expected": "reject-before-output"
+    },
+    {
+      "id": "invalid-timestep-schedule",
+      "expected": "reject-before-output"
+    },
+    {
+      "id": "invalid-block-schedule",
+      "expected": "reject-before-output"
+    },
+    {
+      "id": "missing-negative-prompt",
+      "expected": "reject-before-output"
+    },
+    {
+      "id": "rank-count-mismatch",
+      "expected": "reject-before-output"
+    },
+    {
+      "id": "evidence-cardinality-mismatch",
+      "expected": "reject-before-completed-status"
+    },
+    {
+      "id": "duplicate-step-block-rank",
+      "expected": "reject-before-completed-status"
+    },
+    {
+      "id": "evidence-identity-mismatch",
+      "expected": "reject-before-completed-status"
+    },
+    {
+      "id": "fixed-mask-tracker-call",
+      "expected": "reject-before-output"
+    }
+  ],
+  "lineage": {
+    "matrix_id": "r3-gpu-contract-matrix-v1",
+    "sha256": "381fd9c5829fbe405e17ec77da57a5c3b14e60c325e653571b4c4d3a4043b1a5"
+  }
+}

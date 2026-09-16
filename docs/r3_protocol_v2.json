@@ -1,0 +1,75 @@
+{
+  "schema_version": 2,
+  "protocol_id": "r3-gpu-contracts-v2",
+  "status": "in-progress",
+  "frozen_at": "2026-09-15",
+  "claim_boundary": "Lead-approved CPU-preparation implementation. Source hooks and offline artifact mechanics have CPU coverage only; no GPU, checkpoint, generator, scheduler, kernel, distributed, or parity result is recorded.",
+  "lineage": {
+    "protocol_id": "r3-gpu-contracts-v1",
+    "sha256": "1b45951b65fc757615dfb91c9e07859084457a2dba34c18a4f9c4e3f83f3488b"
+  },
+  "matrix": {
+    "path": "docs/r3_test_matrix_v2.json",
+    "matrix_id": "r3-gpu-contract-matrix-v2",
+    "sha256": "ecad41461cd43db148af70d91a798f2342263ceee073ce92d1ae8d12b90bc643"
+  },
+  "approvals": {
+    "gpu_execution": "required-not-approved",
+    "hardware_environment": "required-not-approved"
+  },
+  "runtime_hooks": {
+    "initial_latent_all_rank": "implemented-source-hook-gpu-unvalidated",
+    "all_rank_masks_and_self_cross": "implemented-source-hook-gpu-unvalidated",
+    "cfg_branch_outputs": "implemented-source-hook-gpu-unvalidated",
+    "actual_attention_backend": "implemented-source-hook-gpu-unvalidated",
+    "fixed_tracker_call_count": "implemented-source-hook-gpu-unvalidated",
+    "full_generator_parity": "implemented-source-hook-gpu-unvalidated"
+  },
+  "runtime_declarations": {
+    "checkpoint_content_sha256": null,
+    "hardware_identifier": null,
+    "torch_version": null,
+    "cuda_version": null,
+    "flash_attention_version": null,
+    "flex_attention_version": null,
+    "intended_fsdp_rank_count": null
+  },
+  "numerical_tolerances": {
+    "full_generator_parity": {
+      "atol": null,
+      "rtol": null,
+      "amendment_required": true
+    }
+  },
+  "exact_contracts": {
+    "rank_initial_latent_hashes": "exact-equality",
+    "mask_identity_hashes": "exact-equality",
+    "finiteness": "all-values-finite",
+    "cardinality": "exact"
+  },
+  "source_hook_state": {
+    "implementation_scope": "lead-approved-cpu-only",
+    "default_behavior": "observer-uninstalled-no-op",
+    "collector": "bounded-digest-metadata-within-event-alias-cache-only",
+    "distributed_gather": "rank-local-ordinals-all-ranks-call-rank-zero-receives",
+    "contract_validation_gate": "fully-approved-declared-amendment-may-run-with-gpu-unvalidated-hooks",
+    "evidence_acceptance_gate": "all-source-hooks-must-be-gpu-validated-and-marked-implemented",
+    "gpu_validation": "not-run"
+  },
+  "parity_artifact_state": {
+    "producer": "bounded-immutable-numpy-artifact",
+    "consumer": "offline-chunked-numerical-comparator",
+    "accepted_evidence_class": "not-enabled",
+    "gpu_validation": "not-run"
+  },
+  "execution_state": {
+    "cpu_schema_and_preflight": "passed-cpu-only",
+    "checkpoint_bound_gpu_runtime": "not-run",
+    "flash_attention_2": "not-run",
+    "flex_attention": "not-run",
+    "single_rank": "not-run",
+    "intended_fsdp_ranks": "not-run",
+    "full_generator_parity": "not-run"
+  },
+  "amendment_rule": "This template is not approved for execution. Before contract-validation execution, create a further versioned amendment that records approvals, exact checkpoint/environment/backend versions, intended FSDP rank count and full-generator parity tolerances, then sets amendment_required=false. Implemented-source-hook-gpu-unvalidated is sufficient only to run those contract-validation jobs; accepting their evidence additionally requires every hook to be GPU-validated and marked implemented. CPU fixtures cannot satisfy acceptance."
+}
