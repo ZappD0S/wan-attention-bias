@@ -243,3 +243,27 @@ only the two fixes and their immediate blast radius under a smaller 9-tool,
 defect and returned `Merge verdict: OK`:
 `/home/gzappavi/.pi/agent/sessions/--home-gzappavi-Documents-wan_experiments--/subagent-artifacts/outputs/806e7684-05f1-4df8-8a74-f8aba318727a/r3-astra/v3-fix-followup.md`.
 No GPU, checkpoint or generation activity occurred.
+
+## Authorized checkpoint identity revalidation — 2026-09-16
+
+After the v3 commit, the user selected the retained Bootes U1 snapshot for R3
+identity revalidation. Read-only SSH checks found 33 resolved files, zero broken
+symlinks and the approved 82,272,036,045-byte inventory. The inventory SHA-256
+remained `e6b7adbd6f6e5dfcb7fa06e09d5d2edfcb179e80ff25f1c743567d1948701dd4`.
+A full content rehash through `checkpoint_identity(..., verify_contents=True)`
+completed in 70.048 seconds and reproduced
+`80c954fbb46c39139a300a7dd41ed5a8b1c6b11c5f952c1bfb3c763d6e73ebb7`.
+
+This check ran under `uv run --no-sync` with `CUDA_VISIBLE_DEVICES` empty. It did
+not load checkpoint tensors, run a CUDA kernel, change the remote environment,
+or generate output. A same-boundary package probe confirmed matching local/remote
+`pyproject.toml` and `uv.lock` hashes and imported Python 3.11.15, PyTorch
+2.10.0+cu128, CUDA runtime metadata 12.8, flash-attn 2.8.3 and PyTorch flex
+attention. `sam2` remains absent, and no alternate compiler was found under
+`/usr/local` or `/opt`; only the incompatible system nvcc 12.0 is observed.
+
+Snapshot identity is now confirmed for preparation of a further execution
+amendment. A fresh remote source copy and approved Blackwell-capable toolchain
+provisioning, full-generator compatibility, complete locked-environment
+readiness, intended ranks, numerical tolerances, GPU source-hook validation and
+evidence acceptance remain unresolved. R3 stays **IN PROGRESS**.
