@@ -30,6 +30,7 @@ V2_MATRIX_SHA256 = "ecad41461cd43db148af70d91a798f2342263ceee073ce92d1ae8d12b90b
 V3_PROTOCOL_SHA256 = "91a34240c8a9d4d13caa0f6579de523f1d2ca3cb9c387cca17734c18fd2030f5"
 V4_PROTOCOL_SHA256 = "004f2f9e01a397ea36db7728a3ffe51ac86fa4b9c1c13de3c5056a2b12e266ef"
 V5_PROTOCOL_SHA256 = "d3271493577916eb9f251f489933dc794328e2b0be7653cf0814821506e8e2a9"
+V6_PROTOCOL_SHA256 = "f4de93f204c6d11d4b75a1d4c2c45bda44db715bd9426638c6b7e4511816abd6"
 R3_STAGE_IDS = (
     "backend-kernel-canary",
     "checkpoint-load-hook-canary",
@@ -660,6 +661,124 @@ def _validate_v6_execution_amendment(protocol):
     )
 
 
+def _validate_v7_execution_amendment(protocol):
+    amendment = protocol.get("execution_amendment")
+    _require(
+        isinstance(amendment, dict)
+        and amendment.get("amendment_id") == "r3-gpu-execution-amendment-v7"
+        and amendment.get("authorization_state") == "approved-bounded-stage",
+        "R3 protocol v7 amendment identity or authorization is invalid",
+    )
+    _require(
+        amendment.get("authorization_record")
+        == {
+            "authorized_stage": "checkpoint-load-hook-canary",
+            "authorization_source": "explicit-current-session-user-approval",
+            "authorized_operations": [
+                "transfer-bound-checkpoint-to-pollux",
+                "verify-exact-checkpoint-inventory-and-content",
+                "exact-environment-source-and-prerequisite-preflight",
+                "load-upstream-wan-dit-checkpoint-once",
+                "single-layer-source-hook-neutrality-canary",
+            ],
+            "prohibited_operations": [
+                "text-encoder-clip-vae-load",
+                "custom-model-load",
+                "full-model-forward-or-generation",
+                "scheduler-or-decoding",
+                "distributed-execution",
+                "later-stage-execution",
+            ],
+            "stop_after_stage": True,
+        },
+        "R3 protocol v7 authorization record is incomplete or overbroad",
+    )
+    stages = amendment.get("stage_gates")
+    _require(
+        isinstance(stages, list)
+        and [stage.get("id") for stage in stages] == list(R3_STAGE_IDS)
+        and [stage.get("authorization") for stage in stages]
+        == ["approved", "approved", "not-approved", "not-approved", "not-approved"],
+        "R3 protocol v7 must authorize only the cumulative checkpoint/hook stage",
+    )
+    _require(
+        amendment.get("prerequisite_evidence")
+        == {
+            "stage_id": "backend-kernel-canary",
+            "path": "docs/r3_evidence/pollux-backend-kernel-canary.json",
+            "sha256": "6d5c5cae32953baf779163233e56baabc73baacaac28c59a5c17e79152894aae",
+            "protocol_sha256": V6_PROTOCOL_SHA256,
+            "status": "passed",
+        },
+        "R3 protocol v7 prerequisite evidence is missing or unexpected",
+    )
+    _require(
+        amendment.get("hook_canary_contract")
+        == {
+            "checkpoint_inventory_path": "docs/u1_checkpoint_inventory.json",
+            "route": "upstream",
+            "loader": "wan.modules.model.WanModel.from_pretrained",
+            "model_type": "wan.modules.model.WanModel",
+            "selected_layer_index": 0,
+            "selected_layer_type": "wan.modules.model.WanAttentionBlock",
+            "torch_dtype": "bfloat16",
+            "expected_selected_layer_state_sha256": "eb1b247ba29d7974605b3f8c64c7ab82de411c74be6c4b083768250aa806c8c0",
+            "synthetic_input": {
+                "seed": 2026091701,
+                "sequence_length": 128,
+                "grid_size": [2, 8, 8],
+                "context_length": 769,
+                "model_dim": 5120,
+            },
+            "expected_observer_events": [
+                "observer-installed",
+                "attention-dispatch",
+                "attention-dispatch",
+                "attention-dispatch",
+                "observer-completed",
+            ],
+            "expected_attention_sites": ["self", "cross", "cross"],
+            "expected_attention_backend": "flash_attention_2",
+            "neutrality": "bitwise-exact-output-input-and-layer-state",
+        },
+        "R3 protocol v7 hook canary contract is missing or unexpected",
+    )
+
+    # V7 changes only the bounded stage authorization and adds its exact
+    # prerequisite/canary contract. Reuse every v6/v5/v4 declaration check.
+    v6_amendment = {
+        key: value
+        for key, value in amendment.items()
+        if key not in {"prerequisite_evidence", "hook_canary_contract"}
+    }
+    v6_amendment |= {
+        "amendment_id": "r3-gpu-execution-amendment-v6",
+        "authorization_record": {
+            "authorized_stage": "backend-kernel-canary",
+            "authorization_source": "explicit-current-session-user-approval",
+            "authorized_operations": [
+                "transfer-frozen-source-and-environment-to-pollux",
+                "exact-environment-and-source-preflight",
+                "fa2-flex-sam2-cuda-canaries",
+            ],
+            "prohibited_operations": [
+                "checkpoint-or-model-load",
+                "generation",
+                "distributed-execution",
+                "later-stage-execution",
+            ],
+            "stop_after_stage": True,
+        },
+        "stage_gates": [
+            stage | {"authorization": "approved" if index == 0 else "not-approved"}
+            for index, stage in enumerate(stages)
+        ],
+    }
+    _validate_v6_execution_amendment(
+        protocol | {"execution_amendment": v6_amendment}
+    )
+
+
 def _validate_protocol_lineage(protocol, schema_version):
     if schema_version == 1:
         return
@@ -670,6 +789,7 @@ def _validate_protocol_lineage(protocol, schema_version):
         4: ("r3-gpu-contracts-v3", V3_PROTOCOL_SHA256),
         5: ("r3-gpu-contracts-v4", V4_PROTOCOL_SHA256),
         6: ("r3-gpu-contracts-v5", V5_PROTOCOL_SHA256),
+        7: ("r3-gpu-contracts-v6", V6_PROTOCOL_SHA256),
     }[schema_version]
     _require(
         isinstance(lineage, dict)
@@ -688,7 +808,7 @@ def _validate_protocol_lineage(protocol, schema_version):
 def validate_protocol(protocol, matrix, *, matrix_sha256):
     _require(isinstance(protocol, dict), "protocol must be a JSON object")
     schema_version = protocol.get("schema_version")
-    _require(schema_version in {1, 2, 3, 4, 5, 6}, "unsupported R3 protocol schema_version")
+    _require(schema_version in {1, 2, 3, 4, 5, 6, 7}, "unsupported R3 protocol schema_version")
     _require(
         protocol.get("protocol_id") == f"r3-gpu-contracts-v{schema_version}",
         "unexpected R3 protocol_id",
@@ -790,6 +910,8 @@ def validate_protocol(protocol, matrix, *, matrix_sha256):
         _validate_v5_execution_amendment(protocol)
     elif schema_version == 6:
         _validate_v6_execution_amendment(protocol)
+    elif schema_version == 7:
+        _validate_v7_execution_amendment(protocol)
     return validate_matrix(matrix)
 
 
@@ -850,7 +972,7 @@ def _base_execution_blockers(protocol):
 def stage_execution_blockers(protocol, stage_id):
     """Return blockers for one explicitly authorized bounded stage."""
     blockers = _base_execution_blockers(protocol)
-    if protocol["schema_version"] not in {5, 6}:
+    if protocol["schema_version"] not in {5, 6, 7}:
         return [*blockers, "stage-scoped-authorization-unavailable"]
     amendment = protocol["execution_amendment"]
     if amendment["authorization_state"] != "approved-bounded-stage":

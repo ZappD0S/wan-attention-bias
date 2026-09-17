@@ -362,6 +362,28 @@ expected components with areas 1 and 4. The record explicitly confirms no
 checkpoint/model load, generation or distributed execution. Execution stopped
 after this first stage; the four later stages remain unapproved.
 
+## Bounded v7 checkpoint-load/hook authorization — 2026-09-17
+
+After the required v6 stop, the user's explicit “go ahead” authorizes only the
+next cumulative `checkpoint-load-hook-canary`. Immutable v7 (SHA-256
+`63e2781b…`) is lineage-bound to v6 `f4de93f2…`, binds prerequisite backend
+record `6d5c5cae…`, Pollux production digest `5e563044…`, the exact checkpoint
+inventory/content and one concrete upstream `WanModel.from_pretrained` load.
+
+The frozen canary extracts checkpoint-loaded upstream layer 0, verifies its
+state SHA-256 `eb1b247b…`, and executes the same 128-token synthetic BF16 input
+once without and once with the source observer. It requires finite, bitwise
+identical outputs, exact input and layer-state preservation, and the exact
+lifecycle plus FA2 dispatch sequence: self attention followed by the two I2V
+cross-attention calls. It writes one immutable record outside the repository
+only after all checks pass.
+
+V7 does not authorize T5, CLIP, VAE, custom-model loading, a full-model forward,
+generation, scheduling/decoding, distributed execution or the generator and
+later stages. The runner must stop after this one layer comparison. At amendment
+freeze no checkpoint had been copied to Pollux and no v7 model load or CUDA
+operation had run; this is authorization and pre-execution validation only.
+
 ## Safe CPU commands now
 
 ```bash
@@ -380,14 +402,20 @@ CUDA_VISIBLE_DEVICES='' uv run --no-sync python -m multi_sample_inference.r3_pre
 CUDA_VISIBLE_DEVICES='' uv run --no-sync python -m multi_sample_inference.r3_preflight \
   --protocol docs/r3_protocol_v6.json --matrix docs/r3_test_matrix_v3.json \
   --execution --stage backend-kernel-canary
+CUDA_VISIBLE_DEVICES='' uv run --no-sync python -m multi_sample_inference.r3_preflight \
+  --protocol docs/r3_protocol_v7.json --matrix docs/r3_test_matrix_v3.json
+CUDA_VISIBLE_DEVICES='' uv run --no-sync python -m multi_sample_inference.r3_preflight \
+  --protocol docs/r3_protocol_v7.json --matrix docs/r3_test_matrix_v3.json \
+  --execution --stage checkpoint-load-hook-canary
 CUDA_VISIBLE_DEVICES='' PYTHONPATH=. uv run --no-sync --with pytest==9.0.3 python -m pytest -q \
   tests/test_r3_contracts.py tests/test_r3_runtime.py
 ```
 
 Generic preflight reports `execution_ready=false` while later stage gates
-remain blocked. The latest v6 command scoped to `backend-kernel-canary` is the
-approved Pollux exception and reports ready without accessing a GPU; generic
-`--execution` and every later stage must fail.
+remain blocked. V7's checkpoint/hook command is the latest approved Pollux
+exception and reports ready without accessing a GPU; the prior backend stage
+remains approved as its prerequisite. Generic `--execution` and every later
+stage must fail.
 
 ## Later GPU handoff commands (not authorized or run)
 

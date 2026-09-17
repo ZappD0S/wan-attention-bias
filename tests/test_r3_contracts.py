@@ -8,6 +8,9 @@ import pytest
 
 from multi_sample_inference import experiment_pipeline as pipeline
 from multi_sample_inference import r3_environment
+from multi_sample_inference.r3_checkpoint_hook_canary import (
+    _validate_prerequisite_evidence,
+)
 from multi_sample_inference.r3_contracts import (
     CPU_FIXTURE_EVIDENCE,
     RUNTIME_RECORD_KIND,
@@ -36,6 +39,7 @@ MATRIX_V3 = ROOT / "docs/r3_test_matrix_v3.json"
 PROTOCOL_V4 = ROOT / "docs/r3_protocol_v4.json"
 PROTOCOL_V5 = ROOT / "docs/r3_protocol_v5.json"
 PROTOCOL_V6 = ROOT / "docs/r3_protocol_v6.json"
+PROTOCOL_V7 = ROOT / "docs/r3_protocol_v7.json"
 POLLUX_BACKEND_EVIDENCE = ROOT / "docs/r3_evidence/pollux-backend-kernel-canary.json"
 SOURCE = ROOT / "tests/fixtures/smoke_experiment.json"
 DIGEST = "a" * 64
@@ -358,9 +362,63 @@ def test_v6_relocates_only_the_bounded_backend_stage_to_pollux():
     assert stage_execution_blockers(protocol, "checkpoint-load-hook-canary") == [
         "stage-not-authorized:checkpoint-load-hook-canary"
     ]
+    assert amendment["source_binding"]["parent_production_content_sha256"] == (
+        "69b14888c06a338398dc55ce7b54f05ba8b9bbf7ab08d52a0eaf1a665d512136"
+    )
+
+
+def test_v7_authorizes_only_the_cumulative_checkpoint_hook_stage():
+    bundle = load_protocol_bundle(PROTOCOL_V7, MATRIX_V3)
+    protocol = bundle["protocol"]
+    amendment = protocol["execution_amendment"]
+    assert protocol["lineage"] == {
+        "protocol_id": "r3-gpu-contracts-v6",
+        "sha256": "f4de93f204c6d11d4b75a1d4c2c45bda44db715bd9426638c6b7e4511816abd6",
+    }
+    assert amendment["authorization_record"]["authorized_stage"] == (
+        "checkpoint-load-hook-canary"
+    )
+    assert amendment["authorization_record"]["stop_after_stage"] is True
+    assert [stage["authorization"] for stage in amendment["stage_gates"]] == [
+        "approved",
+        "approved",
+        "not-approved",
+        "not-approved",
+        "not-approved",
+    ]
+    assert stage_execution_blockers(protocol, "backend-kernel-canary") == []
+    assert stage_execution_blockers(protocol, "checkpoint-load-hook-canary") == []
+    assert stage_execution_blockers(protocol, "single-rank-generator-canary") == [
+        "stage-not-authorized:single-rank-generator-canary"
+    ]
+    assert amendment["prerequisite_evidence"]["sha256"] == (
+        "6d5c5cae32953baf779163233e56baabc73baacaac28c59a5c17e79152894aae"
+    )
     assert pipeline.production_source_content_sha256(
         ROOT, amendment["source_binding"]["parent_production_paths"]
     ) == amendment["source_binding"]["parent_production_content_sha256"]
+    assert _validate_prerequisite_evidence(
+        ROOT, amendment["prerequisite_evidence"]
+    ) == {
+        "path": "docs/r3_evidence/pollux-backend-kernel-canary.json",
+        "sha256": "6d5c5cae32953baf779163233e56baabc73baacaac28c59a5c17e79152894aae",
+    }
+
+    result = preflight(
+        PROTOCOL_V7,
+        MATRIX_V3,
+        execution=True,
+        stage="checkpoint-load-hook-canary",
+    )
+    assert result["execution_ready"] is True
+    assert result["evidence_acceptance_ready"] is False
+    with pytest.raises(RuntimeError, match="stage-not-authorized"):
+        preflight(
+            PROTOCOL_V7,
+            MATRIX_V3,
+            execution=True,
+            stage="single-rank-generator-canary",
+        )
 
 
 def test_pollux_backend_canary_evidence_is_bound_and_bounded():
@@ -404,7 +462,9 @@ def test_pollux_backend_canary_evidence_is_bound_and_bounded():
     assert all(output["device"] == "cuda" and output["finite"] for output in outputs)
 
 
-@pytest.mark.parametrize("protocol_path", [PROTOCOL_V4, PROTOCOL_V5, PROTOCOL_V6])
+@pytest.mark.parametrize(
+    "protocol_path", [PROTOCOL_V4, PROTOCOL_V5, PROTOCOL_V6, PROTOCOL_V7]
+)
 def test_v4_plus_runtime_environment_requires_every_exact_observation(protocol_path):
     protocol = json.loads(protocol_path.read_text())
     expected = protocol["execution_amendment"]["environment_binding"]
@@ -421,8 +481,8 @@ def test_v4_plus_runtime_environment_requires_every_exact_observation(protocol_p
         validate_v4_runtime_environment(protocol, incomplete)
 
 
-def test_v6_source_binding_requires_clean_exact_nested_revisions():
-    protocol = json.loads(PROTOCOL_V6.read_text())
+def test_v7_source_binding_requires_clean_exact_nested_revisions():
+    protocol = json.loads(PROTOCOL_V7.read_text())
     binding = protocol["execution_amendment"]["source_binding"]
     repositories = {
         "parent": {

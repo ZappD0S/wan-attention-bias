@@ -97,6 +97,7 @@ CUDA_VISIBLE_DEVICES='' uv run --no-sync python -m compileall -q \
   multi_sample_inference/r3_preflight.py \
   multi_sample_inference/r3_environment.py \
   multi_sample_inference/r3_backend_canary.py \
+  multi_sample_inference/r3_checkpoint_hook_canary.py \
   multi_sample_inference/r3_runtime.py multi_sample_inference/r3_parity.py \
   tests/test_r3_contracts.py tests/test_r3_runtime.py
 CUDA_VISIBLE_DEVICES='' uv run --no-sync ruff check \
@@ -104,6 +105,7 @@ CUDA_VISIBLE_DEVICES='' uv run --no-sync ruff check \
   multi_sample_inference/r3_preflight.py \
   multi_sample_inference/r3_environment.py \
   multi_sample_inference/r3_backend_canary.py \
+  multi_sample_inference/r3_checkpoint_hook_canary.py \
   multi_sample_inference/r3_runtime.py \
   multi_sample_inference/r3_parity.py \
   tests/test_r3_contracts.py tests/test_r3_runtime.py \
@@ -411,3 +413,21 @@ This is a passed backend-kernel canary only. No checkpoint/model load,
 generation, source-hook validation, FSDP or acceptance test occurred. The
 mandatory stage stop was observed, all later stages remain unapproved, and R3
 remains **IN PROGRESS**.
+
+## Bounded v7 checkpoint/hook validation — 2026-09-17
+
+The user explicitly authorized the next cumulative stage after the v6 stop.
+Immutable v7 (SHA-256 `63e2781b…`) binds the passed backend record, exact Pollux
+checkpoint/source/environment declarations, upstream Wan loader, layer-0 state
+identity and a fixed small hook-neutrality input/event contract. Only the first
+two cumulative stage gates are approved; generator and later stage preflights
+remain blocked.
+
+CUDA-hidden protocol and runner regressions passed in the focused R3 suite: **63
+tests in 2.70 seconds**; the seven-file suite passed **105 tests in 3.49
+seconds**. Focused compile, both Ruff commands, v1–v7 preparation preflights,
+M1 validation and the 12-job no-output dry-run also passed. The v7
+checkpoint/hook execution preflight reports no
+blockers without touching a GPU, while generic execution and the generator stage
+fail closed. At this freeze point no checkpoint had been copied to Pollux, no
+checkpoint/model had been loaded and no v7 CUDA operation had run.

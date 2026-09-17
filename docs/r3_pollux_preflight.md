@@ -73,3 +73,21 @@ focused 61-test R3 suite and 103-test seven-file suite; compile and both Ruff
 checks passed. This completes only the first backend-kernel stage. The
 mandatory stop was observed; every later stage remains unapproved and R3
 remains **IN PROGRESS**.
+
+## Immutable v7 checkpoint/hook amendment
+
+After that stop, the user explicitly said to go ahead with the previously
+identified next stage. V7 (SHA-256 `63e2781b…`) authorizes only checkpoint
+transfer/exact revalidation, one upstream Wan DiT load, and a small layer-0
+source-hook neutrality comparison on one visible Pollux GPU. It binds v6
+backend evidence `6d5c5cae…`, production digest `5e563044…`, checkpoint content
+`80c954fb…`, inventory `e6b7adbd…` and expected selected-layer state
+`eb1b247b…`.
+
+The runner compares the same frozen 128-token input with no observer and with
+the R3 observer installed. Outputs must be finite and bitwise identical, inputs
+and layer state must remain exact, and observations must be exactly lifecycle,
+self FA2 and the two I2V cross FA2 dispatches. T5/CLIP/VAE, custom model,
+full-model forward, generation, scheduler/decoding, distributed and later-stage
+execution are prohibited. At amendment freeze, no checkpoint was present on
+Pollux and no v7 model load or CUDA operation had run.
