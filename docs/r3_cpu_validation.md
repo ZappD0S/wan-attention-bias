@@ -361,3 +361,16 @@ acceptance remains blocked. At this checkpoint the source had not yet been
 transferred and no GPU kernel had run. Checkpoint/model loading, generation,
 distributed execution and all later stages remain prohibited; R3 stays **IN
 PROGRESS**.
+
+The three-commit bundle from `b07c64a` through `db99ecf` was later verified and
+fast-forwarded into the clean Bootes worktree. Remote exact source checks
+reproduced v5 SHA-256 `d3271493…` and production digest `7b8e027a…`; the
+stage-scoped execution preflight passed, while generic execution rejected
+`staged-execution-gates` as intended. These were no-generation checks.
+
+The canary was not started because both GPUs were heavily occupied by another
+user. The last query reported 91,130/45,116 MiB used and 95/93% utilization.
+No CUDA tensor or kernel, checkpoint/model load, generation or distributed job
+ran. The temporary two-minute availability poll was cancelled and there are no
+active scheduled tasks. This is an availability stop, not a failed backend
+result; R3 remains **IN PROGRESS**.

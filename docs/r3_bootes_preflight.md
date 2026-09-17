@@ -164,3 +164,17 @@ parent/Wan/LaMa binding, v5's package/hardware identities, FA3 absence, and one
 visible CUDA device. Its output path must be outside the repository. At this
 pre-execution checkpoint no GPU kernel had yet run, so this section records
 authorization and controls rather than a result.
+
+The verified bundle with commits `5643600`, `fdf9f42` and `db99ecf` was then
+fast-forwarded into the clean fresh source. Remote HEAD `db99ecf`, Wan
+`00bde1e…`, LaMa `469acc73…`, v5 SHA-256 `d3271493…` and production digest
+`7b8e027a…` matched. The backend-stage execution preflight passed with no
+blockers; generic execution failed closed on `staged-execution-gates`.
+
+Execution stopped before invoking the canary because another user's processes
+occupied both GPUs: the final observation was 91,130 MiB at 95% utilization on
+GPU 0 and 45,116 MiB at 93% on GPU 1. No canary tensor was allocated and no GPU
+kernel, checkpoint/model load, generation or distributed job ran. A bounded
+idle-GPU poll was created but cancelled at the user's request; no scheduled task
+remains. Resume only on a later explicit continuation request after confirming
+one GPU is idle.

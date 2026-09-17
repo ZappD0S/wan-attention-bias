@@ -323,6 +323,15 @@ only bounded backend-kernel execution under the exact environment; it cannot
 validate the checkpoint, model, source hooks, generator parity, FSDP, evidence
 acceptance or any scientific result. R3 remains **IN PROGRESS**.
 
+The source was subsequently transferred to Bootes at outer commit `db99ecf`.
+Clean exact parent/Wan/LaMa checks, protocol/production hashes and the
+stage-scoped execution preflight passed; generic execution remained blocked.
+Both GPUs were occupied by another user's high-utilization jobs, so the canary
+runner was not launched and no CUDA tensor or kernel was created. The temporary
+availability poll was cancelled at the user's request, leaving no scheduled
+work. Resume the same v5 stage only after an explicit continuation request and
+an idle-GPU check; every later stage remains unapproved.
+
 ## Safe CPU commands now
 
 ```bash
@@ -343,9 +352,10 @@ CUDA_VISIBLE_DEVICES='' PYTHONPATH=. uv run --no-sync --with pytest==9.0.3 pytho
   tests/test_r3_contracts.py tests/test_r3_runtime.py
 ```
 
-The preflight commands succeed in preparation mode while reporting
-`execution_ready=false`. Adding `--execution` must fail while any approval or
-amendment authorization/stage blocker remains.
+Generic preflight reports `execution_ready=false` while later stage gates
+remain blocked. The v5 command scoped to `backend-kernel-canary` is the sole
+approved exception and reports ready without accessing a GPU; generic
+`--execution` and every later stage must fail.
 
 ## Later GPU handoff commands (not authorized or run)
 
