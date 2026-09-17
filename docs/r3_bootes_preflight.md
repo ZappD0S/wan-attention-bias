@@ -122,9 +122,30 @@ match the approved values. These checks loaded no checkpoint or model and ran no
 GPU kernel or generation.
 
 The complete locked installation removes the prior provisioning blocker, but it
-does not establish runtime readiness. The execution amendment must still bind
-observed runtime/backend identities, approved rank count, full-generator
-tolerances and staged GPU stop gates. FA2/flex/SAM2 kernels, source hooks,
-full-generator compatibility, distributed behavior and full-record acceptance
-remain unvalidated. R3 remains IN PROGRESS; no GPU contract, runtime parity or
-scientific result is claimed.
+does not establish runtime readiness. At this point the execution amendment
+still needed to bind runtime/backend identities, ranks, tolerances and staged
+GPU stop gates.
+
+## GPU-free v4 amendment preparation
+
+The authorization-pending `docs/r3_protocol_v4.json` now binds the provisioning
+observations without recontacting Bootes. It predeclares the two observed GPUs as
+the intended two-rank FSDP configuration; exact GPU UUID/model/capability,
+driver, host, Python, Torch/CUDA, FA2, flex, SAM2 and project/lock hashes must be
+re-observed by the pre-model worker guard. The parent production-content digest
+plus exact Wan/LaMa revisions and clean-worktree requirement bind the execution
+source independently of later documentation-only commits.
+
+Full-generator parity is predeclared at `atol=1e-5`, `rtol=0.016`, explicitly
+re-derived as a near-zero floor plus rounded two-BF16-epsilon relative allowance
+rather than inherited from U1. Stages proceed only from bounded backend kernels,
+to checkpoint/hook canary, single-rank generator pair, remaining single-rank
+contracts and finally two-rank FSDP; every stage is still `not-approved` and has
+hard stop conditions.
+
+The v4 preparation itself used no SSH, GPU query/kernel, checkpoint/model load or
+generation. It does not validate FA2/flex/SAM2 kernels, source hooks,
+full-generator compatibility, distributed behavior or full-record acceptance.
+A later immutable authorization amendment is required before execution. R3
+remains **IN PROGRESS**; no GPU contract, runtime parity or scientific result is
+claimed.

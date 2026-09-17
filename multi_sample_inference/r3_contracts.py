@@ -27,7 +27,9 @@ V1_PROTOCOL_SHA256 = "1b45951b65fc757615dfb91c9e07859084457a2dba34c18a4f9c4e3f83
 V1_MATRIX_SHA256 = "381fd9c5829fbe405e17ec77da57a5c3b14e60c325e653571b4c4d3a4043b1a5"
 V2_PROTOCOL_SHA256 = "1adb1508be962d140070283a45dc092713e56b3b00029c406947d4989ee058b6"
 V2_MATRIX_SHA256 = "ecad41461cd43db148af70d91a798f2342263ceee073ce92d1ae8d12b90bc643"
+V3_PROTOCOL_SHA256 = "91a34240c8a9d4d13caa0f6579de523f1d2ca3cb9c387cca17734c18fd2030f5"
 _SHA256 = re.compile(r"[0-9a-f]{64}")
+_GIT_REVISION = re.compile(r"[0-9a-f]{40}|[0-9a-f]{64}")
 
 REQUIRED_CUSTOM_AXES = {
     "method": {"none", "regional_prompting", "concept_weaver", "ediff-i"},
@@ -89,6 +91,13 @@ def _require_sha256(value, label):
     _require(
         isinstance(value, str) and _SHA256.fullmatch(value) is not None,
         f"{label} must be a lowercase hexadecimal SHA-256 digest",
+    )
+
+
+def _require_git_revision(value, label):
+    _require(
+        isinstance(value, str) and _GIT_REVISION.fullmatch(value) is not None,
+        f"{label} must be a full lowercase hexadecimal Git object ID",
     )
 
 
@@ -303,31 +312,257 @@ def validate_matrix(matrix):
     return summary
 
 
+def _validate_v4_execution_amendment(protocol):
+    amendment = protocol.get("execution_amendment")
+    _require(
+        isinstance(amendment, dict)
+        and set(amendment)
+        == {
+            "amendment_id",
+            "authorization_state",
+            "source_binding",
+            "checkpoint_binding",
+            "environment_binding",
+            "provisioning_binding",
+            "rank_decision",
+            "tolerance_decision",
+            "stage_gates",
+        },
+        "R3 protocol v4 execution amendment is incomplete or unexpected",
+    )
+    _require(
+        amendment["amendment_id"] == "r3-gpu-execution-amendment-v4"
+        and amendment["authorization_state"]
+        in {"pending-explicit-user-approval", "approved"},
+        "R3 protocol v4 amendment identity or authorization is invalid",
+    )
+
+    source = amendment["source_binding"]
+    _require(
+        isinstance(source, dict)
+        and set(source)
+        == {
+            "parent_revision_at_freeze",
+            "parent_production_paths",
+            "parent_production_content_sha256",
+            "wan_revision",
+            "lama_revision",
+            "require_clean_worktrees",
+            "manifest_repository_identity",
+        }
+        and source["parent_production_paths"]
+        == ["multi_sample_inference", "pyproject.toml", "uv.lock"]
+        and source["require_clean_worktrees"] is True
+        and source["manifest_repository_identity"]
+        == "exact-head-and-dirty-fingerprint",
+        "R3 protocol v4 source binding is incomplete or unexpected",
+    )
+    for key in ("parent_revision_at_freeze", "wan_revision", "lama_revision"):
+        _require_git_revision(
+            source.get(key), f"R3 protocol v4 source binding {key}"
+        )
+    _require_sha256(
+        source.get("parent_production_content_sha256"),
+        "R3 protocol v4 source binding parent_production_content_sha256",
+    )
+
+    checkpoint = amendment["checkpoint_binding"]
+    _require(
+        isinstance(checkpoint, dict)
+        and set(checkpoint)
+        == {
+            "identifier",
+            "snapshot_revision",
+            "inventory_sha256",
+            "content_sha256",
+            "path",
+        }
+        and all(isinstance(checkpoint[key], str) and checkpoint[key] for key in checkpoint),
+        "R3 protocol v4 checkpoint binding is incomplete or unexpected",
+    )
+    for key in ("inventory_sha256", "content_sha256"):
+        _require_sha256(checkpoint[key], f"R3 protocol v4 checkpoint binding {key}")
+
+    environment = amendment["environment_binding"]
+    required_environment = {
+        "hostname",
+        "python_version",
+        "torch_version",
+        "cuda_runtime_version",
+        "flash_attention_version",
+        "flex_attention_version",
+        "sam2_version",
+        "driver_version",
+        "gpu_model",
+        "gpu_uuids",
+        "gpu_compute_capability",
+        "pyproject_sha256",
+        "uv_lock_sha256",
+    }
+    _require(
+        isinstance(environment, dict)
+        and set(environment) == required_environment
+        and all(
+            isinstance(value, str) and value
+            for key, value in environment.items()
+            if key != "gpu_uuids"
+        )
+        and isinstance(environment["gpu_uuids"], list)
+        and len(environment["gpu_uuids"]) == 2
+        and len(set(environment["gpu_uuids"])) == 2
+        and all(isinstance(value, str) and value for value in environment["gpu_uuids"]),
+        "R3 protocol v4 environment binding is incomplete or unexpected",
+    )
+    for key in ("pyproject_sha256", "uv_lock_sha256"):
+        _require_sha256(environment[key], f"R3 protocol v4 environment binding {key}")
+
+    hardware_payload = {
+        key: environment[key]
+        for key in (
+            "hostname",
+            "driver_version",
+            "gpu_model",
+            "gpu_uuids",
+            "gpu_compute_capability",
+        )
+    }
+    expected_hardware = hashlib.sha256(
+        canonical_json_bytes(hardware_payload)
+    ).hexdigest()
+    declarations = protocol["runtime_declarations"]
+    _require(
+        declarations["hardware_identifier"] == expected_hardware
+        and declarations["checkpoint_content_sha256"] == checkpoint["content_sha256"]
+        and declarations["torch_version"] == environment["torch_version"]
+        and declarations["cuda_version"] == environment["cuda_runtime_version"]
+        and declarations["flash_attention_version"]
+        == environment["flash_attention_version"]
+        and declarations["flex_attention_version"]
+        == environment["flex_attention_version"],
+        "R3 protocol v4 amendment differs from its runtime declarations",
+    )
+
+    provisioning = amendment["provisioning_binding"]
+    _require(
+        isinstance(provisioning, dict)
+        and set(provisioning)
+        == {
+            "cuda_toolkit_path",
+            "cuda_toolkit_version",
+            "nvcc_version",
+            "installer_sha256",
+            "flash_attention_distribution_version",
+            "static_sm120_cubins",
+            "inter_gpu_topology",
+        }
+        and all(
+            isinstance(value, str) and value
+            for key, value in provisioning.items()
+            if key != "static_sm120_cubins"
+        )
+        and provisioning["static_sm120_cubins"] == ["flash_attention_2", "sam2"],
+        "R3 protocol v4 provisioning binding is incomplete or unexpected",
+    )
+    _require_sha256(
+        provisioning["installer_sha256"],
+        "R3 protocol v4 provisioning binding installer_sha256",
+    )
+
+    rank = amendment["rank_decision"]
+    _require(
+        isinstance(rank, dict)
+        and set(rank) == {"intended_fsdp_rank_count", "basis"}
+        and rank["intended_fsdp_rank_count"]
+        == declarations["intended_fsdp_rank_count"]
+        and isinstance(rank["basis"], str)
+        and rank["basis"],
+        "R3 protocol v4 rank decision is incomplete or inconsistent",
+    )
+    tolerance = amendment["tolerance_decision"]
+    declared_tolerance = protocol["numerical_tolerances"]["full_generator_parity"]
+    _require(
+        isinstance(tolerance, dict)
+        and set(tolerance)
+        == {"atol", "rtol", "basis", "u1_values_not_inherited"}
+        and tolerance["atol"] == declared_tolerance["atol"]
+        and tolerance["rtol"] == declared_tolerance["rtol"]
+        and tolerance["u1_values_not_inherited"] is True
+        and isinstance(tolerance["basis"], str)
+        and tolerance["basis"],
+        "R3 protocol v4 tolerance decision is incomplete or inconsistent",
+    )
+
+    stages = amendment["stage_gates"]
+    expected_stages = [
+        "backend-kernel-canary",
+        "checkpoint-load-hook-canary",
+        "single-rank-generator-canary",
+        "single-rank-contract-cases",
+        "intended-rank-fsdp",
+    ]
+    _require(
+        isinstance(stages, list)
+        and [stage.get("id") for stage in stages] == expected_stages
+        and all(
+            isinstance(stage, dict)
+            and set(stage)
+            == {
+                "id",
+                "authorization",
+                "prerequisites",
+                "scope",
+                "stop_on",
+            }
+            and stage["authorization"] == "not-approved"
+            and isinstance(stage["prerequisites"], list)
+            and isinstance(stage["scope"], str)
+            and stage["scope"]
+            and isinstance(stage["stop_on"], list)
+            and stage["stop_on"]
+            and all(isinstance(item, str) and item for item in stage["stop_on"])
+            for stage in stages
+        ),
+        "R3 protocol v4 staged stop gates are incomplete or unexpected",
+    )
+    for index, stage in enumerate(stages):
+        _require(
+            stage["prerequisites"] == expected_stages[:index],
+            "R3 protocol v4 staged prerequisites are not cumulative",
+        )
+
+
+def _validate_protocol_lineage(protocol, schema_version):
+    if schema_version == 1:
+        return
+    lineage = protocol.get("lineage")
+    expected_lineage = {
+        2: ("r3-gpu-contracts-v1", V1_PROTOCOL_SHA256),
+        3: ("r3-gpu-contracts-v2", V2_PROTOCOL_SHA256),
+        4: ("r3-gpu-contracts-v3", V3_PROTOCOL_SHA256),
+    }[schema_version]
+    _require(
+        isinstance(lineage, dict)
+        and lineage.get("protocol_id") == expected_lineage[0],
+        f"R3 protocol v{schema_version} lineage is missing",
+    )
+    _require_sha256(
+        lineage.get("sha256"), f"R3 protocol v{schema_version} lineage.sha256"
+    )
+    _require(
+        lineage["sha256"] == expected_lineage[1],
+        f"R3 protocol v{schema_version} lineage differs from frozen v{schema_version - 1}",
+    )
+
+
 def validate_protocol(protocol, matrix, *, matrix_sha256):
     _require(isinstance(protocol, dict), "protocol must be a JSON object")
     schema_version = protocol.get("schema_version")
-    _require(schema_version in {1, 2, 3}, "unsupported R3 protocol schema_version")
+    _require(schema_version in {1, 2, 3, 4}, "unsupported R3 protocol schema_version")
     _require(
         protocol.get("protocol_id") == f"r3-gpu-contracts-v{schema_version}",
         "unexpected R3 protocol_id",
     )
-    if schema_version in {2, 3}:
-        lineage = protocol.get("lineage")
-        expected_lineage = (
-            ("r3-gpu-contracts-v1", V1_PROTOCOL_SHA256)
-            if schema_version == 2
-            else ("r3-gpu-contracts-v2", V2_PROTOCOL_SHA256)
-        )
-        _require(
-            isinstance(lineage, dict)
-            and lineage.get("protocol_id") == expected_lineage[0],
-            f"R3 protocol v{schema_version} lineage is missing",
-        )
-        _require_sha256(lineage.get("sha256"), f"R3 protocol v{schema_version} lineage.sha256")
-        _require(
-            lineage["sha256"] == expected_lineage[1],
-            f"R3 protocol v{schema_version} lineage differs from frozen v{schema_version - 1}",
-        )
+    _validate_protocol_lineage(protocol, schema_version)
     _require(protocol.get("status") == "in-progress", "R3 protocol must remain in-progress")
     matrix_ref = protocol.get("matrix")
     _require(isinstance(matrix_ref, dict), "protocol matrix reference is missing")
@@ -406,7 +641,7 @@ def validate_protocol(protocol, matrix, *, matrix_sha256):
         and exact.get("cardinality") == "exact",
         "CPU-independent exact contracts are not frozen",
     )
-    if schema_version == 3:
+    if schema_version >= 3:
         _require(
             protocol.get("backend_contract")
             == {
@@ -416,8 +651,10 @@ def validate_protocol(protocol, matrix, *, matrix_sha256):
                 "flex_attention": "declared-and-available-dispatched-only-when-derived",
                 "dispatch_derivation": "trusted-route-method-self-routing-and-schedules",
             },
-            "R3 protocol v3 backend contract is missing or unexpected",
+            "R3 protocol v3+ backend contract is missing or unexpected",
         )
+    if schema_version == 4:
+        _validate_v4_execution_amendment(protocol)
     return validate_matrix(matrix)
 
 
@@ -435,6 +672,21 @@ def load_protocol_bundle(protocol_path, matrix_path):
         "matrix_sha256": matrix_sha256,
         "summary": summary,
     }
+
+
+def _v4_authorization_blockers(protocol):
+    if protocol["schema_version"] != 4:
+        return []
+    amendment = protocol["execution_amendment"]
+    blockers = []
+    if amendment["authorization_state"] != "approved":
+        blockers.append("explicit-user-authorization")
+    if any(
+        stage["authorization"] != "approved"
+        for stage in amendment["stage_gates"]
+    ):
+        blockers.append("staged-execution-gates")
+    return blockers
 
 
 def execution_blockers(protocol):
@@ -458,6 +710,7 @@ def execution_blockers(protocol):
             blockers.append(f"tolerance:full_generator_parity.{key}")
     if tolerance["amendment_required"]:
         blockers.append("versioned-pre-execution-amendment")
+    blockers.extend(_v4_authorization_blockers(protocol))
     return blockers
 
 

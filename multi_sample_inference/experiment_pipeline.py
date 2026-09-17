@@ -179,6 +179,40 @@ def repository_identity(repo):
     return {"revision": revision, "dirty": True, "dirty_fingerprint": digest.hexdigest()}
 
 
+def production_source_content_sha256(repo, paths):
+    """Hash the tracked production files named by a v4 source declaration."""
+    repo = Path(repo).resolve()
+    raw_paths = _git_output(repo, "ls-files", "-z", "--", *paths)
+    relative_paths = sorted(item.decode() for item in raw_paths.split(b"\0") if item)
+    _require(relative_paths, "R3 production source inventory is empty")
+    inventory = []
+    for relative in relative_paths:
+        path = repo / relative
+        _require(path.is_file(), f"R3 production source path is missing: {relative}")
+        inventory.append({"path": relative, "sha256": _hash_file(path)})
+    return _hash_bytes(_canonical(inventory))
+
+
+def _validate_v4_source_binding(repo, repositories, protocol):
+    binding = protocol["execution_amendment"]["source_binding"]
+    _require(
+        all(identity["dirty"] is False for identity in repositories.values()),
+        "R3 v4 requires clean parent, Wan, and LaMa worktrees",
+    )
+    _require(
+        repositories["wan"]["revision"] == binding["wan_revision"]
+        and repositories["lama"]["revision"] == binding["lama_revision"],
+        "R3 v4 Wan or LaMa revision differs from the execution amendment",
+    )
+    observed_content = production_source_content_sha256(
+        repo, binding["parent_production_paths"]
+    )
+    _require(
+        observed_content == binding["parent_production_content_sha256"],
+        "R3 v4 parent production content differs from the execution amendment",
+    )
+
+
 def _r3_source_contract(source, source_path):
     if "r3_evidence" not in source:
         return None
@@ -414,7 +448,11 @@ def expand_source(source_path, output_dir, write=True):
     r3_contract = _r3_source_contract(source, source_path)
     r3_environment_sha256 = None
     if r3_contract is not None:
-        declarations = r3_contract["protocol"]["runtime_declarations"]
+        protocol = r3_contract["protocol"]
+        if protocol["schema_version"] == 4:
+            repositories["lama"] = repository_identity(repo / "lama")
+            _validate_v4_source_binding(repo, repositories, protocol)
+        declarations = protocol["runtime_declarations"]
         declared_checkpoint = declarations["checkpoint_content_sha256"]
         _require(
             declared_checkpoint is None
@@ -426,13 +464,17 @@ def expand_source(source_path, output_dir, write=True):
             if r3_contract["attention_backend"] == "flash_attention_2"
             else "flex_attention_version"
         )
-        environment = {
-            "hardware_identifier": declarations["hardware_identifier"],
-            "torch_version": declarations["torch_version"],
-            "cuda_version": declarations["cuda_version"],
-            "attention_backend": r3_contract["attention_backend"],
-            "backend_version": declarations[backend_key],
-        }
+        environment = (
+            protocol["execution_amendment"]["environment_binding"]
+            if protocol["schema_version"] == 4
+            else {
+                "hardware_identifier": declarations["hardware_identifier"],
+                "torch_version": declarations["torch_version"],
+                "cuda_version": declarations["cuda_version"],
+                "attention_backend": r3_contract["attention_backend"],
+                "backend_version": declarations[backend_key],
+            }
+        )
         if all(value is not None for value in environment.values()):
             r3_environment_sha256 = _hash_bytes(_canonical(environment))
     manifests = []
@@ -530,7 +572,7 @@ def expand_source(source_path, output_dir, write=True):
                     }
                 case = matrix_case_for_request(r3_contract["matrix"], family, selection)
                 dispatch_contract = None
-                if r3_contract["protocol"]["schema_version"] == 3:
+                if r3_contract["protocol"]["schema_version"] >= 3:
                     disposition = case["lineage_disposition"]
                     _require(
                         disposition["disposition"] == "runnable",
@@ -658,10 +700,16 @@ def verify_task_descriptor(manifest, task_path, metadata_path):
     return metadata
 
 
-def verify_job_inputs(manifest):
+def verify_repository_identity(manifest):
     repo = Path(__file__).resolve().parents[1]
     current = {"parent": repository_identity(repo), "wan": repository_identity(repo / "wan2.1")}
+    if "lama" in manifest["repositories"]:
+        current["lama"] = repository_identity(repo / "lama")
     _require(current == manifest["repositories"], "source repository revision/dirty fingerprint changed after expansion")
+
+
+def verify_job_inputs(manifest):
+    verify_repository_identity(manifest)
     verify_checkpoint_identity(manifest["checkpoint"])
     for asset in [manifest["assets"]["reference_image"], *manifest["assets"]["isolated_images"].values(), *manifest["masks"]["segmentation_masks"].values()]:
         _require(Path(asset["path"]).is_file() and _hash_file(asset["path"]) == asset["sha256"], f"asset changed or missing: {asset['path']}")
@@ -737,7 +785,7 @@ def worker_task_blueprint(manifest):
             "R3 manifest protocol or matrix binding differs from disk",
         )
         dispatch_contract = r3.get("dispatch_contract")
-        if bundle["protocol"]["schema_version"] == 3:
+        if bundle["protocol"]["schema_version"] >= 3:
             _require(
                 isinstance(dispatch_contract, dict),
                 "R3 v3 manifest dispatch contract is missing",
@@ -865,7 +913,9 @@ def worker_task_blueprint(manifest):
             validate_backend_request(
                 dispatch_contract, selection["attention_backend"]
             )
-            task["r3_evidence"]["protocol_schema_version"] = 3
+            task["r3_evidence"]["protocol_schema_version"] = bundle["protocol"][
+                "schema_version"
+            ]
             task["r3_evidence"]["requested"]["dispatch_contract"] = (
                 dispatch_contract
             )
@@ -913,12 +963,14 @@ def worker_task_blueprint(manifest):
 
 
 def validate_r3_worker_task_binding(task, manifest):
-    """Bind a v3 task to its manifest without trusting task version markers."""
+    """Bind a v3+ task to its manifest without trusting task version markers."""
     evidence = task.get("r3_evidence")
-    task_claims_v3 = (
-        isinstance(evidence, dict)
-        and evidence.get("protocol_schema_version") == 3
+    task_schema = (
+        evidence.get("protocol_schema_version")
+        if isinstance(evidence, dict)
+        else None
     )
+    task_claims_v3_plus = type(task_schema) is int and task_schema >= 3
     task_has_dispatch = (
         isinstance(evidence, dict)
         and isinstance(evidence.get("requested"), dict)
@@ -926,19 +978,21 @@ def validate_r3_worker_task_binding(task, manifest):
     )
     expected = worker_task_blueprint(manifest)
     expected_evidence = expected.get("r3_evidence")
-    manifest_requires_v3 = (
-        isinstance(expected_evidence, dict)
-        and expected_evidence.get("protocol_schema_version") == 3
+    expected_schema = (
+        expected_evidence.get("protocol_schema_version")
+        if isinstance(expected_evidence, dict)
+        else None
     )
-    if not manifest_requires_v3:
+    manifest_requires_v3_plus = type(expected_schema) is int and expected_schema >= 3
+    if not manifest_requires_v3_plus:
         _require(
-            not task_claims_v3 and not task_has_dispatch,
-            "R3 worker task claims v3 without a v3 manifest binding",
+            not task_claims_v3_plus and not task_has_dispatch,
+            "R3 worker task claims v3+ without a v3+ manifest binding",
         )
         return None
     _require(
-        task_claims_v3,
-        "R3 v3 worker task discriminator is missing or downgraded",
+        task_claims_v3_plus and task_schema == expected_schema,
+        "R3 v3+ worker task discriminator is missing or downgraded/substituted",
     )
     _require(
         evidence == expected_evidence
@@ -1144,7 +1198,7 @@ def execute_job(manifest_path, t5_cpu=False, devices=None, command_factory=None)
         )
         blockers = execution_blockers(bundle["protocol"])
         _require(not blockers, "R3 execution preflight blocked: " + ", ".join(blockers))
-        if bundle["protocol"]["schema_version"] == 3:
+        if bundle["protocol"]["schema_version"] >= 3:
             disposition = r3["case"].get("lineage_disposition", {})
             _require(
                 disposition.get("disposition") == "runnable",

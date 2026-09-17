@@ -292,6 +292,45 @@ inspection found `sm_120` cubins in both SAM2 and FA2. The approved
 `pyproject.toml` and `uv.lock` hashes are unchanged. No checkpoint/model was
 loaded and no GPU kernel or generation ran.
 
-Provisioning is complete, but full-generator compatibility, intended ranks,
-numerical tolerances, GPU kernel/source-hook validation, distributed behavior
-and evidence acceptance remain unresolved. R3 stays **IN PROGRESS**.
+Provisioning is complete, but at this point full-generator compatibility,
+intended ranks, numerical tolerances, GPU kernel/source-hook validation,
+distributed behavior and evidence acceptance remained unresolved.
+
+## GPU-free v4 execution-amendment validation — 2026-09-16
+
+The authorization-pending `docs/r3_protocol_v4.json` now predeclares the rehashed
+checkpoint, exact Wan/LaMa revisions, parent production-content digest
+`56e4cc52…`, complete Bootes environment/hardware binding, two intended FSDP
+ranks and full-generator parity at `atol=1e-5`, `rtol=0.016`. The tolerance is
+explicitly re-derived as a near-zero absolute floor and rounded
+two-BF16-epsilon relative allowance rather than inherited from U1. Its protocol
+SHA-256 is `004f2f9e…`; it reuses the frozen v3 matrix hash `e1776af1…`.
+
+CPU guards now require clean parent/Wan/LaMa worktrees, exact nested revisions
+and the parent production digest during v4 materialization. Before model load,
+the worker requires the manifest-bound repository identity, exact FA2/flex
+helper state, and exact host, Python, Torch/CUDA, SAM2, driver, GPU
+UUID/model/capability and project/lock observations. Synthetic tests exercise
+exact/missing/mismatched environment declarations and source-binding failures;
+no real host observation was made in this phase.
+
+The five cumulative stages cover bounded backend kernels, checkpoint/hook
+canary, one single-rank generator pair, remaining single-rank contracts and
+finally two-rank FSDP. Every stage remains `not-approved`. V4 preparation
+preflight enumerates 592 cases (404 runnable, 188 rejected) and reports exactly
+four blockers: the two approvals, explicit user authorization and staged gates.
+Execution preflight rejects those blockers as intended; evidence acceptance is
+also blocked by all six GPU-unvalidated source hooks.
+
+The seven-file focused suite passed **97 tests in 3.30 seconds**. Focused syntax
+compilation and both Ruff commands passed; M1 smoke validation and the 12-job
+no-output dry-run passed; v1/v2/v3 preparation preflights still pass and their
+execution preflights remain blocked; outer and nested whitespace checks pass.
+All project commands used `uv` with `CUDA_VISIBLE_DEVICES=''` where runtime
+imports were possible.
+
+No SSH, GPU query/kernel, checkpoint/model load, generation, torchrun/FSDP job
+or scientific measurement occurred. V4 itself is not authorized for execution:
+a later immutable authorization amendment is required. Real backend kernels,
+hook neutrality, full generator, distributed behavior and full-record acceptance
+remain unvalidated. R3 stays **IN PROGRESS**.

@@ -18,7 +18,10 @@ from multi_sample_inference.r3_contracts import (
     validate_worker_observation,
     write_immutable_json,
 )
-from multi_sample_inference.r3_preflight import preflight
+from multi_sample_inference.r3_preflight import (
+    preflight,
+    validate_v4_runtime_environment,
+)
 from multi_sample_inference.r3_runtime import validate_worker_dispatch_binding
 
 ROOT = Path(__file__).parents[1]
@@ -28,6 +31,7 @@ PROTOCOL_V2 = ROOT / "docs/r3_protocol_v2.json"
 MATRIX_V2 = ROOT / "docs/r3_test_matrix_v2.json"
 PROTOCOL_V3 = ROOT / "docs/r3_protocol_v3.json"
 MATRIX_V3 = ROOT / "docs/r3_test_matrix_v3.json"
+PROTOCOL_V4 = ROOT / "docs/r3_protocol_v4.json"
 SOURCE = ROOT / "tests/fixtures/smoke_experiment.json"
 DIGEST = "a" * 64
 
@@ -233,6 +237,97 @@ def test_v3_preserves_frozen_lineage_with_explicit_case_dispositions():
     assert result["execution_ready"] is False
     with pytest.raises(RuntimeError, match="execution preflight blocked"):
         preflight(PROTOCOL_V3, MATRIX_V3, execution=True)
+
+
+def test_v4_predeclares_runtime_decisions_but_remains_authorization_blocked():
+    bundle = load_protocol_bundle(PROTOCOL_V4, MATRIX_V3)
+    protocol = bundle["protocol"]
+    amendment = protocol["execution_amendment"]
+    assert protocol["lineage"] == {
+        "protocol_id": "r3-gpu-contracts-v3",
+        "sha256": "91a34240c8a9d4d13caa0f6579de523f1d2ca3cb9c387cca17734c18fd2030f5",
+    }
+    assert protocol["runtime_declarations"] | {
+        "intended_fsdp_rank_count": 2,
+        "checkpoint_content_sha256": amendment["checkpoint_binding"][
+            "content_sha256"
+        ],
+    } == protocol["runtime_declarations"]
+    assert protocol["numerical_tolerances"]["full_generator_parity"] == {
+        "atol": 1e-5,
+        "rtol": 0.016,
+        "amendment_required": False,
+    }
+    assert amendment["tolerance_decision"]["u1_values_not_inherited"] is True
+    assert amendment["authorization_state"] == "pending-explicit-user-approval"
+    assert all(
+        stage["authorization"] == "not-approved"
+        for stage in amendment["stage_gates"]
+    )
+    assert pipeline.production_source_content_sha256(
+        ROOT, amendment["source_binding"]["parent_production_paths"]
+    ) == amendment["source_binding"]["parent_production_content_sha256"]
+
+    result = preflight(PROTOCOL_V4, MATRIX_V3)
+    assert result["schema_version"] == 4
+    assert result["execution_ready"] is False
+    assert result["blockers"] == [
+        "approval:gpu_execution",
+        "approval:hardware_environment",
+        "explicit-user-authorization",
+        "staged-execution-gates",
+    ]
+    with pytest.raises(RuntimeError, match="execution preflight blocked"):
+        preflight(PROTOCOL_V4, MATRIX_V3, execution=True)
+
+
+def test_v4_runtime_environment_requires_every_exact_observation():
+    protocol = json.loads(PROTOCOL_V4.read_text())
+    expected = protocol["execution_amendment"]["environment_binding"]
+    assert validate_v4_runtime_environment(protocol, copy.deepcopy(expected))
+
+    changed = copy.deepcopy(expected)
+    changed["driver_version"] = "different"
+    with pytest.raises(RuntimeError, match="driver_version"):
+        validate_v4_runtime_environment(protocol, changed)
+
+    incomplete = copy.deepcopy(expected)
+    incomplete.pop("sam2_version")
+    with pytest.raises(ValueError, match="incomplete"):
+        validate_v4_runtime_environment(protocol, incomplete)
+
+
+def test_v4_source_binding_requires_clean_exact_nested_revisions():
+    protocol = json.loads(PROTOCOL_V4.read_text())
+    binding = protocol["execution_amendment"]["source_binding"]
+    repositories = {
+        "parent": {
+            "revision": binding["parent_revision_at_freeze"],
+            "dirty": False,
+            "dirty_fingerprint": None,
+        },
+        "wan": {
+            "revision": binding["wan_revision"],
+            "dirty": False,
+            "dirty_fingerprint": None,
+        },
+        "lama": {
+            "revision": binding["lama_revision"],
+            "dirty": False,
+            "dirty_fingerprint": None,
+        },
+    }
+    assert pipeline._validate_v4_source_binding(ROOT, repositories, protocol) is None
+
+    changed = copy.deepcopy(repositories)
+    changed["wan"]["revision"] = "0" * 40
+    with pytest.raises(ValueError, match="Wan or LaMa"):
+        pipeline._validate_v4_source_binding(ROOT, changed, protocol)
+
+    changed = copy.deepcopy(repositories)
+    changed["parent"]["dirty"] = True
+    with pytest.raises(ValueError, match="clean parent"):
+        pipeline._validate_v4_source_binding(ROOT, changed, protocol)
 
 
 def test_v3_source_expansion_rejects_impossible_and_concrete_incompatible_requests(

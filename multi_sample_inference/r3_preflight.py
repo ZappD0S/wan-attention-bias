@@ -14,7 +14,7 @@ from .r3_contracts import (
 
 
 def validate_backend_runtime(dispatch_contract, observations):
-    """Validate real helper observations for the opt-in v3 worker guard."""
+    """Validate real helper observations for the opt-in v3+ worker guard."""
     required = {
         "flash_attention_2_available",
         "flash_attention_3_available",
@@ -25,18 +25,36 @@ def validate_backend_runtime(dispatch_contract, observations):
     if not isinstance(observations, dict) or set(observations) != required:
         raise ValueError("R3 backend runtime observations are incomplete")
     if observations["flash_attention_3_available"] is not False:
-        raise RuntimeError("R3 v3 forbids FlashAttention 3 auto-selection")
+        raise RuntimeError("R3 v3+ forbids FlashAttention 3 auto-selection")
     if observations["flash_attention_2_available"] is not True:
-        raise RuntimeError("R3 v3 requires available FlashAttention 2")
+        raise RuntimeError("R3 v3+ requires available FlashAttention 2")
     versions = dispatch_contract["backend_versions"]
     if any(not isinstance(value, str) or not value for value in versions.values()):
-        raise RuntimeError("R3 v3 backend versions are undeclared")
+        raise RuntimeError("R3 v3+ backend versions are undeclared")
     if observations["flash_attention_version"] != versions["flash_attention_2"]:
         raise RuntimeError("observed FlashAttention 2 version differs from the protocol")
     if observations["flex_attention_available"] is not True:
         raise RuntimeError("R3 v3 declared flex attention helper is unavailable")
     if observations["flex_attention_version"] != versions["flex_attention"]:
         raise RuntimeError("observed flex attention version differs from the protocol")
+    return True
+
+
+def validate_v4_runtime_environment(protocol, observations):
+    """Require exact v4 host/package/hardware observations before model load."""
+    if protocol.get("schema_version") != 4:
+        return True
+    expected = protocol["execution_amendment"]["environment_binding"]
+    if not isinstance(observations, dict) or set(observations) != set(expected):
+        raise ValueError("R3 v4 runtime environment observations are incomplete")
+    mismatches = [
+        key for key, value in expected.items() if observations.get(key) != value
+    ]
+    if mismatches:
+        raise RuntimeError(
+            "R3 v4 runtime environment differs from the amendment: "
+            + ", ".join(sorted(mismatches))
+        )
     return True
 
 

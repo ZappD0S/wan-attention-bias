@@ -259,6 +259,38 @@ acceptance is deliberately unchanged and passed `full_generator_parity` claims
 remain rejected pending separate integration and review. No R3 completion or
 execution-readiness claim follows.
 
+## Authorization-pending v4 execution amendment — 2026-09-16
+
+`r3_protocol_v4.json` is a GPU-free pre-execution amendment over the unchanged
+v3 matrix. It binds the rehashed checkpoint, exact Wan/LaMa revisions, a digest
+of the tracked parent production paths, the complete Bootes package/hardware
+observations, two intended FSDP ranks and staged stop gates. Manifest expansion
+requires clean parent/Wan/LaMa worktrees, exact nested revisions and the frozen
+parent production-content digest. The v4 pre-model guard additionally requires
+exact host, Python, Torch/CUDA, FA2, flex, SAM2, driver, GPU UUID/model/capability
+and project/lock-hash observations. These are declarations and guards, not GPU
+observations made by this amendment.
+
+Full-generator upstream/custom-`none` parity is predeclared at `atol=1e-5` and
+`rtol=0.016`. Those values are explicitly re-derived for this test as a
+near-zero absolute floor and a rounded two-BF16-epsilon relative allowance; they
+are not inherited from U1, even though the independently selected values
+coincide. Shape, dtype, finiteness, immutable identities and every exact contract
+remain separate hard gates.
+
+The intended FSDP rank count is two: one process for each observed 97,887-MiB
+GPU. The inter-GPU path is `SYS` without NVLink, so the declaration does not
+assert performance or collective success. Stages are backend-kernel canaries,
+checkpoint/source-hook canary, a single-rank generator pair, remaining
+single-rank contract cases and finally two-rank FSDP. Every stage is
+`not-approved` and has cumulative prerequisites plus explicit stop conditions.
+V4 therefore reports only the two approval blockers plus explicit user/stage
+authorization blockers. An immutable later authorization amendment is required
+before any GPU query/kernel, model load, generation or distributed job.
+
+V4 does not mark any source hook GPU-validated, integrate full-record acceptance
+or change generator/attention arithmetic. R3 remains **IN PROGRESS**.
+
 ## Safe CPU commands now
 
 ```bash
@@ -266,13 +298,17 @@ CUDA_VISIBLE_DEVICES='' uv run --no-sync python -m multi_sample_inference.r3_pre
   --protocol docs/r3_protocol.json --matrix docs/r3_test_matrix.json
 CUDA_VISIBLE_DEVICES='' uv run --no-sync python -m multi_sample_inference.r3_preflight \
   --protocol docs/r3_protocol_v2.json --matrix docs/r3_test_matrix_v2.json
-CUDA_VISIBLE_DEVICES='' uv run --no-sync --with pytest==9.0.3 python -m pytest -q \
+CUDA_VISIBLE_DEVICES='' uv run --no-sync python -m multi_sample_inference.r3_preflight \
+  --protocol docs/r3_protocol_v3.json --matrix docs/r3_test_matrix_v3.json
+CUDA_VISIBLE_DEVICES='' uv run --no-sync python -m multi_sample_inference.r3_preflight \
+  --protocol docs/r3_protocol_v4.json --matrix docs/r3_test_matrix_v3.json
+CUDA_VISIBLE_DEVICES='' PYTHONPATH=. uv run --no-sync --with pytest==9.0.3 python -m pytest -q \
   tests/test_r3_contracts.py tests/test_r3_runtime.py
 ```
 
-The first command succeeds in preparation mode while reporting
-`execution_ready=false`. Adding `--execution` must fail while any approval,
-declaration, tolerance, or amendment blocker remains.
+The preflight commands succeed in preparation mode while reporting
+`execution_ready=false`. Adding `--execution` must fail while any approval or
+amendment authorization/stage blocker remains.
 
 ## Future GPU handoff commands (not authorized or run)
 

@@ -303,7 +303,12 @@ def validate_backend_request(dispatch_contract, requested_backend):
 def validate_worker_dispatch_binding(task):
     """Reject task/config substitutions before an opt-in R3 model is loaded."""
     evidence = task.get("r3_evidence")
-    if not isinstance(evidence, dict) or evidence.get("protocol_schema_version") != 3:
+    schema_version = (
+        evidence.get("protocol_schema_version")
+        if isinstance(evidence, dict)
+        else None
+    )
+    if type(schema_version) is not int or schema_version < 3:
         return True
     requested = evidence.get("requested")
     if not isinstance(requested, dict):
