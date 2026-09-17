@@ -36,6 +36,7 @@ MATRIX_V3 = ROOT / "docs/r3_test_matrix_v3.json"
 PROTOCOL_V4 = ROOT / "docs/r3_protocol_v4.json"
 PROTOCOL_V5 = ROOT / "docs/r3_protocol_v5.json"
 PROTOCOL_V6 = ROOT / "docs/r3_protocol_v6.json"
+POLLUX_BACKEND_EVIDENCE = ROOT / "docs/r3_evidence/pollux-backend-kernel-canary.json"
 SOURCE = ROOT / "tests/fixtures/smoke_experiment.json"
 DIGEST = "a" * 64
 
@@ -360,6 +361,47 @@ def test_v6_relocates_only_the_bounded_backend_stage_to_pollux():
     assert pipeline.production_source_content_sha256(
         ROOT, amendment["source_binding"]["parent_production_paths"]
     ) == amendment["source_binding"]["parent_production_content_sha256"]
+
+
+def test_pollux_backend_canary_evidence_is_bound_and_bounded():
+    bundle = load_protocol_bundle(PROTOCOL_V6, MATRIX_V3)
+    protocol = bundle["protocol"]
+    record = json.loads(POLLUX_BACKEND_EVIDENCE.read_text())
+    assert hashlib.sha256(POLLUX_BACKEND_EVIDENCE.read_bytes()).hexdigest() == (
+        "6d5c5cae32953baf779163233e56baabc73baacaac28c59a5c17e79152894aae"
+    )
+    assert record["status"] == "passed"
+    assert record["stage_id"] == "backend-kernel-canary"
+    assert record["bindings"] == {
+        "protocol_id": protocol["protocol_id"],
+        "protocol_sha256": bundle["protocol_sha256"],
+        "matrix_id": bundle["matrix"]["matrix_id"],
+        "matrix_sha256": bundle["matrix_sha256"],
+    }
+    assert record["environment"] == protocol["execution_amendment"][
+        "environment_binding"
+    ]
+    assert record["repositories"]["parent"] == {
+        "revision": "3dbf8e02afd293e9f98b027293796a293af24642",
+        "dirty": False,
+        "dirty_fingerprint": None,
+    }
+    assert record["scope"] == {
+        "checkpoint_or_model_loaded": False,
+        "generation_performed": False,
+        "distributed_execution_performed": False,
+    }
+    assert record["attention_runtime"]["flash_attention_3_available"] is False
+    assert record["kernels"]["flex_attention"]["compiled"] is True
+    assert record["kernels"]["sam2_connected_components"][
+        "foreground_component_areas"
+    ] == [1, 4]
+    outputs = [
+        record["kernels"]["flash_attention_2"]["output"],
+        record["kernels"]["flex_attention"]["output"],
+        *record["kernels"]["sam2_connected_components"]["outputs"].values(),
+    ]
+    assert all(output["device"] == "cuda" and output["finite"] for output in outputs)
 
 
 @pytest.mark.parametrize("protocol_path", [PROTOCOL_V4, PROTOCOL_V5, PROTOCOL_V6])

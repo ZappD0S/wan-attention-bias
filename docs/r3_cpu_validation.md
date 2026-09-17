@@ -395,4 +395,19 @@ the environment gate.
 
 Focused R3 CPU tests passed 60 tests and the seven-file suite passed 102;
 focused compilation, both documented Ruff commands and whitespace checks passed. No checkpoint was copied or loaded and no Pollux CUDA tensor or
-kernel had run at this freeze point. R3 remains **IN PROGRESS**.
+kernel had run at this freeze point.
+
+After commit `3dbf8e0` was installed cleanly, remote stage preflight and exact
+source/environment validation passed. With only idle GPU 0 visible, the bounded
+runner exited 0 and wrote immutable record SHA-256 `6d5c5cae…` plus log SHA-256
+`cf7d78dc…`. FA2, compiled flex attention and SAM2 all produced finite outputs;
+the SAM2 semantic check returned component areas 1 and 4. The local evidence
+regression binds the protocol/matrix hashes, exact environment, clean source,
+CUDA outputs and all-false model/generation/distributed scope. After harvest,
+the focused R3 suite passed 61 tests and the seven-file suite passed 103;
+compile and both documented Ruff commands also passed.
+
+This is a passed backend-kernel canary only. No checkpoint/model load,
+generation, source-hook validation, FSDP or acceptance test occurred. The
+mandatory stage stop was observed, all later stages remain unapproved, and R3
+remains **IN PROGRESS**.

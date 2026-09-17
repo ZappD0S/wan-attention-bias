@@ -50,4 +50,26 @@ the same bounded backend stage. It binds Pollux hardware identifier
 Generic execution remains blocked by `staged-execution-gates`; the v6
 `backend-kernel-canary` execution preflight alone reports no blockers. At this
 pre-execution checkpoint the canary has not run and its output does not exist.
-R3 remains **IN PROGRESS**.
+
+## Bounded backend-canary result
+
+Commit `3dbf8e0` was transferred by verified bundle and fast-forwarded into the
+clean Pollux source. Exact parent/Wan/LaMa, production, protocol and environment
+checks passed. Immediately before execution both GPUs reported 2 MiB used and
+0% utilization. Only GPU 0 was exposed to the runner.
+
+The authorized command ran from 2026-09-17T12:54:49Z through 12:55:09Z and
+exited 0. Immutable evidence
+`docs/r3_evidence/pollux-backend-kernel-canary.json` hashes to
+`6d5c5cae…`; the captured log hashes to `cf7d78dc…`. FA2 produced a finite BF16
+`[1,128,4,64]` output, compiled flex attention produced a finite BF16
+`[1,4,128,64]` output, and SAM2 returned finite integer label/count tensors with
+exact foreground areas 1 and 4. The record binds v6 `f4de93f2…`, matrix
+`e1776af1…`, clean source revisions and the exact Pollux environment.
+
+The evidence explicitly records no checkpoint/model load, generation or
+distributed execution. A local evidence-binding regression passed with the
+focused 61-test R3 suite and 103-test seven-file suite; compile and both Ruff
+checks passed. This completes only the first backend-kernel stage. The
+mandatory stop was observed; every later stage remains unapproved and R3
+remains **IN PROGRESS**.

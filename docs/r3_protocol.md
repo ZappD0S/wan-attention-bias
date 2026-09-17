@@ -353,6 +353,15 @@ and the authorized runner still requires exactly one visible device and writes
 outside the repository only after all three kernels pass. At amendment freeze
 time no Pollux CUDA tensor or kernel had run.
 
+After commit `3dbf8e0` was transferred and every exact guard passed, both Pollux
+GPUs were idle. The bounded runner exposed only GPU 0 and completed FA2,
+compiled flex attention and SAM2 successfully in about 20 seconds wall-clock.
+Immutable evidence SHA-256 `6d5c5cae…` and log SHA-256 `cf7d78dc…` are retained
+under `docs/r3_evidence/`. All outputs were finite; SAM2 found exactly the two
+expected components with areas 1 and 4. The record explicitly confirms no
+checkpoint/model load, generation or distributed execution. Execution stopped
+after this first stage; the four later stages remain unapproved.
+
 ## Safe CPU commands now
 
 ```bash

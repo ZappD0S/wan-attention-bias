@@ -1,0 +1,4 @@
+started_at=2026-09-17T12:54:49Z
+{"output_path":"/local_scratch/gzappavi/r3_stage1/backend-kernel-canary.json","output_sha256":"6d5c5cae32953baf779163233e56baabc73baacaac28c59a5c17e79152894aae","protocol_sha256":"f4de93f204c6d11d4b75a1d4c2c45bda44db715bd9426638c6b7e4511816abd6","stage_id":"backend-kernel-canary","status":"passed"}
+finished_at=2026-09-17T12:55:09Z
+exit_code=0
