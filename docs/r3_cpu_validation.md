@@ -263,7 +263,35 @@ attention. `sam2` remains absent, and no alternate compiler was found under
 `/usr/local` or `/opt`; only the incompatible system nvcc 12.0 is observed.
 
 Snapshot identity is now confirmed for preparation of a further execution
-amendment. A fresh remote source copy and approved Blackwell-capable toolchain
-provisioning, full-generator compatibility, complete locked-environment
-readiness, intended ranks, numerical tolerances, GPU source-hook validation and
-evidence acceptance remain unresolved. R3 stays **IN PROGRESS**.
+amendment. At this point a fresh remote source copy and approved
+Blackwell-capable toolchain provisioning remained unresolved.
+
+## Authorized Bootes environment provisioning — 2026-09-16
+
+The user authorized a fresh remote R3 source and complete locked environment,
+with an explicit stop before GPU kernels, model loading or generation. The
+source at `/local_scratch2/gzappavi/wan_experiments_r3` is clean at outer commit
+`b07c64aa6b2aaea90627c30e27a4b22f194c5b41`, Wan commit
+`00bde1e719ccb56c66a01a1f18a70c49b278c202` and LaMa commit
+`469acc7358a1c6828b647b4ee20c93474a2f36b4`. LFS smudging was skipped, leaving
+example LFS objects as pointers; the retained U1 evidence tree was not mutated.
+
+A toolkit-only CUDA 12.8.1 installation at
+`/local_scratch2/gzappavi/toolchains/cuda-12.8.1` reports nvcc V12.8.93. The
+5,382,238,770-byte runfile SHA-256 is
+`228f6bcaf5b7618d032939f431914fc92d0e5ed39ebe37098a24502f26a19797`.
+The initial locked sync failed before package resolution because the LaMa
+submodule was absent from the bundle checkout. After initializing its exact
+recorded commit, GPU-hidden `uv sync --locked` resolved 287 packages and
+succeeded; a second invocation resolved in 3 ms and checked 266 packages.
+
+With `CUDA_VISIBLE_DEVICES` empty, imports report Python 3.11.13, PyTorch
+2.10.0+cu128, CUDA runtime metadata 12.8, flash-attn
+2.8.3+cu128torch2.10, SAM2 1.1.0 and PyTorch flex attention. Static `cuobjdump`
+inspection found `sm_120` cubins in both SAM2 and FA2. The approved
+`pyproject.toml` and `uv.lock` hashes are unchanged. No checkpoint/model was
+loaded and no GPU kernel or generation ran.
+
+Provisioning is complete, but full-generator compatibility, intended ranks,
+numerical tolerances, GPU kernel/source-hook validation, distributed behavior
+and evidence acceptance remain unresolved. R3 stays **IN PROGRESS**.

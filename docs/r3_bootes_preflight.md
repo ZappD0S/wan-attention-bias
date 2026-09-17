@@ -81,11 +81,50 @@ A bounded search found no alternate `nvcc` under `/usr/local` or `/opt`, leaving
 an intentionally dirty evidence worktree at old parent revision `e073adaa`; it
 must not be overwritten or treated as the current R3 source.
 
-The completed v3 CPU compatibility repair and checkpoint identity now permit
-preparation of a further versioned execution amendment, but not execution. A
-fresh remote R3 source copy and a complete locked environment still need an
-explicitly approved provisioning approach for a Blackwell-capable compiler.
-The amendment must bind observed environment/backend identities, approved rank
-count, full-generator tolerances and staged GPU stop gates before any CUDA
-execution or generation. R3 remains IN PROGRESS; no GPU contract, runtime parity
-or scientific result is claimed.
+The completed v3 CPU compatibility repair and checkpoint identity permitted
+preparation of a further versioned execution amendment, but not execution. At
+this point a fresh remote R3 source copy and a complete locked environment still
+needed an explicitly approved Blackwell-capable compiler.
+
+## Authorized fresh source and locked-environment provisioning
+
+The user then authorized fresh R3 provisioning while requiring a stop before
+GPU kernels, model loading or generation. Commit `b07c64a` was transferred by
+Git bundle into `/local_scratch2/gzappavi/wan_experiments_r3`; the outer tree is
+at `b07c64aa6b2aaea90627c30e27a4b22f194c5b41`, Wan is at
+`00bde1e719ccb56c66a01a1f18a70c49b278c202`, and LaMa is at
+`469acc7358a1c6828b647b4ee20c93474a2f36b4`. All three worktrees are clean. Git
+LFS smudging was deliberately skipped during the source transfer, so tracked LFS
+example assets remain pointers and must not be selected as execution inputs.
+The retained U1 evidence tree was not changed.
+
+The official NVIDIA CUDA 12.8.1 toolkit-only runfile was downloaded from
+`developer.download.nvidia.com` and installed without a driver at
+`/local_scratch2/gzappavi/toolchains/cuda-12.8.1`. The 5,382,238,770-byte
+installer SHA-256 is
+`228f6bcaf5b7618d032939f431914fc92d0e5ed39ebe37098a24502f26a19797`;
+`nvcc` reports CUDA 12.8, V12.8.93. The system CUDA 12.0 installation was not
+modified.
+
+The first `uv sync --locked` attempt stopped before resolution because the
+fresh outer clone did not yet contain its LaMa submodule. Initializing the exact
+recorded LaMa commit repaired that source-layout omission. With GPUs hidden,
+`CUDA_HOME` bound to the new toolkit, and `TORCH_CUDA_ARCH_LIST=12.0`, the next
+locked sync resolved 287 packages and succeeded from `2026-09-16T11:55:43Z` to
+`11:58:27Z`; an immediate second locked sync resolved in 3 ms and checked 266
+installed packages without changes.
+
+A GPU-hidden import probe reports Python 3.11.13, PyTorch 2.10.0+cu128 with CUDA
+runtime metadata 12.8, flash-attn 2.8.3+cu128torch2.10, SAM2 1.1.0 and importable
+PyTorch flex attention. Static `cuobjdump` inspection found `sm_120` cubins in
+both SAM2 `_C.so` and the prebuilt FA2 extension. Project and lock hashes still
+match the approved values. These checks loaded no checkpoint or model and ran no
+GPU kernel or generation.
+
+The complete locked installation removes the prior provisioning blocker, but it
+does not establish runtime readiness. The execution amendment must still bind
+observed runtime/backend identities, approved rank count, full-generator
+tolerances and staged GPU stop gates. FA2/flex/SAM2 kernels, source hooks,
+full-generator compatibility, distributed behavior and full-record acceptance
+remain unvalidated. R3 remains IN PROGRESS; no GPU contract, runtime parity or
+scientific result is claimed.
