@@ -400,6 +400,23 @@ The mandatory stop was observed. This validates only the bounded layer-0 hook
 neutrality path; generator, CFG, mask, tracker, final-latent, full parity, FSDP
 and evidence acceptance remain unvalidated. The next stage is unapproved.
 
+## Upstream provenance prerequisite before generator parity
+
+The standard route used so far is `WanModel` from the clean pinned local Wan
+revision `00bde1e…`; “clean” does not establish that it is an unmodified vendor
+tree. Planned CPU/source-only task R3-P, specified in
+`docs/r3_upstream_provenance.md`, is therefore a hard prerequisite before any
+single-rank full-generator or upstream-vs-custom parity amendment.
+
+R3-P must pin the official repository and exact commit, preserve a separate
+pristine checkout, hash whole-tree and transitive upstream execution-surface
+comparisons, and disposition every difference. Only exact hunk/content-bound
+observation instrumentation may be allowlisted. A substantive or unresolved
+execution-surface difference requires the future upstream reference to execute
+from the separately bound pristine checkout. Until this gate completes, existing
+U1/v7 claims remain limited to the exact local standard implementation and must
+not be described as pristine-upstream evidence.
+
 ## Safe CPU commands now
 
 ```bash
