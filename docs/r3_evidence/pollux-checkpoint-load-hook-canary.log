@@ -1,0 +1,13 @@
+started_utc=2026-09-17T13:31:18Z
+host=pollux.alias
+seed=2026091701
+command=CUDA_VISIBLE_DEVICES=0 uv run --locked python -m multi_sample_inference.r3_checkpoint_hook_canary --protocol docs/r3_protocol_v7.json --matrix docs/r3_test_matrix_v3.json --output /local_scratch/gzappavi/r3_stage2/checkpoint-load-hook-canary.json
+0, GPU-4bace78e-bb7b-8593-36a8-a40f81258a10, NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition, 97887 MiB, 2 MiB, 0 %, 580.173.02, 12.0
+1, GPU-f0253119-3c25-53a0-40e8-17bd437d4e83, NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition, 97887 MiB, 2 MiB, 0 %, 580.173.02, 12.0
+{"content_sha256": "80c954fbb46c39139a300a7dd41ed5a8b1c6b11c5f952c1bfb3c763d6e73ebb7", "event": "checkpoint-verified", "inventory_sha256": "e6b7adbd6f6e5dfcb7fa06e09d5d2edfcb179e80ff25f1c743567d1948701dd4"}
+{"event": "model-load-start", "route": "upstream"}
+Loading checkpoint shards:   0%|          | 0/7 [00:00<?, ?it/s]Loading checkpoint shards:  14%|█▍        | 1/7 [00:00<00:02,  2.42it/s]Loading checkpoint shards:  29%|██▊       | 2/7 [00:00<00:02,  2.33it/s]Loading checkpoint shards:  43%|████▎     | 3/7 [00:01<00:01,  2.28it/s]Loading checkpoint shards:  57%|█████▋    | 4/7 [00:01<00:01,  2.41it/s]Loading checkpoint shards:  71%|███████▏  | 5/7 [00:02<00:00,  2.52it/s]Loading checkpoint shards:  86%|████████▌ | 6/7 [00:02<00:00,  2.45it/s]Loading checkpoint shards: 100%|██████████| 7/7 [00:02<00:00,  2.66it/s]Loading checkpoint shards: 100%|██████████| 7/7 [00:02<00:00,  2.51it/s]
+{"elapsed_seconds": 2.851003780029714, "event": "model-load-complete"}
+{"output_path":"/local_scratch/gzappavi/r3_stage2/checkpoint-load-hook-canary.json","output_sha256":"23a4a8df5fca81c69060c4440b905793da92cc454dcc67638c2b0dd63bdfc26f","protocol_sha256":"63e2781bdf906232014f9c39c9c5fc206ee0ed161aaf63ac80320cd4bbd4ae00","stage_id":"checkpoint-load-hook-canary","status":"passed"}
+finished_utc=2026-09-17T13:32:24Z
+exit_status=0

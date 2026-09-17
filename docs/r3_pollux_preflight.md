@@ -91,3 +91,28 @@ self FA2 and the two I2V cross FA2 dispatches. T5/CLIP/VAE, custom model,
 full-model forward, generation, scheduler/decoding, distributed and later-stage
 execution are prohibited. At amendment freeze, no checkpoint was present on
 Pollux and no v7 model load or CUDA operation had run.
+
+## Bounded checkpoint-load/hook result
+
+Commit `133c54b` was transferred by verified bundle. Pollux then copied the
+bound 33-file, 82,272,036,045-byte checkpoint directly from Bootes into the v7
+path; full inventory/content verification reproduced `e6b7adbd…` and
+`80c954fb…`. Exact clean source/environment/prerequisite checks and the v7 stage
+preflight passed while generic execution remained blocked. Both GPUs were idle,
+and only GPU 0 was exposed.
+
+The runner exited 0. The concrete upstream BF16 `WanModel` (40 DiT layers)
+loaded in 2.85 seconds. Layer 0 matched expected state `eb1b247b…`; the frozen
+no-observer and observer outputs were finite and bitwise identical as FP32
+`[1,128,5120]` tensor `236f8556…`. Inputs and layer state were unchanged. The
+observer produced exactly install, self FA2, two I2V cross FA2, and completion
+events.
+
+Immutable evidence `docs/r3_evidence/pollux-checkpoint-load-hook-canary.json`
+hashes to `23a4a8df…`; its log hashes to `af6f919b…`. The record confirms no
+T5/CLIP/VAE or custom model load, full-model forward, generation,
+scheduler/decoding or distributed execution. The mandatory stop was observed.
+Post-harvest evidence regression, focused R3 and seven-file suites passed 64 and
+106 tests; compile and both Ruff commands passed. This completes only stage 2;
+the single-rank generator and every later stage remain unapproved, and R3
+remains **IN PROGRESS**.

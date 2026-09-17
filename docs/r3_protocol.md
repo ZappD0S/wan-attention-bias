@@ -384,6 +384,22 @@ later stages. The runner must stop after this one layer comparison. At amendment
 freeze no checkpoint had been copied to Pollux and no v7 model load or CUDA
 operation had run; this is authorization and pre-execution validation only.
 
+Commit `133c54b` was then installed cleanly on Pollux. The 33-file,
+82,272,036,045-byte snapshot was copied from Bootes and fully rehashed to the
+bound inventory/content identities. Both GPUs were idle; only GPU 0 was visible
+to the runner. The upstream 40-layer BF16 Wan DiT loaded, selected layer 0
+matched state `eb1b247b…`, and the baseline/observed outputs were finite and
+bitwise identical at FP32 `[1,128,5120]` with SHA-256 `236f8556…`. Input and
+layer state identities were unchanged, and the observer emitted exactly
+lifecycle plus self/cross/cross FA2 events.
+
+Immutable record `23a4a8df…` and log `af6f919b…` are retained under
+`docs/r3_evidence/`. The scope records no T5/CLIP/VAE or custom model load, no
+full-model forward, generation, scheduler/decoding or distributed execution.
+The mandatory stop was observed. This validates only the bounded layer-0 hook
+neutrality path; generator, CFG, mask, tracker, final-latent, full parity, FSDP
+and evidence acceptance remain unvalidated. The next stage is unapproved.
+
 ## Safe CPU commands now
 
 ```bash

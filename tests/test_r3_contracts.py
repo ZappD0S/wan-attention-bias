@@ -41,6 +41,8 @@ PROTOCOL_V5 = ROOT / "docs/r3_protocol_v5.json"
 PROTOCOL_V6 = ROOT / "docs/r3_protocol_v6.json"
 PROTOCOL_V7 = ROOT / "docs/r3_protocol_v7.json"
 POLLUX_BACKEND_EVIDENCE = ROOT / "docs/r3_evidence/pollux-backend-kernel-canary.json"
+POLLUX_HOOK_EVIDENCE = ROOT / "docs/r3_evidence/pollux-checkpoint-load-hook-canary.json"
+POLLUX_HOOK_LOG = ROOT / "docs/r3_evidence/pollux-checkpoint-load-hook-canary.log"
 SOURCE = ROOT / "tests/fixtures/smoke_experiment.json"
 DIGEST = "a" * 64
 
@@ -460,6 +462,79 @@ def test_pollux_backend_canary_evidence_is_bound_and_bounded():
         *record["kernels"]["sam2_connected_components"]["outputs"].values(),
     ]
     assert all(output["device"] == "cuda" and output["finite"] for output in outputs)
+
+
+def test_pollux_checkpoint_hook_evidence_is_bound_and_bounded():
+    bundle = load_protocol_bundle(PROTOCOL_V7, MATRIX_V3)
+    protocol = bundle["protocol"]
+    record = json.loads(POLLUX_HOOK_EVIDENCE.read_text())
+    assert hashlib.sha256(POLLUX_HOOK_EVIDENCE.read_bytes()).hexdigest() == (
+        "23a4a8df5fca81c69060c4440b905793da92cc454dcc67638c2b0dd63bdfc26f"
+    )
+    assert hashlib.sha256(POLLUX_HOOK_LOG.read_bytes()).hexdigest() == (
+        "af6f919b8781b3002e657581200a27b5c36e52fa2a10c94d5377bbcb1be8c3b6"
+    )
+    assert record["status"] == "passed"
+    assert record["stage_id"] == "checkpoint-load-hook-canary"
+    assert record["bindings"] == {
+        "protocol_id": protocol["protocol_id"],
+        "protocol_sha256": bundle["protocol_sha256"],
+        "matrix_id": bundle["matrix"]["matrix_id"],
+        "matrix_sha256": bundle["matrix_sha256"],
+        "prerequisite_evidence_sha256": "6d5c5cae32953baf779163233e56baabc73baacaac28c59a5c17e79152894aae",
+        "checkpoint_inventory_sha256": "e6b7adbd6f6e5dfcb7fa06e09d5d2edfcb179e80ff25f1c743567d1948701dd4",
+        "checkpoint_content_sha256": "80c954fbb46c39139a300a7dd41ed5a8b1c6b11c5f952c1bfb3c763d6e73ebb7",
+    }
+    assert record["repositories"]["parent"] == {
+        "revision": "133c54b15d630ebacce530ca0b6d96ddbb24e153",
+        "dirty": False,
+        "dirty_fingerprint": None,
+    }
+    assert record["environment"] == protocol["execution_amendment"][
+        "environment_binding"
+    ]
+    assert record["checkpoint_load"]["selected_layer_state_sha256"] == (
+        protocol["execution_amendment"]["hook_canary_contract"][
+            "expected_selected_layer_state_sha256"
+        ]
+    )
+    assert record["checkpoint_load"]["selected_layer_state_preserved"] is True
+    assert record["hook_neutrality"]["bitwise_exact"] is True
+    assert record["hook_neutrality"]["inputs_preserved"] is True
+    assert record["hook_neutrality"]["output"] == {
+        "dtype": "torch.float32",
+        "shape": [1, 128, 5120],
+        "sha256": "236f85567851e9873b55654f88a873ddd4ce9224b03170d08f181967543378f8",
+    }
+    observations = record["hook_neutrality"]["observations"]
+    contract = protocol["execution_amendment"]["hook_canary_contract"]
+    assert [item["event"] for item in observations] == contract[
+        "expected_observer_events"
+    ]
+    dispatches = [item for item in observations if item["event"] == "attention-dispatch"]
+    assert [item["attention_site"] for item in dispatches] == contract[
+        "expected_attention_sites"
+    ]
+    assert all(
+        item["backend"] == "flash_attention_2"
+        and item["backend_version"] == "2.8.3"
+        and item["block"] == 0
+        and item["rank"] == 0
+        for item in dispatches
+    )
+    assert record["scope"] == {
+        "checkpoint_verified": True,
+        "upstream_wan_dit_loaded": True,
+        "selected_layer_forward_performed": True,
+        "text_encoder_loaded": False,
+        "clip_loaded": False,
+        "vae_loaded": False,
+        "custom_model_loaded": False,
+        "full_model_forward_performed": False,
+        "generation_performed": False,
+        "scheduler_or_decoding_performed": False,
+        "distributed_execution_performed": False,
+    }
 
 
 @pytest.mark.parametrize(

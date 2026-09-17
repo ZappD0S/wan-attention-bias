@@ -431,3 +431,14 @@ checkpoint/hook execution preflight reports no
 blockers without touching a GPU, while generic execution and the generator stage
 fail closed. At this freeze point no checkpoint had been copied to Pollux, no
 checkpoint/model had been loaded and no v7 CUDA operation had run.
+
+After verified commit transfer and complete checkpoint rehashing, the bounded
+runner exited 0 on one visible idle Pollux GPU. Evidence SHA-256 `23a4a8df…`
+and log SHA-256 `af6f919b…` bind v7, the frozen matrix, prior backend evidence,
+exact source/environment/checkpoint, concrete loader and scope. Layer 0 retained
+state `eb1b247b…`; observer/no-observer outputs were finite and bitwise identical
+at `236f8556…`, with exact input/state preservation and expected self/cross/cross
+FA2 events. No full model forward, generation or distributed operation occurred.
+The mandatory stage stop was observed. Post-harvest evidence regressions passed
+**64 focused R3 tests in 2.87 seconds** and **106 seven-file tests in 3.68
+seconds**; compile and both Ruff commands passed. R3 remains **IN PROGRESS**.
