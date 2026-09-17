@@ -149,3 +149,18 @@ full-generator compatibility, distributed behavior or full-record acceptance.
 A later immutable authorization amendment is required before execution. R3
 remains **IN PROGRESS**; no GPU contract, runtime parity or scientific result is
 claimed.
+
+## Bounded v5 backend-canary authorization
+
+On 2026-09-17 the user explicitly approved the proposed first stage only:
+transfer the frozen source to the clean Bootes worktree, execute exact
+source/environment preflight, run one bounded FA2, compiled flex-attention and
+SAM2 CUDA canary on one visible GPU, then stop and report. The immutable v5
+protocol records that scope while checkpoint/model loading, generation,
+distributed execution and the four later stages remain `not-approved`.
+
+The dedicated canary runner is fail closed: it requires the clean exact
+parent/Wan/LaMa binding, v5's package/hardware identities, FA3 absence, and one
+visible CUDA device. Its output path must be outside the repository. At this
+pre-execution checkpoint no GPU kernel had yet run, so this section records
+authorization and controls rather than a result.

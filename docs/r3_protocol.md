@@ -291,6 +291,38 @@ before any GPU query/kernel, model load, generation or distributed job.
 V4 does not mark any source hook GPU-validated, integrate full-record acceptance
 or change generator/attention arithmetic. R3 remains **IN PROGRESS**.
 
+## Bounded v5 backend-canary authorization — 2026-09-17
+
+`r3_protocol_v5.json` is an immutable authorization amendment over v4 (v4
+SHA-256 `004f2f9e…`; v5 SHA-256 `d3271493…`). The user's current-session
+approval authorizes only transfer of the frozen source to Bootes, exact
+source/environment preflight, and one FA2, compiled flex-attention and SAM2
+CUDA canary on one visible GPU. It explicitly prohibits checkpoint/model
+loading, generation, distributed execution and every later stage, then requires
+a stop for review.
+
+The v5 source binding includes the new backend-only canary runner and shared
+runtime observer under parent production-content digest `7b8e027a…`. Generic
+contract-validation preflight remains blocked by the four later stage gates;
+only `--stage backend-kernel-canary` can pass. The dedicated runner revalidates
+clean parent/Wan/LaMa source identities, the exact v4 environment binding, FA3
+absence and one visible CUDA device before allocating its small test tensors.
+It writes one immutable record outside the source tree only after all three
+outputs are finite and the SAM2 component result is structurally correct.
+
+The authorized command is bounded to:
+
+```bash
+CUDA_VISIBLE_DEVICES=0 uv run --locked python -m multi_sample_inference.r3_backend_canary \
+  --protocol docs/r3_protocol_v5.json --matrix docs/r3_test_matrix_v3.json \
+  --output /local_scratch2/gzappavi/r3_stage1/backend-kernel-canary.json
+```
+
+At amendment freeze time this command had not run. A canary pass can establish
+only bounded backend-kernel execution under the exact environment; it cannot
+validate the checkpoint, model, source hooks, generator parity, FSDP, evidence
+acceptance or any scientific result. R3 remains **IN PROGRESS**.
+
 ## Safe CPU commands now
 
 ```bash
@@ -302,6 +334,11 @@ CUDA_VISIBLE_DEVICES='' uv run --no-sync python -m multi_sample_inference.r3_pre
   --protocol docs/r3_protocol_v3.json --matrix docs/r3_test_matrix_v3.json
 CUDA_VISIBLE_DEVICES='' uv run --no-sync python -m multi_sample_inference.r3_preflight \
   --protocol docs/r3_protocol_v4.json --matrix docs/r3_test_matrix_v3.json
+CUDA_VISIBLE_DEVICES='' uv run --no-sync python -m multi_sample_inference.r3_preflight \
+  --protocol docs/r3_protocol_v5.json --matrix docs/r3_test_matrix_v3.json
+CUDA_VISIBLE_DEVICES='' uv run --no-sync python -m multi_sample_inference.r3_preflight \
+  --protocol docs/r3_protocol_v5.json --matrix docs/r3_test_matrix_v3.json \
+  --execution --stage backend-kernel-canary
 CUDA_VISIBLE_DEVICES='' PYTHONPATH=. uv run --no-sync --with pytest==9.0.3 python -m pytest -q \
   tests/test_r3_contracts.py tests/test_r3_runtime.py
 ```
@@ -310,7 +347,7 @@ The preflight commands succeed in preparation mode while reporting
 `execution_ready=false`. Adding `--execution` must fail while any approval or
 amendment authorization/stage blocker remains.
 
-## Future GPU handoff commands (not authorized or run)
+## Later GPU handoff commands (not authorized or run)
 
 After approval, complete environment and GPU hook validation plus the further
 versioned protocol/acceptance amendment. Only then use a real non-smoke source

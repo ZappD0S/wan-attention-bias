@@ -7,9 +7,11 @@ import json
 from pathlib import Path
 
 from .r3_contracts import (
+    R3_STAGE_IDS,
     evidence_acceptance_blockers,
     execution_blockers,
     load_protocol_bundle,
+    stage_execution_blockers,
 )
 
 
@@ -41,31 +43,36 @@ def validate_backend_runtime(dispatch_contract, observations):
 
 
 def validate_v4_runtime_environment(protocol, observations):
-    """Require exact v4 host/package/hardware observations before model load."""
-    if protocol.get("schema_version") != 4:
+    """Require exact v4+ host/package/hardware observations before model load."""
+    if protocol.get("schema_version", 0) < 4:
         return True
     expected = protocol["execution_amendment"]["environment_binding"]
     if not isinstance(observations, dict) or set(observations) != set(expected):
-        raise ValueError("R3 v4 runtime environment observations are incomplete")
+        raise ValueError("R3 v4+ runtime environment observations are incomplete")
     mismatches = [
         key for key, value in expected.items() if observations.get(key) != value
     ]
     if mismatches:
         raise RuntimeError(
-            "R3 v4 runtime environment differs from the amendment: "
+            "R3 v4+ runtime environment differs from the amendment: "
             + ", ".join(sorted(mismatches))
         )
     return True
 
 
-def preflight(protocol_path, matrix_path, *, execution=False):
+def preflight(protocol_path, matrix_path, *, execution=False, stage=None):
     bundle = load_protocol_bundle(protocol_path, matrix_path)
-    blockers = execution_blockers(bundle["protocol"])
+    blockers = (
+        stage_execution_blockers(bundle["protocol"], stage)
+        if stage is not None
+        else execution_blockers(bundle["protocol"])
+    )
     acceptance_blockers = evidence_acceptance_blockers(bundle["protocol"])
     result = {
         "schema_version": bundle["protocol"]["schema_version"],
         "preflight_kind": "r3-no-generation-preflight",
         "mode": "execution" if execution else "preparation",
+        "stage": stage,
         "protocol_id": bundle["protocol"]["protocol_id"],
         "protocol_sha256": bundle["protocol_sha256"],
         "matrix_id": bundle["matrix"]["matrix_id"],
@@ -88,10 +95,16 @@ def main(argv=None):
     parser.add_argument("--protocol", required=True, type=Path)
     parser.add_argument("--matrix", required=True, type=Path)
     parser.add_argument("--execution", action="store_true")
+    parser.add_argument("--stage", choices=R3_STAGE_IDS)
     args = parser.parse_args(argv)
     print(
         json.dumps(
-            preflight(args.protocol, args.matrix, execution=args.execution),
+            preflight(
+                args.protocol,
+                args.matrix,
+                execution=args.execution,
+                stage=args.stage,
+            ),
             sort_keys=True,
             separators=(",", ":"),
         )

@@ -92,11 +92,18 @@ CUDA_VISIBLE_DEVICES='' uv run --no-sync --with pytest==9.0.3 python -m pytest -
   tests/test_r3_runtime.py
 CUDA_VISIBLE_DEVICES='' uv run --no-sync python -m compileall -q \
   multi_sample_inference/experiment_pipeline.py \
+  multi_sample_inference/fsdp_worker.py \
+  multi_sample_inference/r3_contracts.py \
+  multi_sample_inference/r3_preflight.py \
+  multi_sample_inference/r3_environment.py \
+  multi_sample_inference/r3_backend_canary.py \
   multi_sample_inference/r3_runtime.py multi_sample_inference/r3_parity.py \
   tests/test_r3_contracts.py tests/test_r3_runtime.py
 CUDA_VISIBLE_DEVICES='' uv run --no-sync ruff check \
   multi_sample_inference/r3_contracts.py \
   multi_sample_inference/r3_preflight.py \
+  multi_sample_inference/r3_environment.py \
+  multi_sample_inference/r3_backend_canary.py \
   multi_sample_inference/r3_runtime.py \
   multi_sample_inference/r3_parity.py \
   tests/test_r3_contracts.py tests/test_r3_runtime.py \
@@ -334,3 +341,23 @@ or scientific measurement occurred. V4 itself is not authorized for execution:
 a later immutable authorization amendment is required. Real backend kernels,
 hook neutrality, full generator, distributed behavior and full-record acceptance
 remain unvalidated. R3 stays **IN PROGRESS**.
+
+## Bounded v5 authorization validation — 2026-09-17
+
+The immutable v5 protocol (SHA-256 `d3271493…`) is lineage-bound to v4 and
+records explicit authorization for only `backend-kernel-canary`. Both top-level
+approvals are `approved`, but generic execution remains blocked by
+`staged-execution-gates`; stage-scoped execution preflight passes only for the
+backend canary and rejects the checkpoint/hook stage. The source binding covers
+the dedicated no-model canary runner and shared environment observer under
+production digest `7b8e027a…`. Tests also confirm exact v4/v5 environment checks
+and clean exact v5 parent/Wan/LaMa binding.
+
+With CUDA hidden, the seven-file suite passed **99 tests in 3.43 seconds**; the
+R3 subset passed **57 tests in 2.58 seconds**. Focused compilation and both
+Ruff commands passed. V5 preparation reports only the later-stage blocker, and
+its backend-stage execution preflight reports no blockers while evidence
+acceptance remains blocked. At this checkpoint the source had not yet been
+transferred and no GPU kernel had run. Checkpoint/model loading, generation,
+distributed execution and all later stages remain prohibited; R3 stays **IN
+PROGRESS**.

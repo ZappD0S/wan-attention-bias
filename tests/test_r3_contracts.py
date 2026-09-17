@@ -14,6 +14,7 @@ from multi_sample_inference.r3_contracts import (
     canonical_json_bytes,
     enumerate_matrix_cases,
     load_protocol_bundle,
+    stage_execution_blockers,
     validate_runtime_evidence,
     validate_worker_observation,
     write_immutable_json,
@@ -32,6 +33,7 @@ MATRIX_V2 = ROOT / "docs/r3_test_matrix_v2.json"
 PROTOCOL_V3 = ROOT / "docs/r3_protocol_v3.json"
 MATRIX_V3 = ROOT / "docs/r3_test_matrix_v3.json"
 PROTOCOL_V4 = ROOT / "docs/r3_protocol_v4.json"
+PROTOCOL_V5 = ROOT / "docs/r3_protocol_v5.json"
 SOURCE = ROOT / "tests/fixtures/smoke_experiment.json"
 DIGEST = "a" * 64
 
@@ -264,9 +266,9 @@ def test_v4_predeclares_runtime_decisions_but_remains_authorization_blocked():
         stage["authorization"] == "not-approved"
         for stage in amendment["stage_gates"]
     )
-    assert pipeline.production_source_content_sha256(
-        ROOT, amendment["source_binding"]["parent_production_paths"]
-    ) == amendment["source_binding"]["parent_production_content_sha256"]
+    assert amendment["source_binding"]["parent_production_content_sha256"] == (
+        "56e4cc52ef151aca4c414cd00e9012fa2dbebc3f28845435d13401eab2e5f208"
+    )
 
     result = preflight(PROTOCOL_V4, MATRIX_V3)
     assert result["schema_version"] == 4
@@ -281,8 +283,62 @@ def test_v4_predeclares_runtime_decisions_but_remains_authorization_blocked():
         preflight(PROTOCOL_V4, MATRIX_V3, execution=True)
 
 
-def test_v4_runtime_environment_requires_every_exact_observation():
-    protocol = json.loads(PROTOCOL_V4.read_text())
+def test_v5_authorizes_only_the_backend_kernel_canary():
+    bundle = load_protocol_bundle(PROTOCOL_V5, MATRIX_V3)
+    protocol = bundle["protocol"]
+    amendment = protocol["execution_amendment"]
+    assert protocol["lineage"] == {
+        "protocol_id": "r3-gpu-contracts-v4",
+        "sha256": "004f2f9e01a397ea36db7728a3ffe51ac86fa4b9c1c13de3c5056a2b12e266ef",
+    }
+    assert protocol["approvals"] == {
+        "gpu_execution": "approved",
+        "hardware_environment": "approved",
+    }
+    assert amendment["authorization_state"] == "approved-bounded-stage"
+    assert amendment["authorization_record"]["authorized_stage"] == (
+        "backend-kernel-canary"
+    )
+    assert amendment["authorization_record"]["stop_after_stage"] is True
+    assert [stage["authorization"] for stage in amendment["stage_gates"]] == [
+        "approved",
+        "not-approved",
+        "not-approved",
+        "not-approved",
+        "not-approved",
+    ]
+    assert stage_execution_blockers(protocol, "backend-kernel-canary") == []
+    assert stage_execution_blockers(protocol, "checkpoint-load-hook-canary") == [
+        "stage-not-authorized:checkpoint-load-hook-canary"
+    ]
+    assert pipeline.production_source_content_sha256(
+        ROOT, amendment["source_binding"]["parent_production_paths"]
+    ) == amendment["source_binding"]["parent_production_content_sha256"]
+
+    result = preflight(PROTOCOL_V5, MATRIX_V3)
+    assert result["blockers"] == ["staged-execution-gates"]
+    with pytest.raises(RuntimeError, match="staged-execution-gates"):
+        preflight(PROTOCOL_V5, MATRIX_V3, execution=True)
+    stage_result = preflight(
+        PROTOCOL_V5,
+        MATRIX_V3,
+        execution=True,
+        stage="backend-kernel-canary",
+    )
+    assert stage_result["execution_ready"] is True
+    assert stage_result["evidence_acceptance_ready"] is False
+    with pytest.raises(RuntimeError, match="stage-not-authorized"):
+        preflight(
+            PROTOCOL_V5,
+            MATRIX_V3,
+            execution=True,
+            stage="checkpoint-load-hook-canary",
+        )
+
+
+@pytest.mark.parametrize("protocol_path", [PROTOCOL_V4, PROTOCOL_V5])
+def test_v4_plus_runtime_environment_requires_every_exact_observation(protocol_path):
+    protocol = json.loads(protocol_path.read_text())
     expected = protocol["execution_amendment"]["environment_binding"]
     assert validate_v4_runtime_environment(protocol, copy.deepcopy(expected))
 
@@ -297,8 +353,8 @@ def test_v4_runtime_environment_requires_every_exact_observation():
         validate_v4_runtime_environment(protocol, incomplete)
 
 
-def test_v4_source_binding_requires_clean_exact_nested_revisions():
-    protocol = json.loads(PROTOCOL_V4.read_text())
+def test_v5_source_binding_requires_clean_exact_nested_revisions():
+    protocol = json.loads(PROTOCOL_V5.read_text())
     binding = protocol["execution_amendment"]["source_binding"]
     repositories = {
         "parent": {

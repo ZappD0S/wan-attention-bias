@@ -449,7 +449,7 @@ def expand_source(source_path, output_dir, write=True):
     r3_environment_sha256 = None
     if r3_contract is not None:
         protocol = r3_contract["protocol"]
-        if protocol["schema_version"] == 4:
+        if protocol["schema_version"] >= 4:
             repositories["lama"] = repository_identity(repo / "lama")
             _validate_v4_source_binding(repo, repositories, protocol)
         declarations = protocol["runtime_declarations"]
@@ -466,7 +466,7 @@ def expand_source(source_path, output_dir, write=True):
         )
         environment = (
             protocol["execution_amendment"]["environment_binding"]
-            if protocol["schema_version"] == 4
+            if protocol["schema_version"] >= 4
             else {
                 "hardware_identifier": declarations["hardware_identifier"],
                 "torch_version": declarations["torch_version"],

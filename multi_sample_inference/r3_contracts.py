@@ -28,6 +28,14 @@ V1_MATRIX_SHA256 = "381fd9c5829fbe405e17ec77da57a5c3b14e60c325e653571b4c4d3a4043
 V2_PROTOCOL_SHA256 = "1adb1508be962d140070283a45dc092713e56b3b00029c406947d4989ee058b6"
 V2_MATRIX_SHA256 = "ecad41461cd43db148af70d91a798f2342263ceee073ce92d1ae8d12b90bc643"
 V3_PROTOCOL_SHA256 = "91a34240c8a9d4d13caa0f6579de523f1d2ca3cb9c387cca17734c18fd2030f5"
+V4_PROTOCOL_SHA256 = "004f2f9e01a397ea36db7728a3ffe51ac86fa4b9c1c13de3c5056a2b12e266ef"
+R3_STAGE_IDS = (
+    "backend-kernel-canary",
+    "checkpoint-load-hook-canary",
+    "single-rank-generator-canary",
+    "single-rank-contract-cases",
+    "intended-rank-fsdp",
+)
 _SHA256 = re.compile(r"[0-9a-f]{64}")
 _GIT_REVISION = re.compile(r"[0-9a-f]{40}|[0-9a-f]{64}")
 
@@ -493,13 +501,7 @@ def _validate_v4_execution_amendment(protocol):
     )
 
     stages = amendment["stage_gates"]
-    expected_stages = [
-        "backend-kernel-canary",
-        "checkpoint-load-hook-canary",
-        "single-rank-generator-canary",
-        "single-rank-contract-cases",
-        "intended-rank-fsdp",
-    ]
+    expected_stages = list(R3_STAGE_IDS)
     _require(
         isinstance(stages, list)
         and [stage.get("id") for stage in stages] == expected_stages
@@ -531,6 +533,77 @@ def _validate_v4_execution_amendment(protocol):
         )
 
 
+def _validate_v5_execution_amendment(protocol):
+    amendment = protocol.get("execution_amendment")
+    expected_keys = {
+        "amendment_id",
+        "authorization_state",
+        "authorization_record",
+        "source_binding",
+        "checkpoint_binding",
+        "environment_binding",
+        "provisioning_binding",
+        "rank_decision",
+        "tolerance_decision",
+        "stage_gates",
+    }
+    _require(
+        isinstance(amendment, dict) and set(amendment) == expected_keys,
+        "R3 protocol v5 execution amendment is incomplete or unexpected",
+    )
+    _require(
+        amendment["amendment_id"] == "r3-gpu-execution-amendment-v5"
+        and amendment["authorization_state"] == "approved-bounded-stage",
+        "R3 protocol v5 amendment identity or authorization is invalid",
+    )
+    authorization = amendment["authorization_record"]
+    _require(
+        authorization
+        == {
+            "authorized_stage": "backend-kernel-canary",
+            "authorization_source": "explicit-current-session-user-approval",
+            "authorized_operations": [
+                "transfer-frozen-source-to-bootes",
+                "exact-environment-and-source-preflight",
+                "fa2-flex-sam2-cuda-canaries",
+            ],
+            "prohibited_operations": [
+                "checkpoint-or-model-load",
+                "generation",
+                "distributed-execution",
+                "later-stage-execution",
+            ],
+            "stop_after_stage": True,
+        },
+        "R3 protocol v5 authorization record is incomplete or overbroad",
+    )
+    stages = amendment["stage_gates"]
+    _require(
+        isinstance(stages, list)
+        and [stage.get("id") for stage in stages] == list(R3_STAGE_IDS)
+        and stages[0].get("authorization") == "approved"
+        and all(
+            stage.get("authorization") == "not-approved" for stage in stages[1:]
+        ),
+        "R3 protocol v5 must authorize only the backend-kernel canary",
+    )
+
+    # Reuse every structural and declaration check from v4 after erasing only
+    # the v5 authorization delta. Lineage separately binds the immutable v4.
+    v4_amendment = {
+        key: value
+        for key, value in amendment.items()
+        if key != "authorization_record"
+    }
+    v4_amendment["amendment_id"] = "r3-gpu-execution-amendment-v4"
+    v4_amendment["authorization_state"] = "pending-explicit-user-approval"
+    v4_amendment["stage_gates"] = [
+        stage | {"authorization": "not-approved"} for stage in stages
+    ]
+    v4_view = protocol | {"execution_amendment": v4_amendment}
+    _validate_v4_execution_amendment(v4_view)
+
+
 def _validate_protocol_lineage(protocol, schema_version):
     if schema_version == 1:
         return
@@ -539,6 +612,7 @@ def _validate_protocol_lineage(protocol, schema_version):
         2: ("r3-gpu-contracts-v1", V1_PROTOCOL_SHA256),
         3: ("r3-gpu-contracts-v2", V2_PROTOCOL_SHA256),
         4: ("r3-gpu-contracts-v3", V3_PROTOCOL_SHA256),
+        5: ("r3-gpu-contracts-v4", V4_PROTOCOL_SHA256),
     }[schema_version]
     _require(
         isinstance(lineage, dict)
@@ -557,7 +631,7 @@ def _validate_protocol_lineage(protocol, schema_version):
 def validate_protocol(protocol, matrix, *, matrix_sha256):
     _require(isinstance(protocol, dict), "protocol must be a JSON object")
     schema_version = protocol.get("schema_version")
-    _require(schema_version in {1, 2, 3, 4}, "unsupported R3 protocol schema_version")
+    _require(schema_version in {1, 2, 3, 4, 5}, "unsupported R3 protocol schema_version")
     _require(
         protocol.get("protocol_id") == f"r3-gpu-contracts-v{schema_version}",
         "unexpected R3 protocol_id",
@@ -655,6 +729,8 @@ def validate_protocol(protocol, matrix, *, matrix_sha256):
         )
     if schema_version == 4:
         _validate_v4_execution_amendment(protocol)
+    elif schema_version == 5:
+        _validate_v5_execution_amendment(protocol)
     return validate_matrix(matrix)
 
 
@@ -674,12 +750,12 @@ def load_protocol_bundle(protocol_path, matrix_path):
     }
 
 
-def _v4_authorization_blockers(protocol):
-    if protocol["schema_version"] != 4:
+def _staged_authorization_blockers(protocol):
+    if protocol["schema_version"] < 4:
         return []
     amendment = protocol["execution_amendment"]
     blockers = []
-    if amendment["authorization_state"] != "approved":
+    if amendment["authorization_state"] not in {"approved", "approved-bounded-stage"}:
         blockers.append("explicit-user-authorization")
     if any(
         stage["authorization"] != "approved"
@@ -689,8 +765,7 @@ def _v4_authorization_blockers(protocol):
     return blockers
 
 
-def execution_blockers(protocol):
-    """Return blockers for approved contract-validation execution."""
+def _base_execution_blockers(protocol):
     blockers = []
     for key, value in protocol["approvals"].items():
         if value != "approved":
@@ -710,8 +785,32 @@ def execution_blockers(protocol):
             blockers.append(f"tolerance:full_generator_parity.{key}")
     if tolerance["amendment_required"]:
         blockers.append("versioned-pre-execution-amendment")
-    blockers.extend(_v4_authorization_blockers(protocol))
     return blockers
+
+
+def stage_execution_blockers(protocol, stage_id):
+    """Return blockers for one explicitly authorized bounded stage."""
+    blockers = _base_execution_blockers(protocol)
+    if protocol["schema_version"] != 5:
+        return [*blockers, "stage-scoped-authorization-unavailable"]
+    amendment = protocol["execution_amendment"]
+    if amendment["authorization_state"] != "approved-bounded-stage":
+        blockers.append("explicit-user-authorization")
+    stages = {stage["id"]: stage for stage in amendment["stage_gates"]}
+    if stage_id not in stages:
+        blockers.append(f"unknown-stage:{stage_id}")
+        return blockers
+    if stages[stage_id]["authorization"] != "approved":
+        blockers.append(f"stage-not-authorized:{stage_id}")
+    for prerequisite in stages[stage_id]["prerequisites"]:
+        if stages[prerequisite]["authorization"] != "approved":
+            blockers.append(f"stage-prerequisite-not-authorized:{prerequisite}")
+    return blockers
+
+
+def execution_blockers(protocol):
+    """Return blockers for full approved contract-validation execution."""
+    return _base_execution_blockers(protocol) + _staged_authorization_blockers(protocol)
 
 
 def evidence_acceptance_blockers(protocol):
