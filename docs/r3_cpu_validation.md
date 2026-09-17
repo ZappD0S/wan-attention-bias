@@ -374,3 +374,25 @@ No CUDA tensor or kernel, checkpoint/model load, generation or distributed job
 ran. The temporary two-minute availability poll was cancelled and there are no
 active scheduled tasks. This is an availability stop, not a failed backend
 result; R3 remains **IN PROGRESS**.
+
+## Pollux v6 relocation validation — 2026-09-17
+
+The user selected idle `pollux.alias` for the same backend-only stage. The
+lineage-bound v6 protocol (SHA-256 `f4de93f2…`) preserves every prohibition and
+changes only the exact host/source/environment binding. It records Pollux
+hardware identifier `f13f743d…`, production digest `69b14888…`, two new GPU
+UUIDs and `NODE-no-NVLink` topology. Generic execution remains blocked; the v6
+backend-stage execution preflight passes.
+
+The clean source, 9.4-GiB locked environment, 8.7-GiB CUDA toolkit and verified
+installer were copied directly from Bootes to writable Pollux local scratch.
+Two GPU-hidden `uv sync --locked` passes rebound editable workspace paths. A
+no-model probe reproduced Python 3.11.13, Torch 2.10.0+cu128, CUDA 12.8, FA2
+2.8.3, no FA3, flex attention, SAM2 1.1.0, driver 580.173.02 and exact
+project/lock hashes. The attention environment probe was changed to inspect
+installed FA2/FA3 directly rather than import Wan's eager model package before
+the environment gate.
+
+Focused R3 CPU tests passed 60 tests and the seven-file suite passed 102;
+focused compilation, both documented Ruff commands and whitespace checks passed. No checkpoint was copied or loaded and no Pollux CUDA tensor or
+kernel had run at this freeze point. R3 remains **IN PROGRESS**.

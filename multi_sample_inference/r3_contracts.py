@@ -29,6 +29,7 @@ V2_PROTOCOL_SHA256 = "1adb1508be962d140070283a45dc092713e56b3b00029c406947d4989e
 V2_MATRIX_SHA256 = "ecad41461cd43db148af70d91a798f2342263ceee073ce92d1ae8d12b90bc643"
 V3_PROTOCOL_SHA256 = "91a34240c8a9d4d13caa0f6579de523f1d2ca3cb9c387cca17734c18fd2030f5"
 V4_PROTOCOL_SHA256 = "004f2f9e01a397ea36db7728a3ffe51ac86fa4b9c1c13de3c5056a2b12e266ef"
+V5_PROTOCOL_SHA256 = "d3271493577916eb9f251f489933dc794328e2b0be7653cf0814821506e8e2a9"
 R3_STAGE_IDS = (
     "backend-kernel-canary",
     "checkpoint-load-hook-canary",
@@ -604,6 +605,61 @@ def _validate_v5_execution_amendment(protocol):
     _validate_v4_execution_amendment(v4_view)
 
 
+def _validate_v6_execution_amendment(protocol):
+    amendment = protocol.get("execution_amendment")
+    _require(
+        isinstance(amendment, dict)
+        and amendment.get("amendment_id") == "r3-gpu-execution-amendment-v6"
+        and amendment.get("authorization_state") == "approved-bounded-stage",
+        "R3 protocol v6 amendment identity or authorization is invalid",
+    )
+    _require(
+        amendment.get("authorization_record")
+        == {
+            "authorized_stage": "backend-kernel-canary",
+            "authorization_source": "explicit-current-session-user-approval",
+            "authorized_operations": [
+                "transfer-frozen-source-and-environment-to-pollux",
+                "exact-environment-and-source-preflight",
+                "fa2-flex-sam2-cuda-canaries",
+            ],
+            "prohibited_operations": [
+                "checkpoint-or-model-load",
+                "generation",
+                "distributed-execution",
+                "later-stage-execution",
+            ],
+            "stop_after_stage": True,
+        },
+        "R3 protocol v6 authorization record is incomplete or overbroad",
+    )
+
+    # V6 changes only the authorized host and its exact source/environment
+    # bindings. Reuse the full v5/v4 structural checks after erasing that delta.
+    v5_amendment = amendment | {
+        "amendment_id": "r3-gpu-execution-amendment-v5",
+        "authorization_record": {
+            "authorized_stage": "backend-kernel-canary",
+            "authorization_source": "explicit-current-session-user-approval",
+            "authorized_operations": [
+                "transfer-frozen-source-to-bootes",
+                "exact-environment-and-source-preflight",
+                "fa2-flex-sam2-cuda-canaries",
+            ],
+            "prohibited_operations": [
+                "checkpoint-or-model-load",
+                "generation",
+                "distributed-execution",
+                "later-stage-execution",
+            ],
+            "stop_after_stage": True,
+        },
+    }
+    _validate_v5_execution_amendment(
+        protocol | {"execution_amendment": v5_amendment}
+    )
+
+
 def _validate_protocol_lineage(protocol, schema_version):
     if schema_version == 1:
         return
@@ -613,6 +669,7 @@ def _validate_protocol_lineage(protocol, schema_version):
         3: ("r3-gpu-contracts-v2", V2_PROTOCOL_SHA256),
         4: ("r3-gpu-contracts-v3", V3_PROTOCOL_SHA256),
         5: ("r3-gpu-contracts-v4", V4_PROTOCOL_SHA256),
+        6: ("r3-gpu-contracts-v5", V5_PROTOCOL_SHA256),
     }[schema_version]
     _require(
         isinstance(lineage, dict)
@@ -631,7 +688,7 @@ def _validate_protocol_lineage(protocol, schema_version):
 def validate_protocol(protocol, matrix, *, matrix_sha256):
     _require(isinstance(protocol, dict), "protocol must be a JSON object")
     schema_version = protocol.get("schema_version")
-    _require(schema_version in {1, 2, 3, 4, 5}, "unsupported R3 protocol schema_version")
+    _require(schema_version in {1, 2, 3, 4, 5, 6}, "unsupported R3 protocol schema_version")
     _require(
         protocol.get("protocol_id") == f"r3-gpu-contracts-v{schema_version}",
         "unexpected R3 protocol_id",
@@ -731,6 +788,8 @@ def validate_protocol(protocol, matrix, *, matrix_sha256):
         _validate_v4_execution_amendment(protocol)
     elif schema_version == 5:
         _validate_v5_execution_amendment(protocol)
+    elif schema_version == 6:
+        _validate_v6_execution_amendment(protocol)
     return validate_matrix(matrix)
 
 
@@ -791,7 +850,7 @@ def _base_execution_blockers(protocol):
 def stage_execution_blockers(protocol, stage_id):
     """Return blockers for one explicitly authorized bounded stage."""
     blockers = _base_execution_blockers(protocol)
-    if protocol["schema_version"] != 5:
+    if protocol["schema_version"] not in {5, 6}:
         return [*blockers, "stage-scoped-authorization-unavailable"]
     amendment = protocol["execution_amendment"]
     if amendment["authorization_state"] != "approved-bounded-stage":

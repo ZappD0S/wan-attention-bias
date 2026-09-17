@@ -1,0 +1,239 @@
+{
+  "schema_version": 6,
+  "protocol_id": "r3-gpu-contracts-v6",
+  "status": "in-progress",
+  "frozen_at": "2026-09-17",
+  "claim_boundary": "Authorization amendment for one backend-only CUDA canary stage. Passing this stage can establish only bounded FA2, compiled flex-attention, and SAM2 kernel execution under the exact environment; it cannot establish model loading, source-hook neutrality, generator parity, distributed behavior, acceptance, or scientific results.",
+  "lineage": {
+    "protocol_id": "r3-gpu-contracts-v5",
+    "sha256": "d3271493577916eb9f251f489933dc794328e2b0be7653cf0814821506e8e2a9"
+  },
+  "matrix": {
+    "path": "docs/r3_test_matrix_v3.json",
+    "matrix_id": "r3-gpu-contract-matrix-v3",
+    "sha256": "e1776af152b3b0594c3af7497ffe95ec31db263fc9e3974bc9ea3c1d838fbd86"
+  },
+  "approvals": {
+    "gpu_execution": "approved",
+    "hardware_environment": "approved"
+  },
+  "runtime_hooks": {
+    "initial_latent_all_rank": "implemented-source-hook-gpu-unvalidated",
+    "all_rank_masks_and_self_cross": "implemented-source-hook-gpu-unvalidated",
+    "cfg_branch_outputs": "implemented-source-hook-gpu-unvalidated",
+    "actual_attention_backend": "implemented-source-hook-gpu-unvalidated",
+    "fixed_tracker_call_count": "implemented-source-hook-gpu-unvalidated",
+    "full_generator_parity": "implemented-source-hook-gpu-unvalidated"
+  },
+  "runtime_declarations": {
+    "checkpoint_content_sha256": "80c954fbb46c39139a300a7dd41ed5a8b1c6b11c5f952c1bfb3c763d6e73ebb7",
+    "hardware_identifier": "f13f743de56aaaa725bf73d630115c20f4b82456c41fe41428723f2c84342306",
+    "torch_version": "2.10.0+cu128",
+    "cuda_version": "12.8",
+    "flash_attention_version": "2.8.3",
+    "flex_attention_version": "2.10.0+cu128",
+    "intended_fsdp_rank_count": 2
+  },
+  "numerical_tolerances": {
+    "full_generator_parity": {
+      "atol": 1e-05,
+      "rtol": 0.016,
+      "amendment_required": false
+    }
+  },
+  "exact_contracts": {
+    "rank_initial_latent_hashes": "exact-equality",
+    "mask_identity_hashes": "exact-equality",
+    "finiteness": "all-values-finite",
+    "cardinality": "exact"
+  },
+  "source_hook_state": {
+    "implementation_scope": "sol-bounded-backend-canary-authorization",
+    "default_behavior": "observer-uninstalled-no-op",
+    "collector": "bounded-digest-metadata-within-event-alias-cache-only",
+    "distributed_gather": "rank-local-ordinals-all-ranks-call-rank-zero-receives",
+    "contract_validation_gate": "fully-approved-declared-amendment-may-run-with-gpu-unvalidated-hooks",
+    "evidence_acceptance_gate": "all-source-hooks-must-be-gpu-validated-and-marked-implemented",
+    "gpu_validation": "not-run"
+  },
+  "parity_artifact_state": {
+    "producer": "bounded-immutable-numpy-artifact",
+    "consumer": "offline-chunked-numerical-comparator",
+    "accepted_evidence_class": "not-enabled",
+    "gpu_validation": "not-run"
+  },
+  "execution_state": {
+    "cpu_schema_and_preflight": "prepared",
+    "checkpoint_bound_gpu_runtime": "not-run",
+    "flash_attention_2": "not-run",
+    "flex_attention": "not-run",
+    "single_rank": "not-run",
+    "intended_fsdp_ranks": "not-run",
+    "full_generator_parity": "not-run",
+    "flash_attention_3": "unsupported-not-observed"
+  },
+  "amendment_rule": "This immutable v5 amendment records explicit user authorization for only the backend-kernel-canary stage: source transfer, exact source/environment preflight, and one bounded FA2, flex-attention, and SAM2 CUDA canary on one visible GPU. Checkpoint/model loading, generation, distributed execution, and every later stage remain prohibited and require another immutable amendment after review.",
+  "backend_contract": {
+    "request_semantics": "expected-self-attention-coverage",
+    "flash_attention_3": "unsupported-fail-before-model-load",
+    "flash_attention_2": "required-for-all-routes",
+    "flex_attention": "declared-and-available-dispatched-only-when-derived",
+    "dispatch_derivation": "trusted-route-method-self-routing-and-schedules"
+  },
+  "execution_amendment": {
+    "amendment_id": "r3-gpu-execution-amendment-v6",
+    "authorization_state": "approved-bounded-stage",
+    "authorization_record": {
+      "authorized_stage": "backend-kernel-canary",
+      "authorization_source": "explicit-current-session-user-approval",
+      "authorized_operations": [
+        "transfer-frozen-source-and-environment-to-pollux",
+        "exact-environment-and-source-preflight",
+        "fa2-flex-sam2-cuda-canaries"
+      ],
+      "prohibited_operations": [
+        "checkpoint-or-model-load",
+        "generation",
+        "distributed-execution",
+        "later-stage-execution"
+      ],
+      "stop_after_stage": true
+    },
+    "source_binding": {
+      "parent_revision_at_freeze": "e9f08e630fde186a17d21395ab2a115161d2f5bd",
+      "parent_production_paths": [
+        "multi_sample_inference",
+        "pyproject.toml",
+        "uv.lock"
+      ],
+      "parent_production_content_sha256": "69b14888c06a338398dc55ce7b54f05ba8b9bbf7ab08d52a0eaf1a665d512136",
+      "wan_revision": "00bde1e719ccb56c66a01a1f18a70c49b278c202",
+      "lama_revision": "469acc7358a1c6828b647b4ee20c93474a2f36b4",
+      "require_clean_worktrees": true,
+      "manifest_repository_identity": "exact-head-and-dirty-fingerprint"
+    },
+    "checkpoint_binding": {
+      "identifier": "Wan-AI/Wan2.1-I2V-14B-480P@6b73f84e66371cdfe870c72acd6826e1d61cf279",
+      "snapshot_revision": "6b73f84e66371cdfe870c72acd6826e1d61cf279",
+      "inventory_sha256": "e6b7adbd6f6e5dfcb7fa06e09d5d2edfcb179e80ff25f1c743567d1948701dd4",
+      "content_sha256": "80c954fbb46c39139a300a7dd41ed5a8b1c6b11c5f952c1bfb3c763d6e73ebb7",
+      "path": "/local_scratch/gzappavi/hf/hub/models--Wan-AI--Wan2.1-I2V-14B-480P/snapshots/6b73f84e66371cdfe870c72acd6826e1d61cf279"
+    },
+    "environment_binding": {
+      "hostname": "pollux.alias",
+      "python_version": "3.11.13",
+      "torch_version": "2.10.0+cu128",
+      "cuda_runtime_version": "12.8",
+      "flash_attention_version": "2.8.3",
+      "flex_attention_version": "2.10.0+cu128",
+      "sam2_version": "1.1.0",
+      "driver_version": "580.173.02",
+      "gpu_model": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+      "gpu_uuids": [
+        "GPU-4bace78e-bb7b-8593-36a8-a40f81258a10",
+        "GPU-f0253119-3c25-53a0-40e8-17bd437d4e83"
+      ],
+      "gpu_compute_capability": "12.0",
+      "pyproject_sha256": "37ccb3859ca658181198569d9d2ae5d4398d1a17d4a07721e5d340a1d02d63a6",
+      "uv_lock_sha256": "d31fb115afdeb800de705fd080316598f1ba7e9de98c42b67cd0fdcea5d8a361"
+    },
+    "provisioning_binding": {
+      "cuda_toolkit_path": "/local_scratch/gzappavi/toolchains/cuda-12.8.1",
+      "cuda_toolkit_version": "12.8.1",
+      "nvcc_version": "12.8.93",
+      "installer_sha256": "228f6bcaf5b7618d032939f431914fc92d0e5ed39ebe37098a24502f26a19797",
+      "flash_attention_distribution_version": "2.8.3+cu128torch2.10",
+      "static_sm120_cubins": [
+        "flash_attention_2",
+        "sam2"
+      ],
+      "inter_gpu_topology": "NODE-no-NVLink"
+    },
+    "rank_decision": {
+      "intended_fsdp_rank_count": 2,
+      "basis": "Exactly the two observed 97,887-MiB Pollux GPUs; one process per GPU. NODE topology is recorded but remains unvalidated because distributed execution is prohibited."
+    },
+    "tolerance_decision": {
+      "atol": 1e-05,
+      "rtol": 0.016,
+      "basis": "Predeclared two-BF16-epsilon relative allowance with a near-zero absolute floor; shape, dtype, finiteness, identities and exact-contract checks remain separate hard gates.",
+      "u1_values_not_inherited": true
+    },
+    "stage_gates": [
+      {
+        "id": "backend-kernel-canary",
+        "authorization": "approved",
+        "prerequisites": [],
+        "scope": "One bounded FA2, flex-attention, and SAM2 CUDA canary; no checkpoint or model load.",
+        "stop_on": [
+          "environment-identity-mismatch",
+          "FA3-availability",
+          "kernel-error",
+          "nonfinite-output"
+        ]
+      },
+      {
+        "id": "checkpoint-load-hook-canary",
+        "authorization": "not-approved",
+        "prerequisites": [
+          "backend-kernel-canary"
+        ],
+        "scope": "Load the bound checkpoint and exercise the smallest source-hook neutrality canary.",
+        "stop_on": [
+          "checkpoint-mismatch",
+          "load-error",
+          "hook-mutation",
+          "unsupported-final-latent-dtype"
+        ]
+      },
+      {
+        "id": "single-rank-generator-canary",
+        "authorization": "not-approved",
+        "prerequisites": [
+          "backend-kernel-canary",
+          "checkpoint-load-hook-canary"
+        ],
+        "scope": "One single-rank, checkpoint-bound full-generator upstream/custom-none pair.",
+        "stop_on": [
+          "parity-failure",
+          "finiteness-failure",
+          "seed-mismatch",
+          "hook-cardinality-failure"
+        ]
+      },
+      {
+        "id": "single-rank-contract-cases",
+        "authorization": "not-approved",
+        "prerequisites": [
+          "backend-kernel-canary",
+          "checkpoint-load-hook-canary",
+          "single-rank-generator-canary"
+        ],
+        "scope": "Runnable single-rank contract cases only; rejected v3 lineage cases remain pre-launch failures.",
+        "stop_on": [
+          "backend-route-mismatch",
+          "mask-identity-failure",
+          "tracker-contract-failure",
+          "artifact-failure"
+        ]
+      },
+      {
+        "id": "intended-rank-fsdp",
+        "authorization": "not-approved",
+        "prerequisites": [
+          "backend-kernel-canary",
+          "checkpoint-load-hook-canary",
+          "single-rank-generator-canary",
+          "single-rank-contract-cases"
+        ],
+        "scope": "Two-rank FSDP cases after single-rank evidence review; no scientific generation.",
+        "stop_on": [
+          "collective-failure",
+          "rank-seed-mismatch",
+          "rank-mask-mismatch",
+          "distributed-parity-failure"
+        ]
+      }
+    ]
+  }
+}

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib
 import importlib.metadata
 import platform
 import socket
@@ -14,17 +15,24 @@ from .r3_contracts import sha256_file
 
 
 def observe_attention_runtime():
-    """Read installed attention helper state without caller-supplied claims."""
-    from wan.modules import attention  # noqa: PLC0415
-
+    """Read installed attention helper state without importing the Wan model."""
+    try:
+        flash_attn = importlib.import_module("flash_attn")
+    except ModuleNotFoundError:
+        flash_attn = None
+    try:
+        importlib.import_module("flash_attn_interface")
+    except ModuleNotFoundError:
+        flash_attention_3_available = False
+    else:
+        flash_attention_3_available = True
     try:
         from torch.nn.attention.flex_attention import flex_attention  # noqa: PLC0415
     except ImportError:
         flex_attention = None
-    flash_attn = getattr(attention, "flash_attn", None)
     return {
-        "flash_attention_2_available": attention.FLASH_ATTN_2_AVAILABLE,
-        "flash_attention_3_available": attention.FLASH_ATTN_3_AVAILABLE,
+        "flash_attention_2_available": flash_attn is not None,
+        "flash_attention_3_available": flash_attention_3_available,
         "flash_attention_version": getattr(flash_attn, "__version__", None),
         "flex_attention_available": callable(flex_attention),
         "flex_attention_version": torch.__version__ if callable(flex_attention) else None,

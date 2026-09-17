@@ -7,6 +7,7 @@ import numpy as np
 import pytest
 
 from multi_sample_inference import experiment_pipeline as pipeline
+from multi_sample_inference import r3_environment
 from multi_sample_inference.r3_contracts import (
     CPU_FIXTURE_EVIDENCE,
     RUNTIME_RECORD_KIND,
@@ -34,6 +35,7 @@ PROTOCOL_V3 = ROOT / "docs/r3_protocol_v3.json"
 MATRIX_V3 = ROOT / "docs/r3_test_matrix_v3.json"
 PROTOCOL_V4 = ROOT / "docs/r3_protocol_v4.json"
 PROTOCOL_V5 = ROOT / "docs/r3_protocol_v5.json"
+PROTOCOL_V6 = ROOT / "docs/r3_protocol_v6.json"
 SOURCE = ROOT / "tests/fixtures/smoke_experiment.json"
 DIGEST = "a" * 64
 
@@ -311,9 +313,9 @@ def test_v5_authorizes_only_the_backend_kernel_canary():
     assert stage_execution_blockers(protocol, "checkpoint-load-hook-canary") == [
         "stage-not-authorized:checkpoint-load-hook-canary"
     ]
-    assert pipeline.production_source_content_sha256(
-        ROOT, amendment["source_binding"]["parent_production_paths"]
-    ) == amendment["source_binding"]["parent_production_content_sha256"]
+    assert amendment["source_binding"]["parent_production_content_sha256"] == (
+        "7b8e027abdd5d745df68c6520d5e8d69bf49a1ecd6219eb4fa3431ded72909e9"
+    )
 
     result = preflight(PROTOCOL_V5, MATRIX_V3)
     assert result["blockers"] == ["staged-execution-gates"]
@@ -336,7 +338,31 @@ def test_v5_authorizes_only_the_backend_kernel_canary():
         )
 
 
-@pytest.mark.parametrize("protocol_path", [PROTOCOL_V4, PROTOCOL_V5])
+def test_v6_relocates_only_the_bounded_backend_stage_to_pollux():
+    bundle = load_protocol_bundle(PROTOCOL_V6, MATRIX_V3)
+    protocol = bundle["protocol"]
+    amendment = protocol["execution_amendment"]
+    assert protocol["lineage"] == {
+        "protocol_id": "r3-gpu-contracts-v5",
+        "sha256": "d3271493577916eb9f251f489933dc794328e2b0be7653cf0814821506e8e2a9",
+    }
+    assert amendment["environment_binding"]["hostname"] == "pollux.alias"
+    assert amendment["provisioning_binding"]["inter_gpu_topology"] == (
+        "NODE-no-NVLink"
+    )
+    assert amendment["authorization_record"]["authorized_operations"][0] == (
+        "transfer-frozen-source-and-environment-to-pollux"
+    )
+    assert stage_execution_blockers(protocol, "backend-kernel-canary") == []
+    assert stage_execution_blockers(protocol, "checkpoint-load-hook-canary") == [
+        "stage-not-authorized:checkpoint-load-hook-canary"
+    ]
+    assert pipeline.production_source_content_sha256(
+        ROOT, amendment["source_binding"]["parent_production_paths"]
+    ) == amendment["source_binding"]["parent_production_content_sha256"]
+
+
+@pytest.mark.parametrize("protocol_path", [PROTOCOL_V4, PROTOCOL_V5, PROTOCOL_V6])
 def test_v4_plus_runtime_environment_requires_every_exact_observation(protocol_path):
     protocol = json.loads(protocol_path.read_text())
     expected = protocol["execution_amendment"]["environment_binding"]
@@ -353,8 +379,8 @@ def test_v4_plus_runtime_environment_requires_every_exact_observation(protocol_p
         validate_v4_runtime_environment(protocol, incomplete)
 
 
-def test_v5_source_binding_requires_clean_exact_nested_revisions():
-    protocol = json.loads(PROTOCOL_V5.read_text())
+def test_v6_source_binding_requires_clean_exact_nested_revisions():
+    protocol = json.loads(PROTOCOL_V6.read_text())
     binding = protocol["execution_amendment"]["source_binding"]
     repositories = {
         "parent": {
@@ -384,6 +410,24 @@ def test_v5_source_binding_requires_clean_exact_nested_revisions():
     changed["parent"]["dirty"] = True
     with pytest.raises(ValueError, match="clean parent"):
         pipeline._validate_v4_source_binding(ROOT, changed, protocol)
+
+
+def test_attention_runtime_probe_does_not_import_the_wan_model(monkeypatch):
+    original = r3_environment.importlib.import_module
+
+    def guarded_import(name):
+        assert not name.startswith("wan")
+        return original(name)
+
+    monkeypatch.setattr(r3_environment.importlib, "import_module", guarded_import)
+    observation = r3_environment.observe_attention_runtime()
+    assert set(observation) == {
+        "flash_attention_2_available",
+        "flash_attention_3_available",
+        "flash_attention_version",
+        "flex_attention_available",
+        "flex_attention_version",
+    }
 
 
 def test_v3_source_expansion_rejects_impossible_and_concrete_incompatible_requests(

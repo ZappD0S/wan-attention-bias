@@ -118,8 +118,8 @@ def run_backend_canary(protocol_path, matrix_path, output_path):
 
     bundle = load_protocol_bundle(protocol_path, matrix_path)
     protocol = bundle["protocol"]
-    if protocol["schema_version"] != 5:
-        raise ValueError("backend canary requires the bounded v5 authorization amendment")
+    if protocol["schema_version"] not in {5, 6}:
+        raise ValueError("backend canary requires a bounded v5+ authorization amendment")
     blockers = stage_execution_blockers(protocol, STAGE_ID)
     if blockers:
         raise RuntimeError("R3 backend-canary preflight blocked: " + ", ".join(blockers))

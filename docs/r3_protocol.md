@@ -332,6 +332,27 @@ availability poll was cancelled at the user's request, leaving no scheduled
 work. Resume the same v5 stage only after an explicit continuation request and
 an idle-GPU check; every later stage remains unapproved.
 
+## Pollux relocation amendment v6 — 2026-09-17
+
+The user selected idle sister host `pollux.alias` after Bootes remained occupied.
+Immutable v6 (SHA-256 `f4de93f2…`) is lineage-bound to v5 and preserves the
+same single authorized `backend-kernel-canary` plus mandatory stop. It changes
+only the exact relocation/source/environment binding: Pollux's two GPU UUIDs,
+hardware identifier `f13f743d…`, writable `/local_scratch/gzappavi` paths,
+`NODE-no-NVLink` topology and parent production digest `69b14888…`.
+
+The clean source, complete locked environment, CUDA 12.8.1 toolkit and verified
+installer were copied directly from Bootes. GPU-hidden locked sync rebound the
+editable workspace paths; an independent no-model probe reproduced the declared
+Python, Torch, CUDA, FA2, flex, SAM2, driver and project hashes. The environment
+probe no longer imports Wan's eager model package, avoiding CUDA initialization
+before exact host validation. No checkpoint was copied or loaded.
+
+Generic execution remains blocked. Only the v6 stage-scoped preflight passes,
+and the authorized runner still requires exactly one visible device and writes
+outside the repository only after all three kernels pass. At amendment freeze
+time no Pollux CUDA tensor or kernel had run.
+
 ## Safe CPU commands now
 
 ```bash
@@ -346,15 +367,17 @@ CUDA_VISIBLE_DEVICES='' uv run --no-sync python -m multi_sample_inference.r3_pre
 CUDA_VISIBLE_DEVICES='' uv run --no-sync python -m multi_sample_inference.r3_preflight \
   --protocol docs/r3_protocol_v5.json --matrix docs/r3_test_matrix_v3.json
 CUDA_VISIBLE_DEVICES='' uv run --no-sync python -m multi_sample_inference.r3_preflight \
-  --protocol docs/r3_protocol_v5.json --matrix docs/r3_test_matrix_v3.json \
+  --protocol docs/r3_protocol_v6.json --matrix docs/r3_test_matrix_v3.json
+CUDA_VISIBLE_DEVICES='' uv run --no-sync python -m multi_sample_inference.r3_preflight \
+  --protocol docs/r3_protocol_v6.json --matrix docs/r3_test_matrix_v3.json \
   --execution --stage backend-kernel-canary
 CUDA_VISIBLE_DEVICES='' PYTHONPATH=. uv run --no-sync --with pytest==9.0.3 python -m pytest -q \
   tests/test_r3_contracts.py tests/test_r3_runtime.py
 ```
 
 Generic preflight reports `execution_ready=false` while later stage gates
-remain blocked. The v5 command scoped to `backend-kernel-canary` is the sole
-approved exception and reports ready without accessing a GPU; generic
+remain blocked. The latest v6 command scoped to `backend-kernel-canary` is the
+approved Pollux exception and reports ready without accessing a GPU; generic
 `--execution` and every later stage must fail.
 
 ## Later GPU handoff commands (not authorized or run)
