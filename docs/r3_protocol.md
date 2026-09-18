@@ -3,9 +3,12 @@
 Protocol v1 was frozen on 2026-09-15 for CPU-only preparation; its normative
 files remain byte-for-byte `docs/r3_protocol.json` and
 `docs/r3_test_matrix.json`. The explicitly lineage-bound v2 preparation files
-add the lead-approved source-hook and paired-artifact semantics without changing
-v1. Validating either version does not load a checkpoint, import a generator,
-reserve a GPU, or establish runtime readiness. R3 remains **IN PROGRESS**.
+add the source-hook and paired-artifact semantics without changing v1.
+Subsequent immutable amendments preserve that lineage through v8; v8 is the
+latest CPU/source-only route amendment and authorizes no new execution.
+Validating a preparation protocol does not load a checkpoint, import a
+generator, reserve a GPU, or establish runtime readiness. R3 remains **IN
+PROGRESS**.
 
 ## Claim and evidence boundary
 
@@ -400,22 +403,33 @@ The mandatory stop was observed. This validates only the bounded layer-0 hook
 neutrality path; generator, CFG, mask, tracker, final-latent, full parity, FSDP
 and evidence acceptance remain unvalidated. The next stage is unapproved.
 
-## Upstream provenance prerequisite before generator parity
+## Completed upstream provenance gate and v8 route amendment
 
-The standard route used so far is `WanModel` from the clean pinned local Wan
-revision `00bde1e…`; “clean” does not establish that it is an unmodified vendor
-tree. Planned CPU/source-only task R3-P, specified in
-`docs/r3_upstream_provenance.md`, is therefore a hard prerequisite before any
-single-rank full-generator or upstream-vs-custom parity amendment.
+R3-P completed before any single-rank full-generator authorization. Record
+`7db6e5cf…` and comparison digest `e54a8ca9…` bind official fork point
+`7c81b2f…`/tree `91b74dfa…` and local Wan `00bde1e…`/tree `ee7dddb2…`.
+Seven of nine differing standard-route files were conservatively substantive,
+so the result is `separate-pristine-route-required`. Existing U1/v7 evidence
+remains limited to the exact local implementation and is not pristine-upstream
+evidence.
 
-R3-P must pin the official repository and exact commit, preserve a separate
-pristine checkout, hash whole-tree and transitive upstream execution-surface
-comparisons, and disposition every difference. Only exact hunk/content-bound
-observation instrumentation may be allowlisted. A substantive or unresolved
-execution-surface difference requires the future upstream reference to execute
-from the separately bound pristine checkout. Until this gate completes, existing
-U1/v7 claims remain limited to the exact local standard implementation and must
-not be described as pristine-upstream evidence.
+Immutable v8 (SHA-256 `f8a9c578…`) is lineage-bound to v7 `63e2781b…`. It binds
+the current parent production digest `3bc3ca6a…`, current project/lock hashes,
+the passed backend and checkpoint/hook records, and the complete R3-P identities
+and decision. The future upstream half of the generator pair must run from a
+clean detached official checkout in a separate Python process with no shared
+`wan` modules; the custom-`none` half remains bound to the pinned local Wan
+checkout. Mutation of the pristine source is forbidden.
+
+V8 deliberately marks the exact-hash observation adapter
+`required-not-implemented` and leaves authorization
+`pending-explicit-user-approval`. It preserves the two passed prerequisite
+stages but approves no new stage. Before a generator amendment, implementation
+and CPU validation must prove pristine/local process isolation and bind any
+external observation adapter exactly; the target host checkout and current
+locked environment must then be revalidated. No GPU query, model/checkpoint
+load, full-model forward, generation, parity, decoding or distributed execution
+was authorized or performed by v8.
 
 ## Safe CPU commands now
 
@@ -440,37 +454,34 @@ CUDA_VISIBLE_DEVICES='' uv run --no-sync python -m multi_sample_inference.r3_pre
 CUDA_VISIBLE_DEVICES='' uv run --no-sync python -m multi_sample_inference.r3_preflight \
   --protocol docs/r3_protocol_v7.json --matrix docs/r3_test_matrix_v3.json \
   --execution --stage checkpoint-load-hook-canary
-CUDA_VISIBLE_DEVICES='' PYTHONPATH=. uv run --no-sync --with pytest==9.0.3 python -m pytest -q \
-  tests/test_r3_contracts.py tests/test_r3_runtime.py
+CUDA_VISIBLE_DEVICES='' uv run --no-sync python -m multi_sample_inference.r3_preflight \
+  --protocol docs/r3_protocol_v8.json --matrix docs/r3_test_matrix_v3.json
+CUDA_VISIBLE_DEVICES='' PYTHONPATH=. uv run --no-sync python -m pytest -q \
+  tests/test_r3_contracts.py tests/test_r3_runtime.py \
+  tests/test_r3_upstream_provenance.py
 ```
 
-Generic preflight reports `execution_ready=false` while later stage gates
-remain blocked. V7's checkpoint/hook command is the latest approved Pollux
-exception and reports ready without accessing a GPU; the prior backend stage
-remains approved as its prerequisite. Generic `--execution` and every later
-stage must fail.
+V8 preparation must report exactly the authorization, staged-gate and
+`pristine-upstream-route:required-not-implemented` blockers. Its generator-stage
+execution preflight must fail. V7's historical checkpoint/hook command remains
+the latest approved Pollux exception for its exact frozen source and reports
+ready without accessing a GPU; it does not authorize execution under v8 or the
+current source.
 
 ## Later GPU handoff commands (not authorized or run)
 
-After approval, complete environment and GPU hook validation plus the further
-versioned protocol/acceptance amendment. Only then use a real non-smoke source
-outside this repository's output tree:
+No current command is valid for the next GPU stage. The old local-standard
+upstream worker path must not be reused for pristine parity. Before an executable
+handoff exists:
 
-```bash
-CUDA_VISIBLE_DEVICES='' uv run --locked python -m multi_sample_inference.r3_preflight \
-  --protocol /path/r3_protocol_v2.json --matrix /path/r3_test_matrix_v2.json --execution
-uv run --locked python -m multi_sample_inference.experiment_pipeline validate \
-  --source /path/r3_source.json
-uv run --locked python -m multi_sample_inference.experiment_pipeline expand \
-  --source /path/r3_source.json --output-dir /scratch/r3-run
-uv run --locked python -m multi_sample_inference.experiment_pipeline run \
-  --job /scratch/r3-run/jobs/JOB_ID.json --devices 0
-uv run --locked python -m multi_sample_inference.experiment_pipeline run \
-  --job /scratch/r3-run/jobs/FSDP_JOB_ID.json --devices 0,1
-uv run --locked python -m multi_sample_inference.experiment_pipeline status \
-  --jobs /scratch/r3-run/jobs
-```
+1. implement and CPU-test separate-process official-pristine and local-custom
+   launch paths with no shared `wan` modules;
+2. bind the exact observation-adapter source and prove that pristine tracked
+   files remain unchanged;
+3. install and verify the detached official checkout on the target host and
+   revalidate the current locked environment and source identities; and
+4. freeze a later immutable amendment containing the exact command, inputs,
+   output paths, stage stop, and fresh explicit user authorization.
 
-The example `0,1` is illustrative only and must be replaced by the amended
-intended rank count. No checkpoint path, host, rank count, backend version, or
-tolerance is approved by this v1 document.
+Until all four are complete, model loading, full-model forward, generation,
+parity, decoding and distributed execution remain prohibited.

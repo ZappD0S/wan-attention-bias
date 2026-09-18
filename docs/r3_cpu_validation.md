@@ -85,11 +85,11 @@ CUDA_VISIBLE_DEVICES='' uv run --no-sync python -m multi_sample_inference.r3_pre
   --protocol docs/r3_protocol_v2.json --matrix docs/r3_test_matrix_v2.json
 CUDA_VISIBLE_DEVICES='' uv run --no-sync python -m multi_sample_inference.r3_preflight \
   --protocol docs/r3_protocol_v2.json --matrix docs/r3_test_matrix_v2.json --execution
-CUDA_VISIBLE_DEVICES='' uv run --no-sync --with pytest==9.0.3 python -m pytest -q \
+CUDA_VISIBLE_DEVICES='' uv run --no-sync python -m pytest -q \
   tests/test_repair_contracts.py tests/test_experiment_pipeline.py \
   tests/test_mask_contracts.py tests/test_generation_routes.py \
   tests/test_parity_contracts.py tests/test_r3_contracts.py \
-  tests/test_r3_runtime.py
+  tests/test_r3_runtime.py tests/test_r3_upstream_provenance.py
 CUDA_VISIBLE_DEVICES='' uv run --no-sync python -m compileall -q \
   multi_sample_inference/experiment_pipeline.py \
   multi_sample_inference/fsdp_worker.py \
@@ -442,3 +442,24 @@ FA2 events. No full model forward, generation or distributed operation occurred.
 The mandatory stage stop was observed. Post-harvest evidence regressions passed
 **64 focused R3 tests in 2.87 seconds** and **106 seven-file tests in 3.68
 seconds**; compile and both Ruff commands passed. R3 remains **IN PROGRESS**.
+
+## CPU/source-only v8 pristine-route amendment — 2026-09-18
+
+After R3-P forced the separate-pristine-route decision, immutable v8 (SHA-256
+`f8a9c578…`) bound v7 lineage, both passed prerequisite records, current parent
+production digest `3bc3ca6a…`, current project/lock hashes, and the exact R3-P
+record/comparison/official/local identities. It freezes separate Python processes
+for official-pristine upstream and pinned-local custom-`none`, forbids mutation
+of the pristine source, and fails closed while the exact-hash external
+observation adapter remains `required-not-implemented`.
+
+CUDA-hidden preparation reported exactly
+`explicit-user-authorization`, `staged-execution-gates`, and
+`pristine-upstream-route:required-not-implemented`. The generator-stage
+execution preflight failed with those applicable blockers. The focused R3 suite
+passed **76 tests in 2.86 seconds**; the expanded eight-file CPU suite passed
+**118 tests in 3.64 seconds**. Compile, focused Ruff, the immutable R3-P check,
+`uv lock --check`, M1 validation and its 12-job no-output dry-run also passed. No
+SSH, GPU query/kernel, checkpoint/model load, full-model forward, generation,
+parity, decoding or distributed execution occurred. V8 authorizes no new stage;
+R3 remains **IN PROGRESS**.

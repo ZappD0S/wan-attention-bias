@@ -31,6 +31,7 @@ V3_PROTOCOL_SHA256 = "91a34240c8a9d4d13caa0f6579de523f1d2ca3cb9c387cca17734c18fd
 V4_PROTOCOL_SHA256 = "004f2f9e01a397ea36db7728a3ffe51ac86fa4b9c1c13de3c5056a2b12e266ef"
 V5_PROTOCOL_SHA256 = "d3271493577916eb9f251f489933dc794328e2b0be7653cf0814821506e8e2a9"
 V6_PROTOCOL_SHA256 = "f4de93f204c6d11d4b75a1d4c2c45bda44db715bd9426638c6b7e4511816abd6"
+V7_PROTOCOL_SHA256 = "63e2781bdf906232014f9c39c9c5fc206ee0ed161aaf63ac80320cd4bbd4ae00"
 R3_STAGE_IDS = (
     "backend-kernel-canary",
     "checkpoint-load-hook-canary",
@@ -779,6 +780,120 @@ def _validate_v7_execution_amendment(protocol):
     )
 
 
+def _validate_v8_execution_amendment(protocol):
+    amendment = protocol.get("execution_amendment")
+    expected_keys = {
+        "amendment_id",
+        "authorization_state",
+        "source_binding",
+        "checkpoint_binding",
+        "environment_binding",
+        "provisioning_binding",
+        "rank_decision",
+        "tolerance_decision",
+        "stage_gates",
+        "prerequisite_evidence",
+        "hook_canary_contract",
+        "checkpoint_hook_evidence",
+        "upstream_provenance_binding",
+    }
+    _require(
+        isinstance(amendment, dict) and set(amendment) == expected_keys,
+        "R3 protocol v8 execution amendment is incomplete or unexpected",
+    )
+    _require(
+        amendment["amendment_id"] == "r3-gpu-execution-amendment-v8"
+        and amendment["authorization_state"] == "pending-explicit-user-approval",
+        "R3 protocol v8 must remain execution-unapproved",
+    )
+    stages = amendment["stage_gates"]
+    _require(
+        isinstance(stages, list)
+        and [stage.get("id") for stage in stages] == list(R3_STAGE_IDS)
+        and [stage.get("authorization") for stage in stages]
+        == ["approved", "approved", "not-approved", "not-approved", "not-approved"],
+        "R3 protocol v8 must preserve completed prerequisites without authorizing a new stage",
+    )
+    _require(
+        amendment["checkpoint_hook_evidence"]
+        == {
+            "stage_id": "checkpoint-load-hook-canary",
+            "path": "docs/r3_evidence/pollux-checkpoint-load-hook-canary.json",
+            "sha256": "23a4a8df5fca81c69060c4440b905793da92cc454dcc67638c2b0dd63bdfc26f",
+            "protocol_sha256": V7_PROTOCOL_SHA256,
+            "status": "passed",
+        },
+        "R3 protocol v8 checkpoint/hook prerequisite evidence is missing or unexpected",
+    )
+    _require(
+        amendment["upstream_provenance_binding"]
+        == {
+            "record": {
+                "path": "docs/r3_upstream_provenance.json",
+                "sha256": "7db6e5cf983c181aed11e4631f98b625a640bd159fed485fbb7c4f7d9266ad33",
+            },
+            "comparison_digest_sha256": "e54a8ca9757a2ade239c38a848a83a8681327d1ff44c58d343b22410abad422f",
+            "decision": "separate-pristine-route-required",
+            "official_source": {
+                "repository_url": "https://github.com/Wan-Video/Wan2.1.git",
+                "commit": "7c81b2f27defa56c7e627a4b6717c8f2292eee58",
+                "tree": "91b74dfa24e32dc86350fe2ef2b5f2f2e06f6ee9",
+                "require_clean_detached_checkout": True,
+            },
+            "local_source": {
+                "commit": "00bde1e719ccb56c66a01a1f18a70c49b278c202",
+                "tree": "ee7dddb233e6acc14a89cf96951cca6536587fee",
+            },
+            "route_contract": {
+                "upstream": "separate-pristine-checkout",
+                "custom_none": "pinned-local-wan-checkout",
+                "process_isolation": "separate-python-processes-no-shared-wan-modules",
+                "pristine_source_mutation": "forbidden",
+                "observation_adapter": "required-exact-hash-binding-not-yet-implemented",
+                "implementation_state": "required-not-implemented",
+            },
+        },
+        "R3 protocol v8 pristine-upstream provenance or route contract is unexpected",
+    )
+
+    # V8 changes the exact parent/environment bindings and freezes the required
+    # pristine route, but deliberately grants no new execution. Reuse all v7
+    # through v4 structural checks after removing only the v8 additions and
+    # restoring the historical v7 authorization record.
+    v7_amendment = {
+        key: value
+        for key, value in amendment.items()
+        if key not in {"checkpoint_hook_evidence", "upstream_provenance_binding"}
+    }
+    v7_amendment |= {
+        "amendment_id": "r3-gpu-execution-amendment-v7",
+        "authorization_state": "approved-bounded-stage",
+        "authorization_record": {
+            "authorized_stage": "checkpoint-load-hook-canary",
+            "authorization_source": "explicit-current-session-user-approval",
+            "authorized_operations": [
+                "transfer-bound-checkpoint-to-pollux",
+                "verify-exact-checkpoint-inventory-and-content",
+                "exact-environment-source-and-prerequisite-preflight",
+                "load-upstream-wan-dit-checkpoint-once",
+                "single-layer-source-hook-neutrality-canary",
+            ],
+            "prohibited_operations": [
+                "text-encoder-clip-vae-load",
+                "custom-model-load",
+                "full-model-forward-or-generation",
+                "scheduler-or-decoding",
+                "distributed-execution",
+                "later-stage-execution",
+            ],
+            "stop_after_stage": True,
+        },
+    }
+    _validate_v7_execution_amendment(
+        protocol | {"execution_amendment": v7_amendment}
+    )
+
+
 def _validate_protocol_lineage(protocol, schema_version):
     if schema_version == 1:
         return
@@ -790,6 +905,7 @@ def _validate_protocol_lineage(protocol, schema_version):
         5: ("r3-gpu-contracts-v4", V4_PROTOCOL_SHA256),
         6: ("r3-gpu-contracts-v5", V5_PROTOCOL_SHA256),
         7: ("r3-gpu-contracts-v6", V6_PROTOCOL_SHA256),
+        8: ("r3-gpu-contracts-v7", V7_PROTOCOL_SHA256),
     }[schema_version]
     _require(
         isinstance(lineage, dict)
@@ -808,7 +924,7 @@ def _validate_protocol_lineage(protocol, schema_version):
 def validate_protocol(protocol, matrix, *, matrix_sha256):
     _require(isinstance(protocol, dict), "protocol must be a JSON object")
     schema_version = protocol.get("schema_version")
-    _require(schema_version in {1, 2, 3, 4, 5, 6, 7}, "unsupported R3 protocol schema_version")
+    _require(schema_version in {1, 2, 3, 4, 5, 6, 7, 8}, "unsupported R3 protocol schema_version")
     _require(
         protocol.get("protocol_id") == f"r3-gpu-contracts-v{schema_version}",
         "unexpected R3 protocol_id",
@@ -912,6 +1028,8 @@ def validate_protocol(protocol, matrix, *, matrix_sha256):
         _validate_v6_execution_amendment(protocol)
     elif schema_version == 7:
         _validate_v7_execution_amendment(protocol)
+    elif schema_version == 8:
+        _validate_v8_execution_amendment(protocol)
     return validate_matrix(matrix)
 
 
@@ -969,10 +1087,21 @@ def _base_execution_blockers(protocol):
     return blockers
 
 
+def _pristine_route_blockers(protocol):
+    if protocol["schema_version"] < 8:
+        return []
+    state = protocol["execution_amendment"]["upstream_provenance_binding"][
+        "route_contract"
+    ]["implementation_state"]
+    if state != "implemented-and-cpu-validated":
+        return [f"pristine-upstream-route:{state}"]
+    return []
+
+
 def stage_execution_blockers(protocol, stage_id):
     """Return blockers for one explicitly authorized bounded stage."""
     blockers = _base_execution_blockers(protocol)
-    if protocol["schema_version"] not in {5, 6, 7}:
+    if protocol["schema_version"] not in {5, 6, 7, 8}:
         return [*blockers, "stage-scoped-authorization-unavailable"]
     amendment = protocol["execution_amendment"]
     if amendment["authorization_state"] != "approved-bounded-stage":
@@ -986,12 +1115,18 @@ def stage_execution_blockers(protocol, stage_id):
     for prerequisite in stages[stage_id]["prerequisites"]:
         if stages[prerequisite]["authorization"] != "approved":
             blockers.append(f"stage-prerequisite-not-authorized:{prerequisite}")
+    if list(R3_STAGE_IDS).index(stage_id) >= 2:
+        blockers.extend(_pristine_route_blockers(protocol))
     return blockers
 
 
 def execution_blockers(protocol):
     """Return blockers for full approved contract-validation execution."""
-    return _base_execution_blockers(protocol) + _staged_authorization_blockers(protocol)
+    return (
+        _base_execution_blockers(protocol)
+        + _staged_authorization_blockers(protocol)
+        + _pristine_route_blockers(protocol)
+    )
 
 
 def evidence_acceptance_blockers(protocol):

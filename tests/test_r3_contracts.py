@@ -41,6 +41,7 @@ PROTOCOL_V4 = ROOT / "docs/r3_protocol_v4.json"
 PROTOCOL_V5 = ROOT / "docs/r3_protocol_v5.json"
 PROTOCOL_V6 = ROOT / "docs/r3_protocol_v6.json"
 PROTOCOL_V7 = ROOT / "docs/r3_protocol_v7.json"
+PROTOCOL_V8 = ROOT / "docs/r3_protocol_v8.json"
 POLLUX_BACKEND_EVIDENCE = ROOT / "docs/r3_evidence/pollux-backend-kernel-canary.json"
 POLLUX_HOOK_EVIDENCE = ROOT / "docs/r3_evidence/pollux-checkpoint-load-hook-canary.json"
 POLLUX_HOOK_LOG = ROOT / "docs/r3_evidence/pollux-checkpoint-load-hook-canary.log"
@@ -449,6 +450,133 @@ def test_v7_authorizes_only_the_cumulative_checkpoint_hook_stage():
         )
 
 
+def test_v8_binds_current_source_and_required_pristine_route_without_authorization():
+    bundle = load_protocol_bundle(PROTOCOL_V8, MATRIX_V3)
+    protocol = bundle["protocol"]
+    amendment = protocol["execution_amendment"]
+    assert protocol["lineage"] == {
+        "protocol_id": "r3-gpu-contracts-v7",
+        "sha256": "63e2781bdf906232014f9c39c9c5fc206ee0ed161aaf63ac80320cd4bbd4ae00",
+    }
+    assert amendment["authorization_state"] == "pending-explicit-user-approval"
+    assert [stage["authorization"] for stage in amendment["stage_gates"]] == [
+        "approved",
+        "approved",
+        "not-approved",
+        "not-approved",
+        "not-approved",
+    ]
+    provenance = amendment["upstream_provenance_binding"]
+    assert provenance["decision"] == "separate-pristine-route-required"
+    provenance_path = ROOT / provenance["record"]["path"]
+    assert hashlib.sha256(provenance_path.read_bytes()).hexdigest() == provenance[
+        "record"
+    ]["sha256"]
+    provenance_record = json.loads(provenance_path.read_text())
+    assert provenance_record["baseline_decision"] == provenance["decision"]
+    assert provenance_record["comparison"]["comparison_digest_sha256"] == provenance[
+        "comparison_digest_sha256"
+    ]
+    hook_evidence = amendment["checkpoint_hook_evidence"]
+    assert hashlib.sha256((ROOT / hook_evidence["path"]).read_bytes()).hexdigest() == (
+        hook_evidence["sha256"]
+    )
+    assert provenance["official_source"] == {
+        "repository_url": "https://github.com/Wan-Video/Wan2.1.git",
+        "commit": "7c81b2f27defa56c7e627a4b6717c8f2292eee58",
+        "tree": "91b74dfa24e32dc86350fe2ef2b5f2f2e06f6ee9",
+        "require_clean_detached_checkout": True,
+    }
+    assert provenance["route_contract"] == {
+        "upstream": "separate-pristine-checkout",
+        "custom_none": "pinned-local-wan-checkout",
+        "process_isolation": "separate-python-processes-no-shared-wan-modules",
+        "pristine_source_mutation": "forbidden",
+        "observation_adapter": "required-exact-hash-binding-not-yet-implemented",
+        "implementation_state": "required-not-implemented",
+    }
+    source = amendment["source_binding"]
+    assert source["parent_revision_at_freeze"] == (
+        "4108a45d868fcbd3156c35b65e1f1fb61d9c0037"
+    )
+    assert pipeline.production_source_content_sha256(
+        ROOT, source["parent_production_paths"]
+    ) == source["parent_production_content_sha256"]
+    repositories = {
+        "parent": {
+            "revision": source["parent_revision_at_freeze"],
+            "dirty": False,
+            "dirty_fingerprint": None,
+        },
+        "wan": {
+            "revision": source["wan_revision"],
+            "dirty": False,
+            "dirty_fingerprint": None,
+        },
+        "lama": {
+            "revision": source["lama_revision"],
+            "dirty": False,
+            "dirty_fingerprint": None,
+        },
+    }
+    pipeline._validate_v4_source_binding(ROOT, repositories, protocol)
+
+    assert stage_execution_blockers(protocol, "checkpoint-load-hook-canary") == [
+        "explicit-user-authorization"
+    ]
+    assert stage_execution_blockers(protocol, "single-rank-generator-canary") == [
+        "explicit-user-authorization",
+        "stage-not-authorized:single-rank-generator-canary",
+        "pristine-upstream-route:required-not-implemented",
+    ]
+    result = preflight(PROTOCOL_V8, MATRIX_V3)
+    assert result["blockers"] == [
+        "explicit-user-authorization",
+        "staged-execution-gates",
+        "pristine-upstream-route:required-not-implemented",
+    ]
+    with pytest.raises(RuntimeError, match="pristine-upstream-route"):
+        preflight(
+            PROTOCOL_V8,
+            MATRIX_V3,
+            execution=True,
+            stage="single-rank-generator-canary",
+        )
+
+
+@pytest.mark.parametrize(
+    "field,replacement,error",
+    [
+        (
+            "decision",
+            "local-standard-route-accepted",
+            "pristine-upstream provenance",
+        ),
+        (
+            "record.sha256",
+            "0" * 64,
+            "pristine-upstream provenance",
+        ),
+        (
+            "route_contract.process_isolation",
+            "shared-process",
+            "pristine-upstream provenance",
+        ),
+    ],
+)
+def test_v8_rejects_tampered_pristine_route_binding(tmp_path, field, replacement, error):
+    protocol = json.loads(PROTOCOL_V8.read_text())
+    target = protocol["execution_amendment"]["upstream_provenance_binding"]
+    parts = field.split(".")
+    for part in parts[:-1]:
+        target = target[part]
+    target[parts[-1]] = replacement
+    path = tmp_path / "tampered-v8.json"
+    path.write_text(json.dumps(protocol))
+    with pytest.raises(ValueError, match=error):
+        load_protocol_bundle(path, MATRIX_V3)
+
+
 def test_pollux_backend_canary_evidence_is_bound_and_bounded():
     bundle = load_protocol_bundle(PROTOCOL_V6, MATRIX_V3)
     protocol = bundle["protocol"]
@@ -564,7 +692,7 @@ def test_pollux_checkpoint_hook_evidence_is_bound_and_bounded():
 
 
 @pytest.mark.parametrize(
-    "protocol_path", [PROTOCOL_V4, PROTOCOL_V5, PROTOCOL_V6, PROTOCOL_V7]
+    "protocol_path", [PROTOCOL_V4, PROTOCOL_V5, PROTOCOL_V6, PROTOCOL_V7, PROTOCOL_V8]
 )
 def test_v4_plus_runtime_environment_requires_every_exact_observation(protocol_path):
     protocol = json.loads(protocol_path.read_text())
