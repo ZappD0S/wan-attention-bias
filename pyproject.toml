@@ -127,6 +127,7 @@ dependencies = [
 dev = [
   "ipykernel",
   "jupyterlab",
+  "pytest==9.0.3",
   "ruff",
 ]
 

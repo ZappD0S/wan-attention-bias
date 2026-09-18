@@ -1,6 +1,7 @@
 import copy
 import hashlib
 import json
+import subprocess
 from pathlib import Path
 
 import numpy as np
@@ -45,6 +46,24 @@ POLLUX_HOOK_EVIDENCE = ROOT / "docs/r3_evidence/pollux-checkpoint-load-hook-cana
 POLLUX_HOOK_LOG = ROOT / "docs/r3_evidence/pollux-checkpoint-load-hook-canary.log"
 SOURCE = ROOT / "tests/fixtures/smoke_experiment.json"
 DIGEST = "a" * 64
+
+
+def _revision_production_source_content_sha256(revision, paths):
+    raw_paths = subprocess.run(
+        ["git", "-C", str(ROOT), "ls-tree", "-r", "--name-only", "-z", revision, "--", *paths],
+        check=True,
+        capture_output=True,
+    ).stdout
+    relative_paths = sorted(item.decode() for item in raw_paths.split(b"\0") if item)
+    inventory = []
+    for relative in relative_paths:
+        content = subprocess.run(
+            ["git", "-C", str(ROOT), "show", f"{revision}:{relative}"],
+            check=True,
+            capture_output=True,
+        ).stdout
+        inventory.append({"path": relative, "sha256": hashlib.sha256(content).hexdigest()})
+    return hashlib.sha256(pipeline._canonical(inventory)).hexdigest()
 
 
 def _binding():
@@ -396,9 +415,16 @@ def test_v7_authorizes_only_the_cumulative_checkpoint_hook_stage():
     assert amendment["prerequisite_evidence"]["sha256"] == (
         "6d5c5cae32953baf779163233e56baabc73baacaac28c59a5c17e79152894aae"
     )
+    source_binding = amendment["source_binding"]
+    executed_revision = json.loads(POLLUX_HOOK_EVIDENCE.read_text())["repositories"][
+        "parent"
+    ]["revision"]
+    assert _revision_production_source_content_sha256(
+        executed_revision, source_binding["parent_production_paths"]
+    ) == source_binding["parent_production_content_sha256"]
     assert pipeline.production_source_content_sha256(
-        ROOT, amendment["source_binding"]["parent_production_paths"]
-    ) == amendment["source_binding"]["parent_production_content_sha256"]
+        ROOT, source_binding["parent_production_paths"]
+    ) != source_binding["parent_production_content_sha256"]
     assert _validate_prerequisite_evidence(
         ROOT, amendment["prerequisite_evidence"]
     ) == {
@@ -556,7 +582,7 @@ def test_v4_plus_runtime_environment_requires_every_exact_observation(protocol_p
         validate_v4_runtime_environment(protocol, incomplete)
 
 
-def test_v7_source_binding_requires_clean_exact_nested_revisions():
+def test_v7_source_binding_is_historical_and_remains_fail_closed():
     protocol = json.loads(PROTOCOL_V7.read_text())
     binding = protocol["execution_amendment"]["source_binding"]
     repositories = {
@@ -576,7 +602,8 @@ def test_v7_source_binding_requires_clean_exact_nested_revisions():
             "dirty_fingerprint": None,
         },
     }
-    assert pipeline._validate_v4_source_binding(ROOT, repositories, protocol) is None
+    with pytest.raises(ValueError, match="parent production content differs"):
+        pipeline._validate_v4_source_binding(ROOT, repositories, protocol)
 
     changed = copy.deepcopy(repositories)
     changed["wan"]["revision"] = "0" * 40
