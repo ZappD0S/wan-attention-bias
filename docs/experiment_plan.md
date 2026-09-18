@@ -35,7 +35,7 @@ Scores cover end-to-end difficulty, including implementation, environment setup,
 | U1 upstream-Wan baseline adapter/parity | 8/10 | Requires matching architectures, weights, inputs and CUDA-kernel tolerances closely enough to make a defensible parity claim. | GPT-5.6 Sol implementation; GPT-6 Astra parity review | 8/10 | The expected provenance, model-loading and GPU work materialized; unplanned effort came from transferring unpushed revisions, hashing 82.3 GB and isolating a system-nvcc/`sam2` mismatch. Both recommended models filled their planned roles; no substitution. |
 | K1 evidence-preserving repository cleanup | 7/10 | Requires broad provenance classification and safe removal of obsolete paths without destroying historical evidence or active dependencies. | GPT-5.6 Sol; GPT-6 Astra for ambiguous dispositions | 8/10 | The safe mutation was narrower than estimated, but exhaustive classification, inventory-lane retries, the 3.67 GB ignored-evidence audit, custom-Wan fresh-checkout reconstruction and bounded SAM2 environment validation added effort. GPT-5.6 Sol implemented and gave final acceptance; GPT-6 Astra filled only the recommended ambiguity role. There was no planned-role substitution; an unplanned Astra final-review attempt failed on quota and was replaced by Sol. |
 | R3-P upstream baseline provenance | 6/10 | Requires resolving the vendor revision, comparing complete trees and the transitive baseline execution surface, and proving that any allowed local differences are instrumentation-only rather than numerical changes. | GPT-5.6 Sol implementation and review | 6/10 | Difficulty matched the estimate: resolving the exact fork point, building a binary-safe whole-tree/AST-closure reproducer and exhaustively reviewing 21 differences were substantial but bounded. GPT-5.6 Sol filled both recommended roles with no substitution. |
-| R3 GPU contracts | 9/10 | Exercises full generation, CUDA attention kernels and FSDP consistency, where environment-specific numerical and distributed failures are difficult to isolate. | GPT-6 Astra lead; GPT-5.6 Sol implementation | — | Not completed. |
+| R3 GPU contracts | 9/10 | Exercises full generation, CUDA attention kernels and FSDP consistency, where environment-specific numerical and distributed failures are difficult to isolate. | GPT-5.6 Sol main/implementation; no Astra role planned | — | Not completed. |
 | H0 blinded annotation preparation | 6/10 | The implementation is moderate, but opaque IDs, private mappings, adjudication and endpoint consistency must preserve blinding and scientific validity. | GPT-5.6 Sol; optional GPT-6 Astra protocol review | — | Not completed. |
 | H1 human calibration | 8/10 | The main burden is unbiased clip selection, rater coordination, disagreement resolution and rubric refinement rather than code. | GPT-5.6 Sol for support only | — | Not completed. |
 | C1 action competence gates | 7/10 | Requires controlled GPU generation and defensible thresholds that distinguish model incompetence from action-binding failure. | GPT-5.6 Sol | — | Not completed. |
@@ -46,13 +46,13 @@ Scores cover end-to-end difficulty, including implementation, environment setup,
 | D3 gaze project | 9.5/10 | Is effectively a separate research project requiring geometry, observability and explicit offscreen-state validation. | GPT-6 Astra | — | Not completed. |
 | D4 reproducible blog | 6/10 | Writing and packaging are moderate, but depend on complete provenance, permissions, results and honest failure reporting. | GPT-5.6 Sol | — | Not completed. |
 
-**Current R3 operational routing.** The frozen R3 recommendation is retained for
-forecast integrity, but GPT-5.6 Sol remains the main agent and owns the current
-execution-amendment and GPU-preparation work. No Astra handoff is currently
-planned. Any future Astra role requires the user's explicit approval for that
-specific proposed handoff before it is added to the execution plan or launched;
-the frozen recommendation and prior approvals do not provide standing
-authorization.
+**Current R3 operational routing.** By explicit user override of the normal
+in-progress freeze, the current R3 recommendation is GPT-5.6 Sol as the main and
+implementation agent; no Astra handoff is planned. GPT-6 Astra remains eligible
+only for a narrowly scoped, delegated read-only review or complex-task
+ideation/planning role, and only after the user explicitly approves that specific
+handoff. Historical entries retain the routing that applied when they were
+written.
 
 ## R1–R3: repair and executable contracts
 
@@ -260,5 +260,7 @@ After reference-document changes, run `qmd embed` as required by the workspace i
 - 2026-09-17 — R3-P marked IN PROGRESS on explicit continuation. GPT-5.6 Sol matches the frozen implementation/review recommendation. Work remains CPU/source-only: resolve and pin official Wan source, preserve a separate pristine checkout, generate whole-tree and transitive standard-route comparisons, classify every difference and test the fail-closed decision gate. No checkpoint/model load, GPU work or generation is authorized.
 
 - 2026-09-17 — R3-P COMPLETED at actual difficulty 6/10 with no model substitution. The clean, detached, write-protected official checkout binds fork point `7c81b2f…`/tree `91b74dfa…`; the local comparison binds `00bde1e…`/tree `ee7dddb2…`. A binary-safe comparison found 21 tracked-tree differences and nine standard-route surface differences; seven surface changes are substantive, forcing `separate-pristine-route-required`. Record/surface/diff hashes are `7db6e5cf…`, `ace68c00…` and `25207538…`, with comparison digest `e54a8ca9…`. The reproducer, 7 provenance tests, 71-test R3 suite and 113-test expanded CPU suite passed with compile, both Ruff checks, M1 smoke validation/dry-run and whitespace checks under the documented SAM2-only fallback. Pytest 9.0.3 is now a locked dev dependency. That dev-only metadata change intentionally makes the historical v7 live-source digest fail closed; its frozen digest still reproduces from executed revision `133c54b…`, and any future R3 protocol must bind the new source revision. No checkpoint/model load, GPU work, generation, numerical parity or scientific result occurred; R3 remains IN PROGRESS and no later stage is authorized.
+
+- 2026-09-18 — At the user's explicit direction, the active R3 model recommendation now records GPT-5.6 Sol as the main and implementation agent with no Astra role planned, overriding the normal in-progress recommendation freeze. GPT-6 Astra remains eligible only for a separately approved, narrowly scoped read-only review or complex-task ideation/planning handoff. Historical routing entries were not rewritten. The 9/10 estimate and all technical evidence are unchanged.
 
 Prior review evidence: `/home/gzappavi/.pi/agent/sessions/--home-gzappavi-Documents-wan_experiments--/subagent-artifacts/outputs/ba6ee532-e9cd-4518-a833-920a1239b263/repair-sol/final-review.md`. Sibling `contracts.md`, `infrastructure.md`, `review.md` and `resolution.md` record implementation, findings and dispositions. All five children in that retry used Sol; no GPU jobs were launched.
