@@ -6,6 +6,7 @@ import argparse
 import datetime as dt
 import gc
 import json
+import os
 import time
 from pathlib import Path
 
@@ -60,13 +61,13 @@ def _validate_prerequisite_evidence(repo, declaration):
     return {"path": declaration["path"], "sha256": declaration["sha256"]}
 
 
-def _verify_checkpoint(repo, protocol):
+def _verify_checkpoint(repo, protocol, protocol_path):
     amendment = protocol["execution_amendment"]
     binding = amendment["checkpoint_binding"]
     contract = amendment["hook_canary_contract"]
     inventory_path = (repo / contract["checkpoint_inventory_path"]).resolve()
     identity = checkpoint_identity(
-        repo / "docs/r3_protocol_v7.json",
+        protocol_path,
         {
             "path": binding["path"],
             "inventory": str(inventory_path),
@@ -261,6 +262,13 @@ def _load_selected_layer(checkpoint, contract, device):
     return layer, freqs, architecture, layer_state, load_elapsed
 
 
+def _require_free_gpu_memory():
+    free_bytes, _ = torch.cuda.mem_get_info(0)
+    if free_bytes < 32 * 1024**3:
+        raise RuntimeError("checkpoint-hook canary requires 32 GiB free GPU memory before load")
+    return free_bytes
+
+
 def run_checkpoint_hook_canary(protocol_path, matrix_path, output_path):
     protocol_path = Path(protocol_path).resolve()
     matrix_path = Path(matrix_path).resolve()
@@ -271,8 +279,13 @@ def run_checkpoint_hook_canary(protocol_path, matrix_path, output_path):
 
     bundle = load_protocol_bundle(protocol_path, matrix_path)
     protocol = bundle["protocol"]
-    if protocol["schema_version"] != 7:
-        raise ValueError("checkpoint-hook canary requires the bounded v7 amendment")
+    if protocol["schema_version"] != 11 or protocol_path != repo / "docs/r3_protocol_v11.json":
+        raise ValueError("checkpoint-hook canary requires the exact bounded Bootes v11 amendment")
+    authorization = protocol["execution_amendment"]["authorization_record"]
+    if os.environ.get("CUDA_VISIBLE_DEVICES") != authorization["gpu_uuid"]:
+        raise RuntimeError("checkpoint-hook canary requires its exact authorized GPU UUID")
+    if output_path != Path(authorization["output"]):
+        raise ValueError("checkpoint-hook canary output differs from authorized path")
     blockers = stage_execution_blockers(protocol, STAGE_ID)
     if blockers:
         raise RuntimeError("R3 checkpoint-hook preflight blocked: " + ", ".join(blockers))
@@ -299,13 +312,7 @@ def run_checkpoint_hook_canary(protocol_path, matrix_path, output_path):
     )
     environment = observe_runtime_environment(attention_runtime)
     validate_v4_runtime_environment(protocol, environment)
-    if not torch.cuda.is_available() or torch.cuda.device_count() != 1:
-        raise RuntimeError("checkpoint-hook canary requires exactly one visible CUDA device")
-    torch.cuda.set_device(0)
-    device = torch.device("cuda:0")
-    properties = torch.cuda.get_device_properties(0)
-
-    checkpoint = _verify_checkpoint(repo, protocol)
+    checkpoint = _verify_checkpoint(repo, protocol, protocol_path)
     print(
         json.dumps(
             {
@@ -317,6 +324,13 @@ def run_checkpoint_hook_canary(protocol_path, matrix_path, output_path):
         ),
         flush=True,
     )
+
+    if not torch.cuda.is_available() or torch.cuda.device_count() != 1:
+        raise RuntimeError("checkpoint-hook canary requires exactly one visible CUDA device")
+    torch.cuda.set_device(0)
+    device = torch.device("cuda:0")
+    properties = torch.cuda.get_device_properties(0)
+    free_bytes = _require_free_gpu_memory()
 
     contract = amendment["hook_canary_contract"]
     started_at = dt.datetime.now(dt.UTC).isoformat()
@@ -356,6 +370,7 @@ def run_checkpoint_hook_canary(protocol_path, matrix_path, output_path):
             "name": properties.name,
             "compute_capability": f"{properties.major}.{properties.minor}",
             "total_memory_bytes": properties.total_memory,
+            "free_memory_before_load_bytes": free_bytes,
         },
         "checkpoint_load": {
             "identifier": amendment["checkpoint_binding"]["identifier"],

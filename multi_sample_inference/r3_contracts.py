@@ -34,6 +34,7 @@ V6_PROTOCOL_SHA256 = "f4de93f204c6d11d4b75a1d4c2c45bda44db715bd9426638c6b7e45118
 V7_PROTOCOL_SHA256 = "63e2781bdf906232014f9c39c9c5fc206ee0ed161aaf63ac80320cd4bbd4ae00"
 V8_PROTOCOL_SHA256 = "f8a9c578f47957e8818f70c42d8bad7bfa8947bbbf7cf5eac1917a7e100126fa"
 V9_PROTOCOL_SHA256 = "9806d626993b48771ccecdbd3fe61f4f81b296ab3222633f514c09df74771302"
+V10_PROTOCOL_SHA256 = "84cc35d0c495b04812e532e02b26c9d7fa7119508e4557718e5b495bff536bfc"
 R3_STAGE_IDS = (
     "backend-kernel-canary",
     "checkpoint-load-hook-canary",
@@ -1102,6 +1103,85 @@ def _validate_v10_execution_amendment(protocol):
     _require(protocol == expected, "R3 protocol v10 exceeds its frozen bounded authorization delta")
 
 
+def _validate_v11_execution_amendment(protocol):
+    """Bound the one approved Bootes layer-0 checkpoint/hook attempt to frozen v10."""
+    repo = Path(__file__).resolve().parents[1]
+    frozen = repo / "docs/r3_protocol_v10.json"
+    historical = repo / "docs/r3_protocol_v7.json"
+    _require(frozen.is_file() and sha256_file(frozen) == V10_PROTOCOL_SHA256,
+             "R3 v11 frozen v10 lineage is unavailable or changed")
+    _require(historical.is_file() and sha256_file(historical) == V7_PROTOCOL_SHA256,
+             "R3 v11 frozen hook contract is unavailable or changed")
+    expected = _read_json(frozen)
+    amendment = protocol.get("execution_amendment")
+    _require(isinstance(amendment, dict), "R3 v11 amendment is missing")
+    source = amendment.get("source_binding")
+    components = amendment.get("production_component_hashes")
+    _require(isinstance(source, dict) and isinstance(components, dict),
+             "R3 v11 source binding is missing")
+    revision = source.get("parent_revision_at_freeze")
+    digest = source.get("parent_production_content_sha256")
+    _require_git_revision(revision, "R3 v11 parent revision")
+    _require_sha256(digest, "R3 v11 production source")
+    for name in ("r3_contracts.py", "r3_checkpoint_hook_canary.py"):
+        _require_sha256(components.get(name), f"R3 v11 {name} component")
+    old = expected["execution_amendment"]
+    _require(revision != old["source_binding"]["parent_revision_at_freeze"]
+             and digest != old["source_binding"]["parent_production_content_sha256"],
+             "R3 v11 must bind its new production source")
+    expected["schema_version"] = 11
+    expected["protocol_id"] = "r3-gpu-contracts-v11"
+    expected["lineage"] = {"protocol_id": "r3-gpu-contracts-v10", "sha256": V10_PROTOCOL_SHA256}
+    expected["frozen_at"] = protocol.get("frozen_at")
+    expected["claim_boundary"] = (
+        "Only the Bootes checkpoint-load and synthetic layer-0 hook-neutrality canary is approved; "
+        "no T5/CLIP/VAE, custom model, full-model forward, generation, parity, "
+        "distributed execution, later stage, or scientific claim is authorized."
+    )
+    expected["amendment_rule"] = (
+        "Stop after one checkpoint-load-hook-canary attempt. Any subsequent stage "
+        "requires fresh approval and a versioned host-bound amendment."
+    )
+    old["amendment_id"] = "r3-gpu-execution-amendment-v11"
+    old["source_binding"]["parent_revision_at_freeze"] = revision
+    old["source_binding"]["parent_production_content_sha256"] = digest
+    for name in ("r3_contracts.py", "r3_checkpoint_hook_canary.py"):
+        old["production_component_hashes"][name] = components[name]
+    old["stage_gates"][1]["authorization"] = "approved"
+    old["authorization_record"] = {
+        "authorized_stage": "checkpoint-load-hook-canary",
+        "authorization_source": "explicit-current-session-user-approval",
+        "authorized_operations": [
+            "verify-bootes-host-source-environment-and-checkpoint-identity",
+            "load-official-checkpoint-local-wan-dit-and-run-one-synthetic-layer-0-hook-test",
+        ],
+        "prohibited_operations": [
+            "text-encoder-clip-vae-load", "custom-model-load",
+            "full-model-forward-or-generation", "scheduler-or-decoding",
+            "distributed-execution", "later-stage-execution",
+        ],
+        "command": (
+            "CUDA_VISIBLE_DEVICES=GPU-c247e0e3-654a-7387-8ec6-46791821a52d "
+            "uv run --no-sync --locked python -m multi_sample_inference.r3_checkpoint_hook_canary "
+            "--protocol docs/r3_protocol_v11.json --matrix docs/r3_test_matrix_v3.json "
+            "--output /local_scratch2/gzappavi/r3_stage2/bootes-checkpoint-hook-canary.json"
+        ),
+        "checkpoint_inventory": "docs/u1_checkpoint_inventory.json",
+        "output": "/local_scratch2/gzappavi/r3_stage2/bootes-checkpoint-hook-canary.json",
+        "gpu_uuid": "GPU-c247e0e3-654a-7387-8ec6-46791821a52d",
+        "stop_after_stage": True,
+    }
+    old["prerequisite_evidence"] = {
+        "stage_id": "backend-kernel-canary",
+        "path": "docs/r3_evidence/bootes-backend-kernel-canary.json",
+        "sha256": "8f90996b5bb7fc5ba9f55ba4a5e20160aeab8a51009151d8691de60a18a54793",
+        "protocol_sha256": V10_PROTOCOL_SHA256,
+        "status": "passed",
+    }
+    old["hook_canary_contract"] = _read_json(historical)["execution_amendment"]["hook_canary_contract"]
+    _require(protocol == expected, "R3 v11 exceeds its frozen checkpoint/hook authorization delta")
+
+
 def _validate_protocol_lineage(protocol, schema_version):
     if schema_version == 1:
         return
@@ -1116,6 +1196,7 @@ def _validate_protocol_lineage(protocol, schema_version):
         8: ("r3-gpu-contracts-v7", V7_PROTOCOL_SHA256),
         9: ("r3-gpu-contracts-v8", V8_PROTOCOL_SHA256),
         10: ("r3-gpu-contracts-v9", V9_PROTOCOL_SHA256),
+        11: ("r3-gpu-contracts-v10", V10_PROTOCOL_SHA256),
     }[schema_version]
     _require(
         isinstance(lineage, dict)
@@ -1134,7 +1215,7 @@ def _validate_protocol_lineage(protocol, schema_version):
 def validate_protocol(protocol, matrix, *, matrix_sha256):
     _require(isinstance(protocol, dict), "protocol must be a JSON object")
     schema_version = protocol.get("schema_version")
-    _require(type(schema_version) is int and schema_version in range(1, 11), "unsupported R3 protocol schema_version")
+    _require(type(schema_version) is int and schema_version in range(1, 12), "unsupported R3 protocol schema_version")
     _require(
         protocol.get("protocol_id") == f"r3-gpu-contracts-v{schema_version}",
         "unexpected R3 protocol_id",
@@ -1239,6 +1320,7 @@ def validate_protocol(protocol, matrix, *, matrix_sha256):
             8: _validate_v8_execution_amendment,
             9: _validate_v9_execution_amendment,
             10: _validate_v10_execution_amendment,
+            11: _validate_v11_execution_amendment,
         }[schema_version](protocol)
     return validate_matrix(matrix)
 
@@ -1311,7 +1393,7 @@ def _pristine_route_blockers(protocol):
 def stage_execution_blockers(protocol, stage_id):
     """Return blockers for one explicitly authorized bounded stage."""
     blockers = _base_execution_blockers(protocol)
-    if protocol["schema_version"] not in {5, 6, 7, 8, 10}:
+    if protocol["schema_version"] not in {5, 6, 7, 8, 10, 11}:
         return [*blockers, "stage-scoped-authorization-unavailable"]
     amendment = protocol["execution_amendment"]
     if amendment["authorization_state"] != "approved-bounded-stage":
