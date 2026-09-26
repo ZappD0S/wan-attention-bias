@@ -295,8 +295,9 @@ def test_failed_job_stops_next_command_and_records_nonpassing_attempt(tmp_path):
     record = json.loads((tmp_path / "attempt.json").read_text())
     assert record["status"] == "failed" and record["jobs"] == []
     assert record["r3_acceptance"] is False
+    assert pair._record_failed_attempt(tmp_path, {"r3_acceptance": False}, [], failure.value) is None
     with pytest.raises(FileExistsError):
-        pair._record_failed_attempt(tmp_path, {"r3_acceptance": False}, [], failure.value)
+        pair._record_failed_attempt(tmp_path, {"r3_acceptance": True}, [], failure.value)
 
 
 def test_runner_rejects_unfrozen_protocol_without_gpu_access(tmp_path):

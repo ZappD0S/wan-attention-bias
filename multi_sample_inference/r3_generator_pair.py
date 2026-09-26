@@ -103,8 +103,12 @@ def _verify_bound_assets(authorization, source):
         candidate = Path(path)
         return (candidate if candidate.is_absolute() else source_root / candidate).resolve()
 
-    _require(resolve(scene["reference_image"]) == Path(bound["reference.png"]["path"]),
-             "R3 pair reference image differs from bound asset")
+    reference_path = Path(bound["reference.png"]["path"])
+    _require(resolve(scene["reference_image"]) == reference_path
+             and len(scene["actors"]) == 2
+             and all(resolve(actor["isolated_image"]) == reference_path
+                     for actor in scene["actors"]),
+             "R3 pair reference or isolated images differ from bound asset")
     masks = scene["segmentation_masks"]
     _require(isinstance(masks, dict) and len(masks) == 2
              and {resolve(path) for path in masks.values()}
