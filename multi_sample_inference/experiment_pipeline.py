@@ -971,13 +971,12 @@ def worker_task_blueprint(manifest):
             ]
         parity = r3.get("parity_artifact")
         if parity is not None:
+            route_source = (
+                r3["route_process"] if bundle["protocol"]["schema_version"] >= 12
+                else manifest["repositories"]["wan"]
+            )
             route_source_sha256 = _hash_bytes(
-                _canonical(
-                    {
-                        "route": parity["route"],
-                        "wan_repository": manifest["repositories"]["wan"],
-                    }
-                )
+                _canonical({"route": parity["route"], "wan_repository": route_source})
             )
             task["r3_evidence"]["parity_artifact"] = parity | {
                 "job_id": manifest["job_id"],

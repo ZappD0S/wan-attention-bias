@@ -35,6 +35,7 @@ V7_PROTOCOL_SHA256 = "63e2781bdf906232014f9c39c9c5fc206ee0ed161aaf63ac80320cd4bb
 V8_PROTOCOL_SHA256 = "f8a9c578f47957e8818f70c42d8bad7bfa8947bbbf7cf5eac1917a7e100126fa"
 V9_PROTOCOL_SHA256 = "9806d626993b48771ccecdbd3fe61f4f81b296ab3222633f514c09df74771302"
 V10_PROTOCOL_SHA256 = "84cc35d0c495b04812e532e02b26c9d7fa7119508e4557718e5b495bff536bfc"
+V11_PROTOCOL_SHA256 = "374d5037111ec04b7e304ce07e44c261827fdf66c13e9d363b3960209f21f34b"
 R3_STAGE_IDS = (
     "backend-kernel-canary",
     "checkpoint-load-hook-canary",
@@ -1182,6 +1183,126 @@ def _validate_v11_execution_amendment(protocol):
     _require(protocol == expected, "R3 v11 exceeds its frozen checkpoint/hook authorization delta")
 
 
+def _validate_v12_execution_amendment(protocol):
+    """Only the single Bootes generator pair may advance frozen v11."""
+    repo = Path(__file__).resolve().parents[1]
+    frozen = repo / "docs/r3_protocol_v11.json"
+    _require(frozen.is_file() and sha256_file(frozen) == V11_PROTOCOL_SHA256,
+             "R3 v12 frozen v11 lineage is unavailable or changed")
+    expected = _read_json(frozen)
+    amendment = protocol.get("execution_amendment")
+    _require(isinstance(amendment, dict), "R3 v12 amendment is missing")
+    source = amendment.get("source_binding")
+    components = amendment.get("production_component_hashes")
+    _require(isinstance(source, dict) and isinstance(components, dict),
+             "R3 v12 source binding is missing")
+    revision = source.get("parent_revision_at_freeze")
+    digest = source.get("parent_production_content_sha256")
+    _require_git_revision(revision, "R3 v12 parent revision")
+    _require_sha256(digest, "R3 v12 production source")
+    _require(set(components) == set(expected["execution_amendment"]["production_component_hashes"])
+             | {"r3_generator_pair.py"}, "R3 v12 production components differ")
+    for name in ("r3_contracts.py", "experiment_pipeline.py", "r3_generator_pair.py"):
+        _require_sha256(components.get(name), f"R3 v12 {name} component")
+    old = expected["execution_amendment"]
+    _require(revision != old["source_binding"]["parent_revision_at_freeze"]
+             and digest != old["source_binding"]["parent_production_content_sha256"],
+             "R3 v12 must bind its new production source")
+    expected["schema_version"] = 12
+    expected["protocol_id"] = "r3-gpu-contracts-v12"
+    expected["lineage"] = {"protocol_id": "r3-gpu-contracts-v11", "sha256": V11_PROTOCOL_SHA256}
+    expected["frozen_at"] = protocol.get("frozen_at")
+    expected["claim_boundary"] = (
+        "Only one Bootes single-rank official-pristine/custom-none generator pair is approved; "
+        "stop after the pair attempt, with no repeat, other jobs, distributed execution, "
+        "scientific claim, or later stage."
+    )
+    expected["amendment_rule"] = (
+        "Stop after one single-rank-generator-canary pair attempt, including partial failure. "
+        "Any subsequent stage or retry requires fresh approval and a versioned amendment."
+    )
+    old["amendment_id"] = "r3-gpu-execution-amendment-v12"
+    old["source_binding"]["parent_revision_at_freeze"] = revision
+    old["source_binding"]["parent_production_content_sha256"] = digest
+    old["production_component_hashes"] = components
+    old["stage_gates"][2]["authorization"] = "approved"
+    authorization = amendment.get("authorization_record")
+    _require(isinstance(authorization, dict), "R3 v12 authorization is missing")
+    source_path = authorization.get("source")
+    output = authorization.get("output")
+    gpu = old["environment_binding"]["gpu_uuids"]
+    _require(isinstance(source_path, dict) and set(source_path) == {"path", "sha256"}
+             and isinstance(source_path["path"], str)
+             and re.fullmatch(r"/[A-Za-z0-9_./-]+", source_path["path"])
+             and ".." not in Path(source_path["path"]).parts,
+             "R3 v12 source path is invalid")
+    _require_sha256(source_path["sha256"], "R3 v12 source input")
+    _require(isinstance(output, str) and re.fullmatch(r"/[A-Za-z0-9_./-]+", output)
+             and ".." not in Path(output).parts
+             and Path(output).is_relative_to("/local_scratch2/gzappavi")
+             and not Path(output).is_relative_to(repo), "R3 v12 external output is invalid")
+    _require(isinstance(gpu, list) and len(gpu) == 2 and authorization.get("gpu_uuid") in gpu,
+             "R3 v12 selected GPU differs from Bootes binding")
+    _require(type(authorization.get("min_free_gpu_bytes")) is int
+             and authorization["min_free_gpu_bytes"] >= 70 * 1024**3,
+             "R3 v12 GPU free-memory floor must be at least 70 GiB")
+    timeout = authorization.get("job_timeout_seconds")
+    _require(type(timeout) is int and 600 <= timeout <= 3600,
+             "R3 v12 per-job timeout must be 600-3600 seconds")
+    assets = authorization.get("assets")
+    expected_assets = {
+        "reference.png": "3f24239d8b0eef18cb022f46ef81b9a0bbcbe76cab9bffe3bf018b94be6ca17b",
+        "mask-left.png": "ec534110d2c7c022847e2e9edcd1bb2c3bdeffa807cd43e336382dfce572b7bd",
+        "mask-right.png": "f7c53ec340a68e501182bb2987750bfaecb7dfc9d57536edbf36a6c629820b56",
+    }
+    _require(isinstance(assets, dict) and set(assets) == set(expected_assets),
+             "R3 v12 three synthetic asset bindings are missing or unexpected")
+    for name, digest in expected_assets.items():
+        asset = assets[name]
+        _require(isinstance(asset, dict) and set(asset) == {"path", "sha256"}
+                 and isinstance(asset["path"], str)
+                 and re.fullmatch(r"/[A-Za-z0-9_./-]+", asset["path"])
+                 and ".." not in Path(asset["path"]).parts
+                 and Path(asset["path"]).name == name
+                 and asset["sha256"] == digest,
+                 f"R3 v12 {name} asset binding is invalid")
+    _require(len({value["path"] for value in assets.values()}) == 3,
+             "R3 v12 assets must have distinct paths")
+    old["authorization_record"] = {
+        "authorized_stage": "single-rank-generator-canary",
+        "authorization_source": "explicit-current-session-user-approval",
+        "authorized_operations": ["verify-bootes-host-source-environment-checkpoint-and-prerequisites",
+                                  "two-sequential-isolated-single-rank-generator-jobs-and-offline-parity"],
+        "prohibited_operations": ["repeat-attempt", "additional-jobs", "distributed-execution",
+                                  "later-stage-execution", "scientific-claim"],
+        "command": (
+            f"CUDA_VISIBLE_DEVICES={authorization['gpu_uuid']} uv run --no-sync --locked "
+            "python -m multi_sample_inference.r3_generator_pair "
+            "--protocol docs/r3_protocol_v12.json --matrix docs/r3_test_matrix_v3.json "
+            f"--source {source_path['path']} --output {output}"
+        ),
+        "checkpoint_inventory": "docs/u1_checkpoint_inventory.json",
+        "source": source_path,
+        "output": output,
+        "gpu_uuid": authorization["gpu_uuid"],
+        "min_free_gpu_bytes": authorization["min_free_gpu_bytes"],
+        "job_timeout_seconds": timeout,
+        "assets": assets,
+        "stop_after_stage": True,
+    }
+    old["prerequisite_evidence"] = [
+        expected["execution_amendment"]["prerequisite_evidence"],
+        {
+            "stage_id": "checkpoint-load-hook-canary",
+            "path": "docs/r3_evidence/bootes-checkpoint-hook-canary.json",
+            "sha256": "84c0a95647d0923af7d8eb5572a2a0b5143a986d06be295a7cee13aff9c0adc7",
+            "protocol_sha256": V11_PROTOCOL_SHA256,
+            "status": "passed",
+        },
+    ]
+    _require(protocol == expected, "R3 v12 exceeds its single-pair authorization delta")
+
+
 def _validate_protocol_lineage(protocol, schema_version):
     if schema_version == 1:
         return
@@ -1197,6 +1318,7 @@ def _validate_protocol_lineage(protocol, schema_version):
         9: ("r3-gpu-contracts-v8", V8_PROTOCOL_SHA256),
         10: ("r3-gpu-contracts-v9", V9_PROTOCOL_SHA256),
         11: ("r3-gpu-contracts-v10", V10_PROTOCOL_SHA256),
+        12: ("r3-gpu-contracts-v11", V11_PROTOCOL_SHA256),
     }[schema_version]
     _require(
         isinstance(lineage, dict)
@@ -1215,7 +1337,7 @@ def _validate_protocol_lineage(protocol, schema_version):
 def validate_protocol(protocol, matrix, *, matrix_sha256):
     _require(isinstance(protocol, dict), "protocol must be a JSON object")
     schema_version = protocol.get("schema_version")
-    _require(type(schema_version) is int and schema_version in range(1, 12), "unsupported R3 protocol schema_version")
+    _require(type(schema_version) is int and schema_version in range(1, 13), "unsupported R3 protocol schema_version")
     _require(
         protocol.get("protocol_id") == f"r3-gpu-contracts-v{schema_version}",
         "unexpected R3 protocol_id",
@@ -1321,6 +1443,7 @@ def validate_protocol(protocol, matrix, *, matrix_sha256):
             9: _validate_v9_execution_amendment,
             10: _validate_v10_execution_amendment,
             11: _validate_v11_execution_amendment,
+            12: _validate_v12_execution_amendment,
         }[schema_version](protocol)
     return validate_matrix(matrix)
 
@@ -1393,7 +1516,7 @@ def _pristine_route_blockers(protocol):
 def stage_execution_blockers(protocol, stage_id):
     """Return blockers for one explicitly authorized bounded stage."""
     blockers = _base_execution_blockers(protocol)
-    if protocol["schema_version"] not in {5, 6, 7, 8, 10, 11}:
+    if protocol["schema_version"] not in {5, 6, 7, 8, 10, 11, 12}:
         return [*blockers, "stage-scoped-authorization-unavailable"]
     amendment = protocol["execution_amendment"]
     if amendment["authorization_state"] != "approved-bounded-stage":
