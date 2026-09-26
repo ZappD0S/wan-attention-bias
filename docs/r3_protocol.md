@@ -498,12 +498,20 @@ claims, checks runtime declarations against the Bootes environment binding,
 and rejects missing or altered provenance and checkout identities. Source
 expansion additionally compares the six files with their declared hashes.
 Synthetic v9 fixtures exercise these rules but are not host observations.
-No immutable v9 amendment is frozen yet: final source snapshot and Bootes
-hardware/driver/provisioning/checkpoint declarations need evidence and a
-source-bound freeze first. Even a structurally valid v9 is deliberately
-ineligible for **any** stage-scoped authorization; a separately approved,
-versioned later amendment and fresh per-stage approval are required before GPU
-execution. V8, historical Pollux evidence and the route record remain unchanged.
+Immutable `docs/r3_protocol_v9.json` (SHA-256 `9806d626…`) now binds the
+Bootes source-only revision `6fe2e896…` and production digest `c6f4d8c1…`,
+current project/lock, six component hashes, clean exact official/local checkout
+identities and three exact source hashes per route. The unchanged CPU route
+record `9b3f825a…` permits v9 to mark its separate-process adapter route
+`implemented-and-cpu-validated`, without rewriting v8's historical
+`required-not-implemented` state. On Bootes both checkout bindings and the
+production digest passed before the freeze. Historical Bootes device/driver,
+provisioning and checkpoint declarations remain **unapproved** and require
+fresh host-bound verification; this freeze does not rehash the checkpoint or
+exercise GPU hardware. All five stages are not-approved, and v9 deliberately
+makes stage-scoped authorization unavailable. A separately approved, versioned
+later amendment must bind the precise command, inputs, outputs and stop gate
+before any GPU execution. V8 and historical Pollux evidence remain unchanged.
 
 ## Safe CPU commands now
 

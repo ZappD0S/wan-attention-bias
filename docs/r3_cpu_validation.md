@@ -595,3 +595,33 @@ The documented nine-file CPU suite (including pristine-route tests) passed
 legacy-ignore pipeline/worker Ruff, `uv lock --check` and `git diff --check`
 passed after the lint corrections. No GPU kernel, checkpoint/model load,
 generation, parity, decoding, distributed run or scientific result occurred.
+
+## CPU-only source transport and immutable v9 freeze — 2026-09-26
+
+A separate temporary worktree, not the dirty main worktree, carried the v9
+validator/pipeline/docs in transport commit `a0420c99…`; route-state correction
+and tamper regression followed in source commit `6fe2e896…`. Git bundles were
+SHA-256-verified and applied only to the existing clean detached Bootes R3
+checkout. The pristine Wan checkout was not changed. The first attempt to run
+the full CPU suite in the temporary local worktree stopped at test collection
+because that worktree's submodule was unpopulated; the actual clean Bootes
+checkout has both pinned submodules and passed the full nine-file suite:
+**140 tests** in 7.73 seconds on the initial transport, and the 67 focused
+R3/route tests after the route-state correction. Focused Ruff, compilation
+and lock checks passed on Bootes; no CPU test constituted a GPU test.
+
+Immutable `docs/r3_protocol_v9.json` SHA-256
+`9806d626993b48771ccecdbd3fe61f4f81b296ab3222633f514c09df74771302`
+binds source commit `6fe2e896…`, parent production digest `c6f4d8c1…`,
+separate official/local whole-checkout identities, six component hashes,
+current project/lock and the unchanged CPU route record. On Bootes, both
+clean whole-checkout bindings and the exact parent production digest passed
+against that candidate before freeze. Device/driver fields are declared from
+historical Bootes metadata, not a fresh GPU query; current GPU availability,
+kernels and checkpoint contents were **not** revalidated. The v9 preparation
+blockers are hardware approval, GPU approval, explicit authorization and all
+five staged gates. Its stage-scoped execution interface additionally rejects
+v9 even if an approval field is altered. No new stage is approved; exact
+commands/inputs/outputs and mandatory stop need a separately authorized future
+version. No GPU query/kernel, checkpoint/model load, generation, parity,
+decoding or distributed execution occurred.
