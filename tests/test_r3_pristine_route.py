@@ -321,6 +321,23 @@ def test_pristine_and_custom_routes_use_distinct_clean_python_processes(tmp_path
         )
 
 
+def test_local_observer_scopes_only_pre_model_uncoordinated_dispatches(worker_module):
+    records = []
+    observer = worker_module._scope_local_dispatch_observer(records.append)
+    observer({"event": "observer-installed", "rank": 0})
+    observer({"event": "attention-dispatch", "rank": 0})  # Not after initial latent.
+    observer({"event": "initial-latent", "rank": 0, "seed": 101})
+    observer({"event": "attention-dispatch", "rank": 0, "backend": "flash_attention_2"})
+    observer({"event": "attention-dispatch", "rank": 0, "step": 0})  # Partial scope must fail validation.
+    observer({"event": "attention-dispatch", "rank": 0, "backend": "flash_attention_2"})
+    assert [item["event"] for item in records] == [
+        "observer-installed", "attention-dispatch", "initial-latent",
+        "pre-model-attention-dispatch", "attention-dispatch", "attention-dispatch",
+    ]
+    assert records[3]["scope"] == "pre-model" and records[3]["rank"] == 0
+    assert records[2]["seed"] == 101
+
+
 def test_worker_selects_external_adapter_only_for_schema9_pristine_route(
     monkeypatch, worker_module
 ):

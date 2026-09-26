@@ -348,6 +348,29 @@ def _dispatch_coordinates(expected_ranks, sampling_steps, num_layers):
     }
 
 
+def _validate_pre_model_dispatches(records, expected_ranks, expected_backend_version, require_masks):
+    auxiliary = [item for item in records if item.get("event") == "pre-model-attention-dispatch"]
+    if not auxiliary:
+        return
+    if not require_masks:
+        raise ValueError("pre-model attention is not part of the pristine route")
+    for rank in expected_ranks:
+        stream = [item for item in records if item["rank"] == rank]
+        initial = next(item["ordinal"] for item in stream if item["event"] == "initial-latent")
+        scoped = [item["ordinal"] for item in stream if item["event"] == "attention-dispatch"]
+        if not scoped:
+            raise ValueError("pre-model attention lacks subsequent model dispatch")
+        for item in stream:
+            if item.get("event") != "pre-model-attention-dispatch":
+                continue
+            if (set(item) != {"event", "ordinal", "rank", "backend", "backend_version", "scope"}
+                    or item["scope"] != "pre-model"
+                    or not initial < item["ordinal"] < min(scoped)
+                    or item["backend"] != "flash_attention_2"
+                    or item["backend_version"] != expected_backend_version):
+                raise ValueError("pre-model attention is malformed, unbound, or outside its scope")
+
+
 def _validate_dispatches(
     records,
     expected_ranks,
@@ -543,6 +566,7 @@ def validate_source_observations(
     _validate_gathered_stream_order(records, expected_ranks)
     _validate_lifecycle(records, expected_ranks, expected_seed)
     _validate_cfg(records, expected_ranks, sampling_steps)
+    _validate_pre_model_dispatches(records, expected_ranks, expected_backend_version, require_masks)
     _validate_dispatches(
         records,
         expected_ranks,

@@ -357,6 +357,36 @@ def test_collector_detects_in_place_mutation_between_events():
     )
 
 
+def test_pre_model_attention_is_separate_and_strictly_scoped():
+    records = _source_records()
+    auxiliary = {
+        "event": "pre-model-attention-dispatch", "rank": 0, "ordinal": 2,
+        "backend": "flash_attention_2", "backend_version": "test-fa2", "scope": "pre-model",
+    }
+    records.insert(2, auxiliary)
+    for ordinal, item in enumerate(records):
+        item["ordinal"] = ordinal
+    kwargs = {
+        "rank_count": 1, "sampling_steps": 1, "num_layers": 1,
+        "require_masks": True, "mask_configuration": "fixed:fixed",
+        "requested_backend": "flash_attention_2", "expected_backend_version": "test-fa2",
+    }
+    assert validate_source_observations(records, **kwargs)
+    for change in ({"scope": "model"}, {"step": 0}, {"backend_version": "wrong"}):
+        invalid = [item.copy() for item in records]
+        invalid[2].update(change)
+        with pytest.raises(ValueError, match="pre-model attention"):
+            validate_source_observations(invalid, **kwargs)
+    with pytest.raises(ValueError, match="pristine route"):
+        validate_source_observations(records, **(kwargs | {"require_masks": False}))
+    late = [item.copy() for item in records]
+    late.insert(5, late.pop(2))
+    for ordinal, item in enumerate(late):
+        item["ordinal"] = ordinal
+    with pytest.raises(ValueError, match="pre-model attention"):
+        validate_source_observations(late, **kwargs)
+
+
 def test_tracker_events_prove_fixed_zero_and_dynamic_coordinate_coverage():
     fixed = _source_records(tracker=False)
     assert validate_source_observations(

@@ -539,8 +539,10 @@ pair wrote both videos and final-latent artifacts, but failed its worker
 observation check: the local route emitted 31 unscoped attention events.
 Existing-artifact CPU comparison also failed frozen latent parity. Immutable
 failed record `docs/r3_evidence/bootes-generator-pair-failed-attempt.json`
-(`38c7635d…`) preserves this result. The one attempt stopped; no retry or
-further GPU stage is authorized.
+(`38c7635d…`) preserves this result. A CPU-only scoping correction separates
+pre-model local attention events without changing that record; first-CFG and
+final-latent mismatch remain unexplained, not parity-passed. The one attempt
+stopped; no retry or further GPU stage is authorized.
 
 ## Safe CPU commands now
 

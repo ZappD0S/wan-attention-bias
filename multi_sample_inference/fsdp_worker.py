@@ -234,6 +234,27 @@ def _validate_r3_route_process_before_model_load(task):
     assert_loaded_wan_modules(binding["wan_root"])
 
 
+def _scope_local_dispatch_observer(collector):
+    """Keep pre-model encoder attention distinct from denoising-model dispatches."""
+    initial_seen = False
+    model_started = False
+
+    def observe(record):
+        nonlocal initial_seen, model_started
+        event = record.get("event")
+        if event == "initial-latent":
+            initial_seen = True
+        elif event == "attention-dispatch":
+            coordinates = ("step", "branch", "block", "attention_site")
+            if any(key in record for key in coordinates):
+                model_started = True
+            elif initial_seen and not model_started:
+                record = record | {"event": "pre-model-attention-dispatch", "scope": "pre-model"}
+        collector(record)
+
+    return observe
+
+
 def _runtime_observer_context(wan_i2v, task, collector, rank):
     evidence = task["r3_evidence"]
     if evidence.get("protocol_schema_version", 0) >= 9 and generation_route(task) == "upstream":
@@ -256,6 +277,8 @@ def _runtime_observer_context(wan_i2v, task, collector, rank):
         )
     from wan.utils.runtime_evidence import install_runtime_observer  # noqa: PLC0415
 
+    if evidence.get("protocol_schema_version", 0) >= 12:
+        collector = _scope_local_dispatch_observer(collector)
     return install_runtime_observer(collector, rank=rank)
 
 

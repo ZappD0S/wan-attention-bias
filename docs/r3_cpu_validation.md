@@ -705,8 +705,22 @@ float32 tensors of identical shape `[16,21,58,104]` but failed frozen
 `atol=1e-5`, `rtol=0.016`: maximum absolute difference
 `0.21618425846099854` (relative maximum `39807.333333333336`). Their
 artifact SHA-256 values are pristine `3388e260…` and local `9edf9c6d…`.
-Text-encoder attention before denoising is a plausible, unproven explanation
-for the extra unscoped events; it does not explain away the measured latent
-mismatch. Both source checkouts remained clean, and the one approved attempt
+The CLIP visual call path is a stronger source-level explanation for the
+31 pre-model events than text encoding, though the frozen events omit a
+caller stack; neither explains away the measured latent mismatch. Both source checkouts remained clean, and the one approved attempt
 stopped. No retry or later GPU stage is authorized; no parity or scientific
 claim is accepted.
+
+CPU-only follow-up: the local CLIP visual path calls 31 attention-bearing blocks
+before the first model dispatch; that matches the 31 uncoordinated events in
+the frozen record (caller identity was not captured). The parent worker now
+labels only fully uncoordinated, post-initial/pre-model local dispatches as
+`pre-model-attention-dispatch` and the validator bounds their rank, order,
+backend and version; partially scoped or late events still fail. An in-memory
+replay of the immutable custom stream (SHA-256 `aeb37eef…`) relabeled exactly
+ordinals 2–32; 480 model dispatches remained and source-record validation
+passed. No frozen record was changed or accepted. The first conditional CFG
+outputs already differ across pristine/local routes, so this observation fix
+**does not resolve numerical parity**. GPU-hidden focused tests passed 35 and
+the full ten-file suite passed 194; further cause isolation cannot be claimed
+from the existing records alone. No GPU work or retry ran in this follow-up.
