@@ -831,6 +831,38 @@ def test_v11_hook_runner_refuses_low_free_gpu_memory_without_allocation(monkeypa
     assert _require_free_gpu_memory() == 33 * 1024**3
 
 
+def test_bootes_checkpoint_hook_evidence_is_bound_and_scope_limited():
+    path = ROOT / "docs/r3_evidence/bootes-checkpoint-hook-canary.json"
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == (
+        "84c0a95647d0923af7d8eb5572a2a0b5143a986d06be295a7cee13aff9c0adc7"
+    )
+    record = json.loads(path.read_text())
+    bundle = load_protocol_bundle(PROTOCOL_V11, MATRIX_V3)
+    assert record["status"] == "passed" and record["stage_id"] == "checkpoint-load-hook-canary"
+    assert record["bindings"]["protocol_sha256"] == bundle["protocol_sha256"]
+    assert record["bindings"]["matrix_sha256"] == bundle["matrix_sha256"]
+    assert record["bindings"]["prerequisite_evidence_sha256"] == (
+        bundle["protocol"]["execution_amendment"]["prerequisite_evidence"]["sha256"]
+    )
+    assert record["visible_cuda_device"]["free_memory_before_load_bytes"] >= 32 * 1024**3
+    assert record["checkpoint_load"]["selected_layer_state_preserved"] is True
+    assert record["hook_neutrality"]["bitwise_exact"] is True
+    assert record["hook_neutrality"]["inputs_preserved"] is True
+    assert record["scope"] == {
+        "checkpoint_verified": True,
+        "upstream_wan_dit_loaded": True,
+        "selected_layer_forward_performed": True,
+        "text_encoder_loaded": False,
+        "clip_loaded": False,
+        "vae_loaded": False,
+        "custom_model_loaded": False,
+        "full_model_forward_performed": False,
+        "generation_performed": False,
+        "scheduler_or_decoding_performed": False,
+        "distributed_execution_performed": False,
+    }
+
+
 def test_v9_pipeline_rechecks_each_production_component(monkeypatch):
     protocol = _synthetic_unapproved_v9()
     source = protocol["execution_amendment"]["source_binding"]

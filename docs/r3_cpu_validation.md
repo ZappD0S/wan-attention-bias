@@ -663,3 +663,25 @@ records protocol/matrix bindings and explicit no-load/no-generation/no-
 distributed scope. Source checkout stayed clean. The mandatory stop was
 honored: **no** Wan model, checkpoint tensor or full generator was loaded;
 no parity or distributed job ran. No later stage is authorized.
+
+## Bounded Bootes v11 layer-0 checkpoint/hook canary — 2026-09-26
+
+With fresh, explicit approval for this stage only, v11 SHA-256 `374d5037…`
+bound the passed Bootes backend record, official checkpoint, exact selected
+GPU, source commit `6a1af343…`, production content `32eb2a08…`, command,
+output and stop gate. The clean transported checkout `e941f831…` passed 161
+GPU-hidden CPU tests plus focused Ruff/compile/locked-environment checks;
+stage-specific CPU preflight had no blockers. A read-only host check found
+97,247 MiB free on the selected GPU and 220 GiB available system RAM.
+
+The one authorized runner rehashed checkpoint files, verified host and source,
+and checked 101,385,043,968 free GPU bytes before loading (32-GiB minimum).
+It loaded the checkpoint-bound standard DiT from the **pinned local Wan
+source**, kept the full model on CPU, moved only layer 0 to the single selected
+GPU, and compared baseline and observer-enabled synthetic outputs. They were
+bitwise equal with the selected layer state unchanged; observed attention
+sites were self/cross/cross via FA2. Evidence SHA-256 `84c0a956…` is at
+`docs/r3_evidence/bootes-checkpoint-hook-canary.json`. The required stop was
+honored; this does not validate the separate official-pristine source, full
+model, generator, parity, distributed mode, video quality or scientific result.
+No later GPU stage is authorized.

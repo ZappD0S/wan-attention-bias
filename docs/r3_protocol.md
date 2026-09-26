@@ -527,6 +527,14 @@ binds the exact v10 protocol and v3 matrix. The authorized stage has ended;
 no second GPU run or later stage is authorized. This is **component-level**
 evidence, not model readiness, parity, generation or scientific validation.
 
+The subsequent single user-approved Bootes checkpoint/hook stage used bounded
+v11 SHA-256 `374d5037…`. It rehashed the official checkpoint, loaded its DiT
+with the **pinned local Wan source** on CPU, moved only layer 0 to one GPU and
+confirmed bitwise-exact synthetic hook neutrality. Evidence SHA-256
+`84c0a956…` is in `docs/r3_evidence/bootes-checkpoint-hook-canary.json`.
+That attempt has ended; generator, pristine-source parity and all later GPU
+stages remain unauthorized. This is not full-model or scientific validation.
+
 ## Safe CPU commands now
 
 ```bash
