@@ -616,9 +616,12 @@ binds source commit `6fe2e896…`, parent production digest `c6f4d8c1…`,
 separate official/local whole-checkout identities, six component hashes,
 current project/lock and the unchanged CPU route record. On Bootes, both
 clean whole-checkout bindings and the exact parent production digest passed
-against that candidate before freeze. Device/driver fields are declared from
-historical Bootes metadata, not a fresh GPU query; current GPU availability,
-kernels and checkpoint contents were **not** revalidated. The v9 preparation
+against that candidate before freeze. After the immutable file was installed in the clean detached
+Bootes checkout at `bc8fe4f6…`, the full nine-file suite passed **141 tests**;
+focused Ruff, syntax compilation, lock and whitespace checks passed again.
+Device/driver fields are declared from historical Bootes metadata, not a fresh
+GPU query; current GPU availability, kernels and checkpoint contents were
+**not** revalidated. The v9 preparation
 blockers are hardware approval, GPU approval, explicit authorization and all
 five staged gates. Its stage-scoped execution interface additionally rejects
 v9 even if an approval field is altered. No new stage is approved; exact
