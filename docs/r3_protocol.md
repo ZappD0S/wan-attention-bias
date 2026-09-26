@@ -431,6 +431,53 @@ locked environment must then be revalidated. No GPU query, model/checkpoint
 load, full-model forward, generation, parity, decoding or distributed execution
 was authorized or performed by v8.
 
+The subsequent CPU/source-only route implementation is frozen separately in
+`docs/r3_pristine_route.json` (SHA-256 `9b3f825a…`) without rewriting v8. It
+binds external adapter `7f89aa4b…`, isolated launcher `f8ffc89c…` and guarded
+worker integration `006b5141…`. The adapter wraps only Python call boundaries
+of the exact official source, derives actual FA2 dispatch/version, observes the
+initial latent, both CFG branches, every block/site dispatch and the final
+scheduler latent, and restores all wrappers on success or failure. It is scoped
+to the single-rank official generator; it does not make a distributed-pristine
+claim.
+
+CPU tests use two fresh interpreters to import distinct synthetic `wan` packages
+and reject source/adapter tampering. Separate CUDA-hidden resolve-only probes
+selected the exact R3-P official and local checkout paths without importing Wan;
+importing either real package is not a CPU-safe probe because its eager T5 class
+definition calls `torch.cuda.current_device()`. No pristine tracked file was
+modified. The implementation changes the bound production paths, so v8's historical
+parent production digest now fails against the live tree by design. The
+implementation remains unusable for execution until the target host
+checkout/current lock are revalidated and a later immutable amendment binds the
+new production digest, route process declaration, exact command and fresh
+authorization.
+
+Further CPU-only pipeline plumbing (not part of the frozen route record) makes
+future schema-v9 worker tasks derive their isolated process binding from the
+manifest's source-bound condition and require equality with both bindings in
+the protocol amendment. It builds a `python -I` torch launcher for that route;
+legacy schemas reject injected route bindings. A synthetic v9 test exercises
+these constraints, but the checked-in protocol validator supports only v1–v8.
+No v9 amendment, whole-checkout execution binding, host validation or executable
+command exists yet. The later amendment must bind the final pipeline digest as
+well as exact pristine/local checkout identities; the current CPU route record
+still binds only its original adapter, launcher and worker components.
+
+A later CPU-only checkout gate (`multi_sample_inference/r3_checkout_binding.py`)
+requires the whole Wan Git checkout root to match a declared HEAD and tree,
+rejects tracked/untracked/submodule changes, ignored importable files and
+tracked symlinks, requires a detached official HEAD, and additionally rechecks
+the existing source-file/adapter hashes. Future workers disable bytecode writes
+so their own imports do not alter the checkout between the two gates. Future v9
+source expansion chooses its protocol-declared route by source condition, and
+both pipeline and worker revalidate checkout identity before launch/model load.
+These are preparation checks, **not** a v9 protocol or authorization. The
+historical post-v8 route record still detects the now-modified worker hash as
+source drift. A future immutable amendment must bind both complete checkout
+identities, current pipeline/worker/checker hashes and the verified host;
+without it v8 still blocks the next stage.
+
 ## Safe CPU commands now
 
 ```bash
@@ -458,7 +505,7 @@ CUDA_VISIBLE_DEVICES='' uv run --no-sync python -m multi_sample_inference.r3_pre
   --protocol docs/r3_protocol_v8.json --matrix docs/r3_test_matrix_v3.json
 CUDA_VISIBLE_DEVICES='' PYTHONPATH=. uv run --no-sync python -m pytest -q \
   tests/test_r3_contracts.py tests/test_r3_runtime.py \
-  tests/test_r3_upstream_provenance.py
+  tests/test_r3_upstream_provenance.py tests/test_r3_pristine_route.py
 ```
 
 V8 preparation must report exactly the authorization, staged-gate and
@@ -474,13 +521,15 @@ No current command is valid for the next GPU stage. The old local-standard
 upstream worker path must not be reused for pristine parity. Before an executable
 handoff exists:
 
-1. implement and CPU-test separate-process official-pristine and local-custom
-   launch paths with no shared `wan` modules;
-2. bind the exact observation-adapter source and prove that pristine tracked
-   files remain unchanged;
-3. install and verify the detached official checkout on the target host and
-   revalidate the current locked environment and source identities; and
-4. freeze a later immutable amendment containing the exact command, inputs,
+1. **Completed locally:** implement and CPU-test separate-process
+   official-pristine and local-custom launch paths with no shared `wan` modules;
+2. **Completed locally:** bind the exact observation-adapter/launcher/worker
+   sources and verify the detached pristine checkout remains unchanged;
+3. bind and validate the complete schema-v9 checkout and source identities in
+   a later protocol (the current synthetic pipeline plumbing is not sufficient);
+4. install and verify that detached checkout on the target host and revalidate
+   the current locked environment and source identities; and
+5. freeze a later immutable amendment containing the exact command, inputs,
    output paths, stage stop, and fresh explicit user authorization.
 
 Until all four are complete, model loading, full-model forward, generation,

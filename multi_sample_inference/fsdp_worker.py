@@ -215,6 +215,50 @@ def _validate_r3_before_model_load(task, manifest_path):
         )
 
 
+def _validate_r3_route_process_before_model_load(task):
+    evidence = task.get("r3_evidence")
+    if not isinstance(evidence, dict) or evidence.get("protocol_schema_version", 0) < 9:
+        return
+    from .r3_checkout_binding import validate_checkout_route_binding  # noqa: PLC0415
+    from .r3_route_isolation import assert_loaded_wan_modules  # noqa: PLC0415
+
+    binding = evidence.get("route_process")
+    validate_checkout_route_binding(binding)
+    expected_route = (
+        "official-pristine"
+        if generation_route(task) == "upstream"
+        else "local-custom"
+    )
+    if binding["route"] != expected_route:
+        raise ValueError("R3 worker route differs from its isolated-process binding")
+    assert_loaded_wan_modules(binding["wan_root"])
+
+
+def _runtime_observer_context(wan_i2v, task, collector, rank):
+    evidence = task["r3_evidence"]
+    if evidence.get("protocol_schema_version", 0) >= 9 and generation_route(task) == "upstream":
+        from .r3_pristine_adapter import (  # noqa: PLC0415
+            install_pristine_runtime_observer,
+        )
+
+        requested = evidence["requested"]
+        dispatch = requested["dispatch_contract"]
+        return install_pristine_runtime_observer(
+            wan_i2v,
+            collector,
+            rank=rank,
+            diffusion_seed=requested["diffusion_seed"],
+            sampling_steps=evidence["expected"]["sampling_steps"],
+            expected_backend=requested["attention_backend"],
+            expected_backend_version=dispatch["backend_versions"][
+                requested["attention_backend"]
+            ],
+        )
+    from wan.utils.runtime_evidence import install_runtime_observer  # noqa: PLC0415
+
+    return install_runtime_observer(collector, rank=rank)
+
+
 def _build_generator(task, *, local_rank, rank, t5_fsdp, dit_fsdp, t5_cpu):
     if generation_route(task) == "upstream":
         from wan.image2video import WanI2V  # noqa: PLC0415
@@ -255,6 +299,7 @@ def main():
         task = pickle.load(f)
     validate_worker_task(task)
     _validate_r3_before_model_load(task, args.manifest_file)
+    _validate_r3_route_process_before_model_load(task)
 
     is_fsdp = args.mode == "fsdp"
     # If we are sharding, we only shard T5 if it's NOT on the CPU
@@ -271,12 +316,12 @@ def main():
 
     collector = None
     if "r3_evidence" in task:
-        from wan.utils.runtime_evidence import install_runtime_observer  # noqa: PLC0415
-
         collector = R3RuntimeCollector(
             parity_artifact=task["r3_evidence"].get("parity_artifact")
         )
-        with install_runtime_observer(collector, rank=dist.get_rank()):
+        with _runtime_observer_context(
+            wan_i2v, task, collector, dist.get_rank()
+        ):
             outputs = run_inference(wan_i2v, task)
         gathered = gather_rank_observations(
             collector.snapshot(),

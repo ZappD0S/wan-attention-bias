@@ -501,7 +501,7 @@ def test_v8_binds_current_source_and_required_pristine_route_without_authorizati
     )
     assert pipeline.production_source_content_sha256(
         ROOT, source["parent_production_paths"]
-    ) == source["parent_production_content_sha256"]
+    ) != source["parent_production_content_sha256"]
     repositories = {
         "parent": {
             "revision": source["parent_revision_at_freeze"],
@@ -519,7 +519,8 @@ def test_v8_binds_current_source_and_required_pristine_route_without_authorizati
             "dirty_fingerprint": None,
         },
     }
-    pipeline._validate_v4_source_binding(ROOT, repositories, protocol)
+    with pytest.raises(ValueError, match="parent production content differs"):
+        pipeline._validate_v4_source_binding(ROOT, repositories, protocol)
 
     assert stage_execution_blockers(protocol, "checkpoint-load-hook-canary") == [
         "explicit-user-authorization"
@@ -862,6 +863,76 @@ def test_v3_worker_binding_rejects_schedule_and_config_tampering(tmp_path):
 
     manifest["intervention"]["timestep_bias_schedule"][0] = False
     with pytest.raises(ValueError, match=r"intervention differs|route or schedule"):
+        pipeline.worker_task_blueprint(manifest)
+
+
+def test_future_isolated_route_is_manifest_bound_and_launches_in_isolated_python(
+    tmp_path, monkeypatch
+):
+    source_path = _portable_r3_source(tmp_path)
+    source = json.loads(source_path.read_text())
+    source["conditions"] = [source["conditions"][0]]
+    source["r3_evidence"].update({"protocol": str(PROTOCOL_V3), "matrix": str(MATRIX_V3)})
+    source_path.write_text(json.dumps(source))
+    manifest = pipeline.expand_source(source_path, tmp_path / "jobs", write=False)[0]
+    wan_root = tmp_path / "local-route"
+    (wan_root / "wan").mkdir(parents=True)
+    (wan_root / "wan" / "__init__.py").write_text("# isolated\n")
+    subprocess.run(["git", "-C", str(wan_root), "init", "-q"], check=True)
+    subprocess.run(["git", "-C", str(wan_root), "add", "wan/__init__.py"], check=True)
+    subprocess.run(
+        ["git", "-C", str(wan_root), "-c", "user.name=R3 Test", "-c",
+         "user.email=r3@example.invalid", "commit", "-qm", "test"], check=True,
+    )
+    checkout = {
+        "commit": subprocess.check_output(["git", "-C", str(wan_root), "rev-parse", "HEAD"], text=True).strip(),
+        "tree": subprocess.check_output(["git", "-C", str(wan_root), "rev-parse", "HEAD^{tree}"], text=True).strip(),
+    }
+    binding = {
+        "route": "local-custom",
+        "wan_root": str(wan_root),
+        "source_files": {
+            "wan/__init__.py": hashlib.sha256(b"# isolated\n").hexdigest()
+        },
+        "adapter": None,
+        "checkout": checkout,
+    }
+    manifest["r3_evidence"]["route_process"] = binding
+    with pytest.raises(ValueError, match="requires a later protocol schema"):
+        pipeline.worker_task_blueprint(manifest)
+
+    bundle = load_protocol_bundle(PROTOCOL_V3, MATRIX_V3)
+    bundle["protocol"]["schema_version"] = 9  # Synthetic only: no v9 protocol is authorized.
+    bundle["protocol"]["execution_amendment"] = {
+        "route_process_bindings": {
+            "local-custom": binding,
+            "official-pristine": dict(binding, route="official-pristine"),
+        }
+    }
+    monkeypatch.setattr(pipeline, "load_protocol_bundle", lambda *_: bundle)
+    task = pipeline.worker_task_blueprint(manifest)
+    assert task["r3_evidence"]["route_process"] == binding
+    assert pipeline.validate_r3_worker_task_binding(task, manifest)
+    commands = pipeline._pipeline_commands(tmp_path / "job.json", manifest)
+    worker = commands[1]
+    assert worker[1:3] == ["-I", "-c"]
+    assert json.loads(worker[4]) == [
+        str(wan_root.resolve()), str(ROOT.resolve()), "torch.distributed.run"
+    ]
+    assert worker[5:8] == ["--nproc_per_node=1", "-m", "multi_sample_inference.fsdp_worker"]
+
+    task["r3_evidence"]["route_process"] = dict(binding, route="official-pristine")
+    with pytest.raises(ValueError, match="differs from its immutable manifest"):
+        pipeline.validate_r3_worker_task_binding(task, manifest)
+    manifest["r3_evidence"]["route_process"] = dict(binding, route="official-pristine")
+    with pytest.raises(ValueError, match="protocol-bound single-rank condition"):
+        pipeline._pipeline_commands(tmp_path / "job.json", manifest)
+    manifest["r3_evidence"].pop("route_process")
+    with pytest.raises(ValueError, match="protocol-bound single-rank condition"):
+        pipeline._pipeline_commands(tmp_path / "job.json", manifest)
+    manifest["r3_evidence"]["route_process"] = binding
+    (wan_root / "untracked.py").write_text("# importable tampering\n")
+    with pytest.raises(ValueError, match="whole-checkout has tracked, untracked"):
         pipeline.worker_task_blueprint(manifest)
 
 

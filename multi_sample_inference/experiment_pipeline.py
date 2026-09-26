@@ -630,6 +630,14 @@ def expand_source(source_path, output_dir, write=True):
                 }
                 if dispatch_contract is not None:
                     manifest["r3_evidence"]["dispatch_contract"] = dispatch_contract
+                if r3_contract["protocol"]["schema_version"] >= 9:
+                    route = (
+                        "official-pristine" if condition["method"] == "upstream"
+                        else "local-custom"
+                    )
+                    manifest["r3_evidence"]["route_process"] = r3_contract["protocol"][
+                        "execution_amendment"
+                    ]["route_process_bindings"][route]
                 parity_pair = r3_contract["parity_pair"]
                 if parity_pair is not None and condition["id"] in {
                     parity_pair["upstream_condition_id"],
@@ -780,6 +788,10 @@ def worker_task_blueprint(manifest):
             r3["protocol"]["path"], r3["matrix"]["path"]
         )
         _require(
+            "route_process" not in r3 or bundle["protocol"]["schema_version"] >= 9,
+            "R3 isolated route requires a later protocol schema",
+        )
+        _require(
             bundle["protocol_sha256"] == r3["protocol"]["sha256"]
             and bundle["matrix_sha256"] == r3["matrix"]["sha256"],
             "R3 manifest protocol or matrix binding differs from disk",
@@ -919,6 +931,28 @@ def worker_task_blueprint(manifest):
             task["r3_evidence"]["requested"]["dispatch_contract"] = (
                 dispatch_contract
             )
+            if bundle["protocol"]["schema_version"] >= 9:
+                from .r3_checkout_binding import validate_checkout_route_binding  # noqa: PLC0415
+
+                binding = r3.get("route_process")
+                route = (
+                    "official-pristine"
+                    if source_condition["method"] == "upstream"
+                    else "local-custom"
+                )
+                amendment = bundle["protocol"].get("execution_amendment", {})
+                declared = amendment.get("route_process_bindings")
+                _require(
+                    isinstance(declared, dict)
+                    and set(declared) == {"official-pristine", "local-custom"}
+                    and manifest["inference"]["rank_count"] == 1
+                    and isinstance(binding, dict)
+                    and binding.get("route") == route
+                    and binding == declared[route],
+                    "R3 isolated route differs from its protocol-bound single-rank condition",
+                )
+                validate_checkout_route_binding(binding)
+                task["r3_evidence"]["route_process"] = binding
         if "r3_source_observation_path" in manifest["outputs"]:
             task["r3_evidence"]["source_observation_path"] = manifest["outputs"][
                 "r3_source_observation_path"
@@ -1172,6 +1206,25 @@ def _pipeline_commands(manifest_path, manifest, t5_cpu=False):
     ]
     if t5_cpu:
         worker.append("--t5-cpu")
+    r3 = manifest.get("r3_evidence")
+    if r3 is not None:
+        bundle = load_protocol_bundle(r3["protocol"]["path"], r3["matrix"]["path"])
+        _require(
+            "route_process" not in r3 or bundle["protocol"]["schema_version"] >= 9,
+            "R3 isolated route requires a later protocol schema",
+        )
+        if bundle["protocol"]["schema_version"] >= 9:
+            from .r3_route_isolation import isolated_module_command  # noqa: PLC0415
+
+            binding = worker_task_blueprint(manifest)["r3_evidence"]["route_process"]
+            worker = isolated_module_command(
+                python=sys.executable,
+                route=binding["route"],
+                wan_root=binding["wan_root"],
+                project_root=Path(__file__).resolve().parents[1],
+                target_module="torch.distributed.run",
+                args=worker[3:],
+            )
     return [prepare, worker]
 
 
@@ -1236,6 +1289,11 @@ def _execute_job_locked(manifest_path, manifest, t5_cpu, devices, command_factor
     _append_status(manifest["outputs"]["status_path"], base | {"state": "running", "timestamp": now()})
     commands = (command_factory or _pipeline_commands)(manifest_path, manifest, t5_cpu)
     env = os.environ.copy()
+    if manifest.get("r3_evidence") is not None:
+        r3 = manifest["r3_evidence"]
+        bundle = load_protocol_bundle(r3["protocol"]["path"], r3["matrix"]["path"])
+        if bundle["protocol"]["schema_version"] >= 9:
+            env["PYTHONDONTWRITEBYTECODE"] = "1"
     if devices is not None:
         env["CUDA_VISIBLE_DEVICES"] = devices
     try:

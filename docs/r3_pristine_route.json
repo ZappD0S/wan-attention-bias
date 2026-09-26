@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "contract_id": "r3-pristine-route-v1",
+  "status": "implemented-cpu-validated-unapproved",
+  "claim_boundary": "CPU/source-only implementation record. It binds an external single-rank observation adapter, exact-path process launcher and worker selection guard without authorizing or establishing target-host readiness, checkpoint/model loading, generation, numerical parity, CUDA execution, distributed behavior, evidence acceptance or any scientific result.",
+  "lineage": {
+    "protocol_id": "r3-gpu-contracts-v8",
+    "sha256": "f8a9c578f47957e8818f70c42d8bad7bfa8947bbbf7cf5eac1917a7e100126fa"
+  },
+  "sources": {
+    "official": {
+      "repository_url": "https://github.com/Wan-Video/Wan2.1.git",
+      "commit": "7c81b2f27defa56c7e627a4b6717c8f2292eee58",
+      "tree": "91b74dfa24e32dc86350fe2ef2b5f2f2e06f6ee9",
+      "files": {
+        "wan/image2video.py": "ab3906d53831c2a6717e543a02d66c13377910257ae710705515bd826212b924",
+        "wan/modules/model.py": "c1572ade3bf7345bd4c00d4a19535788fab62f9c08b5aeb15f6d01f4435bb47a",
+        "wan/modules/attention.py": "23fe7c6f6e4065242d95e5e188cb2d1a16bd283f05dca7e7e878977158fcfdbc"
+      }
+    },
+    "custom": {
+      "commit": "00bde1e719ccb56c66a01a1f18a70c49b278c202",
+      "tree": "ee7dddb233e6acc14a89cf96951cca6536587fee"
+    }
+  },
+  "implementation": {
+    "adapter": {
+      "path": "multi_sample_inference/r3_pristine_adapter.py",
+      "sha256": "7f89aa4ba590b7fd810d8e6c0282717663e4151c93bd5e88366c0172323b7e77",
+      "interface": "install_pristine_runtime_observer",
+      "scope": "single-rank-official-generator"
+    },
+    "launcher": {
+      "path": "multi_sample_inference/r3_route_isolation.py",
+      "sha256": "f8ffc89cbbe03cee12af799631ce4f5dc2f76a64daa1cbcec8c04b0f02b2450b",
+      "interpreter_isolation": "python-I-exact-sys-path-bootstrap"
+    },
+    "worker_integration": {
+      "path": "multi_sample_inference/fsdp_worker.py",
+      "sha256": "006b51416786ce0ebd63207321daa58967a17edb17ac220e3c2e8a4cc915eb90",
+      "pre_model_guard": true,
+      "official_adapter_selection": "schema-v9-plus-upstream-only"
+    },
+    "process_isolation": "separate-python-processes-no-shared-wan-modules"
+  },
+  "cpu_validation": {
+    "adapter_fake_generator": "passed",
+    "adapter_failure_and_restoration": "passed",
+    "synthetic_distinct_process_imports": "passed",
+    "actual_checkout_resolve_only": "passed",
+    "real_checkout_import": "cpu-unsafe-hidden-cuda-init-failed",
+    "checkpoint_or_model_loaded": false,
+    "gpu_visible_allocated_or_used": false,
+    "generation_run": false
+  },
+  "execution_state": {
+    "target_host_checkout": "required-not-revalidated",
+    "target_host_locked_environment": "required-not-revalidated",
+    "generator_stage_authorization": "required-not-approved",
+    "immutable_execution_amendment": "required-not-frozen"
+  }
+}

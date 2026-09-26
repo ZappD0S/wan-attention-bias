@@ -463,3 +463,88 @@ passed **76 tests in 2.86 seconds**; the expanded eight-file CPU suite passed
 SSH, GPU query/kernel, checkpoint/model load, full-model forward, generation,
 parity, decoding or distributed execution occurred. V8 authorizes no new stage;
 R3 remains **IN PROGRESS**.
+
+## Post-v8 pristine-route implementation — 2026-09-18
+
+`docs/r3_pristine_route.json` freezes a CPU-only implementation record (SHA-256
+`9b3f825a…`) without changing immutable v8 or authorizing a stage. It binds the
+external official-route adapter (`7f89aa4b…`), exact-path isolated launcher
+(`f8ffc89c…`) and schema-v9-plus upstream worker selection/guard
+(`006b5141…`). The adapter validates the concrete official generator/model
+identities, wraps and restores model/block/attention/scheduler call boundaries,
+derives actual FlashAttention backend/version, and emits the same bounded
+initial-latent, CFG, dispatch and final-latent event vocabulary consumed by the
+existing collector. Its frozen scope is single-rank only.
+
+Seven new CPU tests passed in 1.77 seconds. They cover complete event
+coordinates/cardinality; failure-path restoration; exact source and adapter
+tamper rejection; distinct fresh-interpreter official/custom imports using
+synthetic packages; exact route-contract hashes; and worker selection plus the
+pre-model route guard. The expanded nine-file suite passed **125 tests in 4.49
+seconds**; focused compile, both Ruff commands, `uv lock --check`, whitespace
+checks, M1 fixture validation and its 12-job/no-output dry-run also passed. V8
+preparation retained its exact three blockers, and its generator-stage preflight
+failed on authorization, stage approval and the immutable not-implemented route
+state as expected. CUDA-hidden resolve-only child probes used distinct PIDs
+and selected the exact R3-P official and local `wan/__init__.py` paths. The real
+packages were deliberately not imported in those probes: both eagerly evaluate
+a T5 class default through `torch.cuda.current_device()`, so a GPU-hidden import
+fails before any model exists and is not a valid CPU isolation check. The
+pristine checkout remained unmodified. Because the worker integration changes
+a v8-bound production path, the historical v8 live-source digest now fails
+closed intentionally; its immutable file and hash remain unchanged.
+
+The first CUDA-hidden real-package import probe failed during eager T5 class
+definition when `torch.cuda.current_device()` attempted CUDA initialization;
+no GPU was visible or allocated, and no model existed. The replacement
+resolve-only probes imported no Wan code. No SSH, visible-device query or
+allocation, checkpoint/model load, generation, scheduler execution on real
+tensors, parity comparison, decoding or distributed execution occurred.
+A read-only SSH follow-up found Pollux's clean source still at parent
+`05c1f01…` with exact Wan/LaMa revisions but old project/lock hashes
+`37ccb385…`/`d31fb115…`; neither retained pristine-checkout candidate path
+exists. No environment import or GPU query was run. Pollux therefore remains
+unrevalidated and requires clean source/pristine-checkout transfer before the
+current lock can be checked. A later immutable amendment and fresh explicit
+authorization remain mandatory before the single-rank generator stage. R3
+remains **IN PROGRESS**.
+
+## Further CPU-only route/manifest integration — 2026-09-18
+
+The subsequent `experiment_pipeline.py` change (SHA-256 `81e1448c…`) keeps
+v1–v8 routes fail-closed against injected process bindings. For a future v9
+protocol, the blueprint requires a one-rank route matching its source-bound
+condition and the protocol's exact two declared process bindings; the worker
+task comparison carries that binding, and the launcher uses the already tested
+`python -I` bootstrap to run `torch.distributed.run` in the selected route.
+A synthetic-only v9 test rejects missing and substituted route bindings and
+confirms command construction. It does **not** introduce a v9 protocol: the
+checked-in validator supports v1–v8 only. The existing route record remains
+unchanged and does not bind this new pipeline digest. Complete checkout-tree
+binding, host transfer/current-lock revalidation and an immutable execution
+amendment remain outstanding.
+
+The nine-file CPU suite passed **126 tests in 4.59 seconds**; focused compilation,
+the documented legacy-ignore Ruff command for pipeline/worker, focused Ruff for
+route/tests, lock check and whitespace check passed. No SSH, visible GPU,
+checkpoint/model load, generation, parity or distributed execution occurred.
+
+## CPU-only whole-checkout route gate — 2026-09-26
+
+`r3_checkout_binding.py` now requires a rooted, exact HEAD/tree, clean Git
+checkout (including untracked/submodule changes and rejected ignored
+importable files/tracked symlinks) for a future schema-v9 route; the pristine
+route additionally requires detached HEAD. The future worker command disables
+bytecode writes so worker imports cannot create cache files between checks. The exact source and
+adapter hashes are still checked. Source expansion selects its declared route
+from the condition, while pipeline and worker validate it again before launch
+or model load. The frozen `r3_pristine_route.json` was **not** rewritten: its
+original worker digest now intentionally fails against the live worker, and
+the corresponding test checks this fail-closed behavior. Synthetic CPU tests
+cover root/HEAD/tree/dirty/detachment, route tampering and isolated command
+construction; 53 focused tests passed in 3.80 seconds and the expanded
+nine-file CPU suite passed 127 in 4.67 seconds. The documented legacy-ignore
+Ruff command, focused Ruff, compilation, lock and whitespace checks passed.
+V8 preparation still reported only its three expected blockers. The v9 protocol validator and
+immutable declaration are still absent. No SSH, host mutation, GPU access,
+model/checkpoint load or generation was performed.
