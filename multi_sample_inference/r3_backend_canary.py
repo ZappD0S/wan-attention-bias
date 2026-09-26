@@ -6,6 +6,7 @@ import argparse
 import datetime as dt
 import hashlib
 import json
+import os
 import time
 from pathlib import Path
 
@@ -13,6 +14,7 @@ import torch
 
 from .experiment_pipeline import (
     _validate_v4_source_binding,
+    checkpoint_identity,
     repository_identity,
 )
 from .r3_contracts import (
@@ -118,8 +120,8 @@ def run_backend_canary(protocol_path, matrix_path, output_path):
 
     bundle = load_protocol_bundle(protocol_path, matrix_path)
     protocol = bundle["protocol"]
-    if protocol["schema_version"] not in {5, 6}:
-        raise ValueError("backend canary requires a bounded v5+ authorization amendment")
+    if protocol["schema_version"] not in {5, 6, 10}:
+        raise ValueError("backend canary requires a bounded v5/v6/v10 authorization amendment")
     blockers = stage_execution_blockers(protocol, STAGE_ID)
     if blockers:
         raise RuntimeError("R3 backend-canary preflight blocked: " + ", ".join(blockers))
@@ -145,6 +147,21 @@ def run_backend_canary(protocol_path, matrix_path, output_path):
     environment = observe_runtime_environment(attention_runtime)
     validate_v4_runtime_environment(protocol, environment)
 
+    checkpoint_verified = None
+    if protocol["schema_version"] == 10:
+        binding = protocol["execution_amendment"]["checkpoint_binding"]
+        inventory = repo / protocol["execution_amendment"]["authorization_record"]["checkpoint_inventory"]
+        checkpoint_verified = checkpoint_identity(
+            protocol_path,
+            {"path": binding["path"], "inventory": str(inventory),
+             "identifier": binding["identifier"]},
+            verify_contents=True,
+        )
+        if (checkpoint_verified["inventory"]["sha256"] != binding["inventory_sha256"]
+                or checkpoint_verified["content_sha256"] != binding["content_sha256"]
+                or Path(checkpoint_verified["path"]).name != binding["snapshot_revision"]):
+            raise RuntimeError("Bootes checkpoint identity differs from the v10 binding")
+
     if not torch.cuda.is_available():
         raise RuntimeError("CUDA is unavailable for the authorized backend canary")
     if torch.cuda.device_count() != 1:
@@ -153,6 +170,12 @@ def run_backend_canary(protocol_path, matrix_path, output_path):
     torch.manual_seed(0)
     torch.cuda.manual_seed_all(0)
     properties = torch.cuda.get_device_properties(0)
+    if protocol["schema_version"] == 10:
+        expected_uuid = protocol["execution_amendment"]["authorization_record"]["gpu_uuid"]
+        if os.environ.get("CUDA_VISIBLE_DEVICES") != expected_uuid:
+            raise RuntimeError("visible GPU UUID differs from the authorized Bootes device")
+        if str(output_path) != protocol["execution_amendment"]["authorization_record"]["output"]:
+            raise RuntimeError("backend canary output differs from authorized destination")
 
     started_at = dt.datetime.now(dt.UTC).isoformat()
     with torch.inference_mode():
@@ -179,6 +202,7 @@ def run_backend_canary(protocol_path, matrix_path, output_path):
         "repositories": repositories,
         "environment": environment,
         "attention_runtime": attention_runtime,
+        "checkpoint_identity_verified_without_load": checkpoint_verified,
         "visible_cuda_device": {
             "index": 0,
             "name": properties.name,

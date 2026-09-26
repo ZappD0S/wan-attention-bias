@@ -33,6 +33,7 @@ V5_PROTOCOL_SHA256 = "d3271493577916eb9f251f489933dc794328e2b0be7653cf0814821506
 V6_PROTOCOL_SHA256 = "f4de93f204c6d11d4b75a1d4c2c45bda44db715bd9426638c6b7e4511816abd6"
 V7_PROTOCOL_SHA256 = "63e2781bdf906232014f9c39c9c5fc206ee0ed161aaf63ac80320cd4bbd4ae00"
 V8_PROTOCOL_SHA256 = "f8a9c578f47957e8818f70c42d8bad7bfa8947bbbf7cf5eac1917a7e100126fa"
+V9_PROTOCOL_SHA256 = "9806d626993b48771ccecdbd3fe61f4f81b296ab3222633f514c09df74771302"
 R3_STAGE_IDS = (
     "backend-kernel-canary",
     "checkpoint-load-hook-canary",
@@ -1029,6 +1030,78 @@ def _validate_v9_execution_amendment(protocol):
     )
 
 
+def _validate_v10_execution_amendment(protocol):
+    """Permit only the approved, single-GPU Bootes prerequisite delta from frozen v9."""
+    frozen_path = Path(__file__).resolve().parents[1] / "docs/r3_protocol_v9.json"
+    _require(
+        frozen_path.is_file() and sha256_file(frozen_path) == V9_PROTOCOL_SHA256,
+        "R3 protocol v10 frozen v9 lineage is unavailable or changed",
+    )
+    expected = _read_json(frozen_path)
+    amendment = protocol.get("execution_amendment")
+    _require(isinstance(amendment, dict), "R3 protocol v10 amendment is missing")
+    source = amendment.get("source_binding")
+    components = amendment.get("production_component_hashes")
+    _require(isinstance(source, dict) and isinstance(components, dict),
+             "R3 protocol v10 source binding is missing")
+    revision = source.get("parent_revision_at_freeze")
+    digest = source.get("parent_production_content_sha256")
+    contract_digest = components.get("r3_contracts.py")
+    _require_git_revision(revision, "R3 protocol v10 source revision")
+    _require_sha256(digest, "R3 protocol v10 production source")
+    _require_sha256(contract_digest, "R3 protocol v10 contract component")
+    old = expected["execution_amendment"]
+    _require(
+        revision != old["source_binding"]["parent_revision_at_freeze"]
+        and digest != old["source_binding"]["parent_production_content_sha256"]
+        and contract_digest != old["production_component_hashes"]["r3_contracts.py"],
+        "R3 protocol v10 must bind its new validated production source",
+    )
+    expected["schema_version"] = 10
+    expected["protocol_id"] = "r3-gpu-contracts-v10"
+    expected["lineage"] = {"protocol_id": "r3-gpu-contracts-v9", "sha256": V9_PROTOCOL_SHA256}
+    expected["frozen_at"] = protocol.get("frozen_at")
+    expected["claim_boundary"] = (
+        "Only the Bootes single-GPU backend prerequisite canary is approved; "
+        "no model/checkpoint load, generation, parity, distributed execution, "
+        "later stage, or scientific claim is authorized."
+    )
+    expected["amendment_rule"] = (
+        "Stop after one backend-kernel-canary attempt. Any subsequent stage "
+        "requires fresh approval and a versioned host-bound amendment."
+    )
+    expected["approvals"] = {"gpu_execution": "approved", "hardware_environment": "approved"}
+    old["amendment_id"] = "r3-gpu-execution-amendment-v10"
+    old["authorization_state"] = "approved-bounded-stage"
+    old["authorization_record"] = {
+        "authorized_stage": "backend-kernel-canary",
+        "authorization_source": "explicit-current-session-user-approval",
+        "authorized_operations": [
+            "verify-bootes-host-source-environment-and-checkpoint-identity",
+            "fa2-flex-sam2-single-gpu-cuda-canaries",
+        ],
+        "prohibited_operations": [
+            "checkpoint-or-model-load", "generation", "distributed-execution",
+            "later-stage-execution",
+        ],
+        "command": (
+            "CUDA_VISIBLE_DEVICES=GPU-c247e0e3-654a-7387-8ec6-46791821a52d "
+            "uv run --no-sync --locked python -m multi_sample_inference.r3_backend_canary "
+            "--protocol docs/r3_protocol_v10.json --matrix docs/r3_test_matrix_v3.json "
+            "--output /local_scratch2/gzappavi/r3_stage1/bootes-backend-kernel-canary.json"
+        ),
+        "checkpoint_inventory": "docs/u1_checkpoint_inventory.json",
+        "output": "/local_scratch2/gzappavi/r3_stage1/bootes-backend-kernel-canary.json",
+        "gpu_uuid": "GPU-c247e0e3-654a-7387-8ec6-46791821a52d",
+        "stop_after_stage": True,
+    }
+    old["source_binding"]["parent_revision_at_freeze"] = revision
+    old["source_binding"]["parent_production_content_sha256"] = digest
+    old["production_component_hashes"]["r3_contracts.py"] = contract_digest
+    old["stage_gates"][0]["authorization"] = "approved"
+    _require(protocol == expected, "R3 protocol v10 exceeds its frozen bounded authorization delta")
+
+
 def _validate_protocol_lineage(protocol, schema_version):
     if schema_version == 1:
         return
@@ -1042,6 +1115,7 @@ def _validate_protocol_lineage(protocol, schema_version):
         7: ("r3-gpu-contracts-v6", V6_PROTOCOL_SHA256),
         8: ("r3-gpu-contracts-v7", V7_PROTOCOL_SHA256),
         9: ("r3-gpu-contracts-v8", V8_PROTOCOL_SHA256),
+        10: ("r3-gpu-contracts-v9", V9_PROTOCOL_SHA256),
     }[schema_version]
     _require(
         isinstance(lineage, dict)
@@ -1060,7 +1134,7 @@ def _validate_protocol_lineage(protocol, schema_version):
 def validate_protocol(protocol, matrix, *, matrix_sha256):
     _require(isinstance(protocol, dict), "protocol must be a JSON object")
     schema_version = protocol.get("schema_version")
-    _require(type(schema_version) is int and schema_version in range(1, 10), "unsupported R3 protocol schema_version")
+    _require(type(schema_version) is int and schema_version in range(1, 11), "unsupported R3 protocol schema_version")
     _require(
         protocol.get("protocol_id") == f"r3-gpu-contracts-v{schema_version}",
         "unexpected R3 protocol_id",
@@ -1164,6 +1238,7 @@ def validate_protocol(protocol, matrix, *, matrix_sha256):
             7: _validate_v7_execution_amendment,
             8: _validate_v8_execution_amendment,
             9: _validate_v9_execution_amendment,
+            10: _validate_v10_execution_amendment,
         }[schema_version](protocol)
     return validate_matrix(matrix)
 
@@ -1236,7 +1311,7 @@ def _pristine_route_blockers(protocol):
 def stage_execution_blockers(protocol, stage_id):
     """Return blockers for one explicitly authorized bounded stage."""
     blockers = _base_execution_blockers(protocol)
-    if protocol["schema_version"] not in {5, 6, 7, 8}:
+    if protocol["schema_version"] not in {5, 6, 7, 8, 10}:
         return [*blockers, "stage-scoped-authorization-unavailable"]
     amendment = protocol["execution_amendment"]
     if amendment["authorization_state"] != "approved-bounded-stage":
