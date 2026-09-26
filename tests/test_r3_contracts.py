@@ -750,6 +750,35 @@ def test_v10_rejects_authorization_or_lineage_tampering(tmp_path, mutation):
         load_protocol_bundle(path, MATRIX_V3)
 
 
+def test_bootes_backend_evidence_is_exactly_bound_and_bounded():
+    path = ROOT / "docs/r3_evidence/bootes-backend-kernel-canary.json"
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == (
+        "8f90996b5bb7fc5ba9f55ba4a5e20160aeab8a51009151d8691de60a18a54793"
+    )
+    record = json.loads(path.read_text())
+    bundle = load_protocol_bundle(PROTOCOL_V10, MATRIX_V3)
+    assert record["bindings"]["protocol_sha256"] == bundle["protocol_sha256"]
+    assert record["bindings"]["matrix_sha256"] == bundle["matrix_sha256"]
+    assert record["status"] == "passed" and record["stage_id"] == "backend-kernel-canary"
+    assert record["scope"] == {
+        "checkpoint_or_model_loaded": False,
+        "generation_performed": False,
+        "distributed_execution_performed": False,
+    }
+    binding = bundle["protocol"]["execution_amendment"]["checkpoint_binding"]
+    checkpoint = record["checkpoint_identity_verified_without_load"]
+    assert checkpoint["content_sha256"] == binding["content_sha256"]
+    assert checkpoint["inventory"]["sha256"] == binding["inventory_sha256"]
+    assert record["environment"]["hostname"] == "bootes.alias"
+    assert record["kernels"]["sam2_connected_components"]["foreground_component_areas"] == [1, 4]
+    assert all(
+        kernel["output"]["finite"] if "output" in kernel else all(
+            tensor["finite"] for tensor in kernel["outputs"].values()
+        )
+        for kernel in record["kernels"].values()
+    )
+
+
 def test_v9_pipeline_rechecks_each_production_component(monkeypatch):
     protocol = _synthetic_unapproved_v9()
     source = protocol["execution_amendment"]["source_binding"]

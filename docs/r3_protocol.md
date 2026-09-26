@@ -513,6 +513,20 @@ makes stage-scoped authorization unavailable. A separately approved, versioned
 later amendment must bind the precise command, inputs, outputs and stop gate
 before any GPU execution. V8 and historical Pollux evidence remain unchanged.
 
+Under fresh, limited user approval, immutable v10 SHA-256 `84cc35d0…` changed
+only the single Bootes `backend-kernel-canary` authorization, exact GPU UUID,
+command, checkpoint inventory, output and mandatory stop; it binds source
+commit `3209bf97…` and production digest `97be05fc…`. The separate clean Bootes
+checkout at `608738ad…` passed 150 GPU-hidden CPU tests and the exact v10
+stage preflight. The one approved run rehashed the bound checkpoint files
+**without loading tensors**, verified current host/environment and executed
+small FA2, flex-attention and SAM2 GPU canaries on the one selected device.
+All three passed; immutable evidence
+`docs/r3_evidence/bootes-backend-kernel-canary.json` SHA-256 `8f90996b…`
+binds the exact v10 protocol and v3 matrix. The authorized stage has ended;
+no second GPU run or later stage is authorized. This is **component-level**
+evidence, not model readiness, parity, generation or scientific validation.
+
 ## Safe CPU commands now
 
 ```bash
@@ -538,6 +552,8 @@ CUDA_VISIBLE_DEVICES='' uv run --no-sync python -m multi_sample_inference.r3_pre
   --execution --stage checkpoint-load-hook-canary
 CUDA_VISIBLE_DEVICES='' uv run --no-sync python -m multi_sample_inference.r3_preflight \
   --protocol docs/r3_protocol_v8.json --matrix docs/r3_test_matrix_v3.json
+CUDA_VISIBLE_DEVICES='' uv run --no-sync python -m multi_sample_inference.r3_preflight \
+  --protocol docs/r3_protocol_v10.json --matrix docs/r3_test_matrix_v3.json
 CUDA_VISIBLE_DEVICES='' PYTHONPATH=. uv run --no-sync python -m pytest -q \
   tests/test_r3_contracts.py tests/test_r3_runtime.py \
   tests/test_r3_upstream_provenance.py tests/test_r3_pristine_route.py
@@ -552,7 +568,8 @@ current source.
 
 ## Later GPU handoff commands (not authorized or run)
 
-No current command is valid for the next GPU stage. The old local-standard
+V10's only authorized GPU command has already run and stopped. No current
+command is valid for the next GPU stage. The old local-standard
 upstream worker path must not be reused for pristine parity. Before an executable
 handoff exists:
 

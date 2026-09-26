@@ -628,3 +628,38 @@ v9 even if an approval field is altered. No new stage is approved; exact
 commands/inputs/outputs and mandatory stop need a separately authorized future
 version. No GPU query/kernel, checkpoint/model load, generation, parity,
 decoding or distributed execution occurred.
+
+## Bounded Bootes v10 prerequisite canary — 2026-09-26
+
+With explicit approval limited to Bootes host/source/environment/checkpoint
+identity and one FA2/flex/SAM2 component attempt, the clean isolated source
+advanced through code commit `3209bf97…` and immutable v10 freeze commit
+`608738ad…` using a verified Git bundle SHA-256 `be31ff5f…` (21,177 bytes).
+V10 SHA-256 `84cc35d0c495b04812e532e02b26c9d7fa7119508e4557718e5b495bff536bfc`
+pins the new source revision/production digest, the exact selected GPU UUID,
+checkpoint inventory, command, output, and stop-after-stage. All other stage
+gates remain not-approved. V9 still rejects all stage-scoped execution.
+
+On Bootes, the nine-file GPU-hidden suite passed **150 tests**; focused Ruff,
+compile, lock and whitespace checks passed, and v10 execution preflight for
+`backend-kernel-canary` reported no blockers. Local temporary-worktree tests
+could not collect because its new `.venv` lacked project packages; the complete
+Bootes environment passed instead. An initial remote test invocation failed
+collection because `pytest` was launched as an executable; retrying through
+`uv run --no-sync --locked --with pytest==9.0.3 python -m pytest` passed
+76 focused tests, then all 150. Neither test failure accessed a GPU.
+
+The approved runner rehashed the full checkpoint file inventory without
+loading checkpoint tensors: inventory SHA-256 `e6b7adbd…`, content
+`80c954fb…`, exact snapshot revision. It matched the current Bootes host,
+580.173.02 driver, declared GPUs, Python/Torch/CUDA/FA2/flex/SAM2 versions,
+project/lock and source. On exactly one visible device
+`GPU-c247e0e3-654a-7387-8ec6-46791821a52d`, the three small GPU canaries
+passed with finite outputs; SAM2 component areas were 1 and 4. Run start
+`2026-09-26T16:57:57Z`, finish `16:58:05Z` (excluding preflight/rehash).
+Immutable `docs/r3_evidence/bootes-backend-kernel-canary.json` SHA-256
+`8f90996b5bb7fc5ba9f55ba4a5e20160aeab8a51009151d8691de60a18a54793`
+records protocol/matrix bindings and explicit no-load/no-generation/no-
+distributed scope. Source checkout stayed clean. The mandatory stop was
+honored: **no** Wan model, checkpoint tensor or full generator was loaded;
+no parity or distributed job ran. No later stage is authorized.
