@@ -10,6 +10,7 @@ import pytest
 from multi_sample_inference import experiment_pipeline as pipeline
 from multi_sample_inference import r3_environment
 from multi_sample_inference.r3_checkpoint_hook_canary import (
+    _require_free_gpu_memory,
     _validate_prerequisite_evidence,
 )
 from multi_sample_inference.r3_contracts import (
@@ -43,6 +44,7 @@ PROTOCOL_V6 = ROOT / "docs/r3_protocol_v6.json"
 PROTOCOL_V7 = ROOT / "docs/r3_protocol_v7.json"
 PROTOCOL_V8 = ROOT / "docs/r3_protocol_v8.json"
 PROTOCOL_V10 = ROOT / "docs/r3_protocol_v10.json"
+PROTOCOL_V11 = ROOT / "docs/r3_protocol_v11.json"
 POLLUX_BACKEND_EVIDENCE = ROOT / "docs/r3_evidence/pollux-backend-kernel-canary.json"
 POLLUX_HOOK_EVIDENCE = ROOT / "docs/r3_evidence/pollux-checkpoint-load-hook-canary.json"
 POLLUX_HOOK_LOG = ROOT / "docs/r3_evidence/pollux-checkpoint-load-hook-canary.log"
@@ -777,6 +779,56 @@ def test_bootes_backend_evidence_is_exactly_bound_and_bounded():
         )
         for kernel in record["kernels"].values()
     )
+
+
+def test_v11_authorizes_only_bootes_checkpoint_hook_stage():
+    protocol = load_protocol_bundle(PROTOCOL_V11, MATRIX_V3)["protocol"]
+    assert stage_execution_blockers(protocol, "checkpoint-load-hook-canary") == []
+    assert stage_execution_blockers(protocol, "single-rank-generator-canary") == [
+        "stage-not-authorized:single-rank-generator-canary"
+    ]
+    assert preflight(PROTOCOL_V11, MATRIX_V3)["evidence_acceptance_ready"] is False
+    amendment = protocol["execution_amendment"]
+    assert amendment["prerequisite_evidence"]["sha256"] == hashlib.sha256(
+        (ROOT / "docs/r3_evidence/bootes-backend-kernel-canary.json").read_bytes()
+    ).hexdigest()
+
+
+@pytest.mark.parametrize("mutation", [
+    "next-stage", "wrong-gpu", "wrong-command", "wrong-checkpoint",
+    "missing-stop", "wrong-hook", "wrong-evidence", "changed-source",
+])
+def test_v11_rejects_overbroad_or_tampered_authorization(tmp_path, mutation):
+    protocol = json.loads(PROTOCOL_V11.read_text())
+    amendment = protocol["execution_amendment"]
+    if mutation == "next-stage":
+        amendment["stage_gates"][2]["authorization"] = "approved"
+    elif mutation == "wrong-gpu":
+        amendment["authorization_record"]["gpu_uuid"] = "GPU-other"
+    elif mutation == "wrong-command":
+        amendment["authorization_record"]["command"] += " --unsafe"
+    elif mutation == "wrong-checkpoint":
+        amendment["checkpoint_binding"]["content_sha256"] = "0" * 64
+    elif mutation == "missing-stop":
+        amendment["authorization_record"]["stop_after_stage"] = False
+    elif mutation == "wrong-hook":
+        amendment["hook_canary_contract"]["synthetic_input"]["sequence_length"] = 999
+    elif mutation == "wrong-evidence":
+        amendment["prerequisite_evidence"]["sha256"] = "0" * 64
+    else:
+        amendment["production_component_hashes"]["experiment_pipeline.py"] = "0" * 64
+    path = tmp_path / "tampered-v11.json"
+    path.write_text(json.dumps(protocol))
+    with pytest.raises(ValueError, match="exceeds its frozen checkpoint/hook authorization delta"):
+        load_protocol_bundle(path, MATRIX_V3)
+
+
+def test_v11_hook_runner_refuses_low_free_gpu_memory_without_allocation(monkeypatch):
+    monkeypatch.setattr("torch.cuda.mem_get_info", lambda _device: (31 * 1024**3, 96 * 1024**3))
+    with pytest.raises(RuntimeError, match="32 GiB free GPU memory"):
+        _require_free_gpu_memory()
+    monkeypatch.setattr("torch.cuda.mem_get_info", lambda _device: (33 * 1024**3, 96 * 1024**3))
+    assert _require_free_gpu_memory() == 33 * 1024**3
 
 
 def test_v9_pipeline_rechecks_each_production_component(monkeypatch):
