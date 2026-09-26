@@ -226,6 +226,9 @@ def test_bound_assets_rechecked_and_source_paths_fixed(tmp_path):
         auth["assets"][name] = {"path": str(path), "sha256": sha256_file(path)}
     scene = source["scenes"][0]
     scene["reference_image"] = "reference.png"
+    scene["actors"] = [
+        {"id": actor, "isolated_image": "reference.png"} for actor in ("a", "b")
+    ]
     scene["segmentation_masks"] = {"a": "mask-left.png", "b": "mask-right.png"}
     pair._verify_bound_assets(auth, source)
     (tmp_path / "mask-left.png").write_bytes(b"changed")
@@ -233,7 +236,11 @@ def test_bound_assets_rechecked_and_source_paths_fixed(tmp_path):
         pair._verify_bound_assets(auth, source)
     (tmp_path / "mask-left.png").write_bytes(b"mask-left.png")
     scene["reference_image"] = "mask-left.png"
-    with pytest.raises(ValueError, match="reference image differs"):
+    with pytest.raises(ValueError, match="reference or isolated images differ"):
+        pair._verify_bound_assets(auth, source)
+    scene["reference_image"] = "reference.png"
+    scene["actors"][0]["isolated_image"] = "mask-left.png"
+    with pytest.raises(ValueError, match="reference or isolated images differ"):
         pair._verify_bound_assets(auth, source)
 
 
