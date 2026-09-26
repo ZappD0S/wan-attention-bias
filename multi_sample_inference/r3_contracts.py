@@ -1230,25 +1230,19 @@ def _validate_v12_execution_amendment(protocol):
     _require(isinstance(authorization, dict), "R3 v12 authorization is missing")
     source_path = authorization.get("source")
     output = authorization.get("output")
-    gpu = old["environment_binding"]["gpu_uuids"]
-    _require(isinstance(source_path, dict) and set(source_path) == {"path", "sha256"}
-             and isinstance(source_path["path"], str)
-             and re.fullmatch(r"/[A-Za-z0-9_./-]+", source_path["path"])
-             and ".." not in Path(source_path["path"]).parts,
-             "R3 v12 source path is invalid")
-    _require_sha256(source_path["sha256"], "R3 v12 source input")
-    _require(isinstance(output, str) and re.fullmatch(r"/[A-Za-z0-9_./-]+", output)
-             and ".." not in Path(output).parts
-             and Path(output).is_relative_to("/local_scratch2/gzappavi")
-             and not Path(output).is_relative_to(repo), "R3 v12 external output is invalid")
-    _require(isinstance(gpu, list) and len(gpu) == 2 and authorization.get("gpu_uuid") in gpu,
-             "R3 v12 selected GPU differs from Bootes binding")
-    _require(type(authorization.get("min_free_gpu_bytes")) is int
-             and authorization["min_free_gpu_bytes"] >= 70 * 1024**3,
-             "R3 v12 GPU free-memory floor must be at least 70 GiB")
+    input_root = "/local_scratch2/gzappavi/r3_stage3/input"
+    _require(source_path == {
+        "path": f"{input_root}/source.json",
+        "sha256": "ebceee5b5b3246bf98bb0c434ad81af7e7b33cefa0da64e87f9de3134f6ab5c2",
+    }, "R3 v12 source path or hash differs from the approved input")
+    _require(output == "/local_scratch2/gzappavi/r3_stage3/generator-pair-attempt",
+             "R3 v12 output differs from the approved attempt")
+    _require(authorization.get("gpu_uuid") == "GPU-c247e0e3-654a-7387-8ec6-46791821a52d",
+             "R3 v12 selected GPU differs from the approved Bootes device")
+    _require(authorization.get("min_free_gpu_bytes") == 70 * 1024**3,
+             "R3 v12 GPU free-memory floor differs from 70 GiB")
     timeout = authorization.get("job_timeout_seconds")
-    _require(type(timeout) is int and 600 <= timeout <= 3600,
-             "R3 v12 per-job timeout must be 600-3600 seconds")
+    _require(timeout == 1800, "R3 v12 per-job timeout differs from 1800 seconds")
     assets = authorization.get("assets")
     expected_assets = {
         "reference.png": "3f24239d8b0eef18cb022f46ef81b9a0bbcbe76cab9bffe3bf018b94be6ca17b",
@@ -1263,7 +1257,7 @@ def _validate_v12_execution_amendment(protocol):
                  and isinstance(asset["path"], str)
                  and re.fullmatch(r"/[A-Za-z0-9_./-]+", asset["path"])
                  and ".." not in Path(asset["path"]).parts
-                 and Path(asset["path"]).name == name
+                 and asset["path"] == f"{input_root}/{name}"
                  and asset["sha256"] == digest,
                  f"R3 v12 {name} asset binding is invalid")
     _require(len({value["path"] for value in assets.values()}) == 3,
