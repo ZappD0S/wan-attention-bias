@@ -32,6 +32,7 @@ V4_PROTOCOL_SHA256 = "004f2f9e01a397ea36db7728a3ffe51ac86fa4b9c1c13de3c5056a2b12
 V5_PROTOCOL_SHA256 = "d3271493577916eb9f251f489933dc794328e2b0be7653cf0814821506e8e2a9"
 V6_PROTOCOL_SHA256 = "f4de93f204c6d11d4b75a1d4c2c45bda44db715bd9426638c6b7e4511816abd6"
 V7_PROTOCOL_SHA256 = "63e2781bdf906232014f9c39c9c5fc206ee0ed161aaf63ac80320cd4bbd4ae00"
+V8_PROTOCOL_SHA256 = "f8a9c578f47957e8818f70c42d8bad7bfa8947bbbf7cf5eac1917a7e100126fa"
 R3_STAGE_IDS = (
     "backend-kernel-canary",
     "checkpoint-load-hook-canary",
@@ -894,6 +895,129 @@ def _validate_v8_execution_amendment(protocol):
     )
 
 
+def _validate_v9_execution_amendment(protocol):
+    """Validate a source-bound, unapproved Bootes amendment; never grant execution."""
+    amendment = protocol.get("execution_amendment")
+    v4_keys = {
+        "amendment_id", "authorization_state", "source_binding",
+        "checkpoint_binding", "environment_binding", "provisioning_binding",
+        "rank_decision", "tolerance_decision", "stage_gates",
+    }
+    _require(
+        isinstance(amendment, dict)
+        and set(amendment) == v4_keys | {
+            "upstream_provenance_binding", "route_process_bindings",
+            "production_component_hashes",
+        }
+        and amendment["amendment_id"] == "r3-gpu-execution-amendment-v9"
+        and amendment["authorization_state"] == "pending-explicit-user-approval",
+        "R3 protocol v9 must be a complete, execution-unapproved amendment",
+    )
+    _require(
+        protocol["approvals"] == {
+            "gpu_execution": "required-not-approved",
+            "hardware_environment": "required-not-approved",
+        }
+        and all(value != "implemented" for value in protocol["runtime_hooks"].values()),
+        "R3 protocol v9 cannot inherit host approval or GPU-validated hooks",
+    )
+    _require(
+        isinstance(amendment["environment_binding"], dict)
+        and amendment["environment_binding"].get("hostname") == "bootes.alias",
+        "R3 protocol v9 must bind the Bootes host",
+    )
+    _validate_v4_execution_amendment(protocol | {
+        "execution_amendment": {
+            key: amendment[key] for key in v4_keys
+        } | {"amendment_id": "r3-gpu-execution-amendment-v4"}
+    })
+    # V8 remains immutable: the pristine decision cannot be relaxed in v9.
+    frozen_path = Path(__file__).resolve().parents[1] / "docs/r3_protocol_v8.json"
+    _require(
+        frozen_path.is_file() and sha256_file(frozen_path) == V8_PROTOCOL_SHA256,
+        "R3 protocol v9 frozen v8 provenance is unavailable or changed",
+    )
+    v8_amendment = _read_json(frozen_path)["execution_amendment"]
+    frozen = v8_amendment["upstream_provenance_binding"]
+    _require(
+        amendment["environment_binding"]["gpu_uuids"]
+        != v8_amendment["environment_binding"]["gpu_uuids"]
+        and Path(amendment["checkpoint_binding"]["path"]).is_relative_to(
+            "/local_scratch2/gzappavi"
+        )
+        and Path(amendment["provisioning_binding"]["cuda_toolkit_path"]).is_relative_to(
+            "/local_scratch2/gzappavi"
+        ),
+        "R3 protocol v9 cannot reuse Pollux hardware or paths as Bootes evidence",
+    )
+    _require(
+        amendment["upstream_provenance_binding"] == frozen,
+        "R3 protocol v9 pristine provenance differs from frozen v8",
+    )
+    routes = amendment["route_process_bindings"]
+    _require(
+        isinstance(routes, dict) and set(routes) == {"official-pristine", "local-custom"},
+        "R3 protocol v9 needs exactly two isolated process routes",
+    )
+    for route, binding in routes.items():
+        _require(
+            isinstance(binding, dict)
+            and set(binding) == {"route", "wan_root", "source_files", "adapter", "checkout"}
+            and binding["route"] == route
+            and isinstance(binding["wan_root"], str)
+            and Path(binding["wan_root"]).is_absolute()
+            and isinstance(binding["source_files"], dict)
+            and bool(binding["source_files"])
+            and all(
+                isinstance(name, str) and name and not Path(name).is_absolute()
+                and ".." not in Path(name).parts
+                and isinstance(digest, str) and _SHA256.fullmatch(digest)
+                for name, digest in binding["source_files"].items()
+            ),
+            f"R3 protocol v9 {route} process binding is malformed",
+        )
+        _require(
+            binding["checkout"] == {
+                key: frozen[
+                    "official_source" if route == "official-pristine" else "local_source"
+                ][key]
+                for key in ("commit", "tree")
+            }
+            and (route != "local-custom" or binding["checkout"]["commit"]
+                 == amendment["source_binding"]["wan_revision"]),
+            f"R3 protocol v9 {route} checkout differs from provenance",
+        )
+        adapter = binding["adapter"]
+        _require(
+            (route == "local-custom" and adapter is None)
+            or (route == "official-pristine" and isinstance(adapter, dict)
+                and set(adapter) == {"path", "sha256"}
+                and isinstance(adapter["path"], str) and Path(adapter["path"]).is_absolute()
+                and isinstance(adapter["sha256"], str)
+                and _SHA256.fullmatch(adapter["sha256"])),
+            f"R3 protocol v9 {route} observation adapter is malformed",
+        )
+    _require(
+        routes["official-pristine"]["wan_root"] != routes["local-custom"]["wan_root"],
+        "R3 protocol v9 routes cannot share a Wan checkout",
+    )
+    components = amendment["production_component_hashes"]
+    _require(
+        isinstance(components, dict)
+        and set(components) == {
+            "experiment_pipeline.py", "fsdp_worker.py", "r3_checkout_binding.py",
+            "r3_route_isolation.py", "r3_pristine_adapter.py", "r3_contracts.py",
+        }
+        and all(isinstance(digest, str) and _SHA256.fullmatch(digest) for digest in components.values()),
+        "R3 protocol v9 production component hashes are incomplete",
+    )
+    _require(
+        routes["official-pristine"]["adapter"]["sha256"]
+        == components["r3_pristine_adapter.py"],
+        "R3 protocol v9 official adapter differs from its production component",
+    )
+
+
 def _validate_protocol_lineage(protocol, schema_version):
     if schema_version == 1:
         return
@@ -906,6 +1030,7 @@ def _validate_protocol_lineage(protocol, schema_version):
         6: ("r3-gpu-contracts-v5", V5_PROTOCOL_SHA256),
         7: ("r3-gpu-contracts-v6", V6_PROTOCOL_SHA256),
         8: ("r3-gpu-contracts-v7", V7_PROTOCOL_SHA256),
+        9: ("r3-gpu-contracts-v8", V8_PROTOCOL_SHA256),
     }[schema_version]
     _require(
         isinstance(lineage, dict)
@@ -924,7 +1049,7 @@ def _validate_protocol_lineage(protocol, schema_version):
 def validate_protocol(protocol, matrix, *, matrix_sha256):
     _require(isinstance(protocol, dict), "protocol must be a JSON object")
     schema_version = protocol.get("schema_version")
-    _require(schema_version in {1, 2, 3, 4, 5, 6, 7, 8}, "unsupported R3 protocol schema_version")
+    _require(type(schema_version) is int and schema_version in range(1, 10), "unsupported R3 protocol schema_version")
     _require(
         protocol.get("protocol_id") == f"r3-gpu-contracts-v{schema_version}",
         "unexpected R3 protocol_id",
@@ -1020,16 +1145,15 @@ def validate_protocol(protocol, matrix, *, matrix_sha256):
             },
             "R3 protocol v3+ backend contract is missing or unexpected",
         )
-    if schema_version == 4:
-        _validate_v4_execution_amendment(protocol)
-    elif schema_version == 5:
-        _validate_v5_execution_amendment(protocol)
-    elif schema_version == 6:
-        _validate_v6_execution_amendment(protocol)
-    elif schema_version == 7:
-        _validate_v7_execution_amendment(protocol)
-    elif schema_version == 8:
-        _validate_v8_execution_amendment(protocol)
+    if schema_version >= 4:
+        {
+            4: _validate_v4_execution_amendment,
+            5: _validate_v5_execution_amendment,
+            6: _validate_v6_execution_amendment,
+            7: _validate_v7_execution_amendment,
+            8: _validate_v8_execution_amendment,
+            9: _validate_v9_execution_amendment,
+        }[schema_version](protocol)
     return validate_matrix(matrix)
 
 

@@ -211,6 +211,18 @@ def _validate_v4_source_binding(repo, repositories, protocol):
         observed_content == binding["parent_production_content_sha256"],
         "R3 v4 parent production content differs from the execution amendment",
     )
+    if protocol["schema_version"] >= 9:
+        amendment = protocol["execution_amendment"]
+        for name, digest in amendment["production_component_hashes"].items():
+            _require(
+                _hash_file(repo / "multi_sample_inference" / name) == digest,
+                f"R3 v9 production component changed: {name}",
+            )
+        _require(
+            amendment["route_process_bindings"]["official-pristine"]["adapter"]["path"]
+            == str((repo / "multi_sample_inference" / "r3_pristine_adapter.py").resolve()),
+            "R3 v9 official adapter must reside at the bound production path",
+        )
 
 
 def _r3_source_contract(source, source_path):

@@ -548,3 +548,50 @@ Ruff command, focused Ruff, compilation, lock and whitespace checks passed.
 V8 preparation still reported only its three expected blockers. The v9 protocol validator and
 immutable declaration are still absent. No SSH, host mutation, GPU access,
 model/checkpoint load or generation was performed.
+
+## Bootes CPU/source relocation — 2026-09-26
+
+The user selected idle Bootes for CPU-only relocation. Its original clean source
+at `/local_scratch2/gzappavi/wan_experiments_r3` stayed at `e9f08e6…`; a
+separate clean detached worktree at
+`/local_scratch2/gzappavi/wan_experiments_r3_cpu_20260926` now holds local
+transport commit `cc067079…`. The 132,022-byte Git bundle SHA-256 is
+`7aff5991…`. First checkout stalled on Git-LFS smudging; the exact partial
+worktree was stopped/removed and the retry skipped smudging, leaving example
+LFS assets as pointers. The unchanged official pristine checkout was copied
+to `/local_scratch2/gzappavi/pristine-Wan2.1`, clean/detached at commit
+`7c81b2f…` and tree `91b74dfa…`, with official upstream URL. New local Wan
+and LaMa worktrees are clean and pinned to `00bde1e…` and `469acc…`.
+
+A separate copy of the existing 9.4-GiB environment received GPU-hidden
+`uv sync --locked --quiet`; project/lock hashes remained `1c5028d1…` and
+`1be5614e…`. Metadata-only observations showed Python 3.11.13, torch
+2.10.0+cu128, flash-attn 2.8.3+cu128torch2.10 and SAM2 1.1.0. Both real
+`official-pristine` and `local-custom` bindings passed the whole-checkout
+validator, and the nine-file CPU suite passed 127 tests in 7.84 seconds.
+V8 preparation still reports exactly three blockers: explicit authorization,
+staged gates and unimplemented-in-v8 pristine route. All three source trees
+remain clean. No GPU kernel, checkpoint/model load, generation, parity,
+decoding or distributed execution was run. Pollux's GPU records are not
+Bootes-specific evidence; immutable v9 host/source/environment bindings and
+fresh explicit stage authorization remain required.
+
+## CPU-only schema-v9 validation slice — 2026-09-26
+
+The protocol parser now recognizes a structural v9 amendment only when it is
+lineage-bound to immutable v8, retains the exact upstream provenance, declares
+both disjoint whole-checkout process routes and the six production component
+hashes, and resets both approvals and every stage to not-approved. It rejects
+Pollux's exact GPU UUID pair or its `/local_scratch` checkpoint/toolkit paths
+as Bootes declarations. The pipeline checks the six component bytes and that
+the official adapter path is its bound production path during source expansion.
+These are schema and source gates, not target-host observations; synthetic test
+paths and hashes carry no execution authority. Stage-scoped execution remains
+unavailable for all v9 records, including structurally valid fixtures. No
+immutable v9 JSON or Bootes GPU prerequisite record was created.
+
+The documented nine-file CPU suite (including pristine-route tests) passed
+**140 tests** with CUDA hidden. Focused compilation, both focused and
+legacy-ignore pipeline/worker Ruff, `uv lock --check` and `git diff --check`
+passed after the lint corrections. No GPU kernel, checkpoint/model load,
+generation, parity, decoding, distributed run or scientific result occurred.

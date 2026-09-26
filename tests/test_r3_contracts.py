@@ -578,6 +578,160 @@ def test_v8_rejects_tampered_pristine_route_binding(tmp_path, field, replacement
         load_protocol_bundle(path, MATRIX_V3)
 
 
+def _synthetic_unapproved_v9():
+    """Schema fixture only; not an execution record or observed Bootes identity."""
+    protocol = json.loads(PROTOCOL_V8.read_text())
+    protocol["schema_version"] = 9
+    protocol["protocol_id"] = "r3-gpu-contracts-v9"
+    protocol["lineage"] = {
+        "protocol_id": "r3-gpu-contracts-v8",
+        "sha256": hashlib.sha256(PROTOCOL_V8.read_bytes()).hexdigest(),
+    }
+    protocol["approvals"] = {
+        "gpu_execution": "required-not-approved",
+        "hardware_environment": "required-not-approved",
+    }
+    amendment = protocol["execution_amendment"]
+    for historical_evidence in (
+        "prerequisite_evidence", "hook_canary_contract", "checkpoint_hook_evidence",
+    ):
+        del amendment[historical_evidence]
+    amendment["amendment_id"] = "r3-gpu-execution-amendment-v9"
+    amendment["environment_binding"]["hostname"] = "bootes.alias"
+    amendment["environment_binding"]["gpu_uuids"] = [
+        "GPU-synthetic-bootes-a", "GPU-synthetic-bootes-b",
+    ]
+    amendment["checkpoint_binding"]["path"] = "/local_scratch2/gzappavi/synthetic-checkpoint"
+    amendment["provisioning_binding"]["cuda_toolkit_path"] = (
+        "/local_scratch2/gzappavi/synthetic-toolkit"
+    )
+    environment = amendment["environment_binding"]
+    hardware = {key: environment[key] for key in (
+        "hostname", "driver_version", "gpu_model", "gpu_uuids", "gpu_compute_capability",
+    )}
+    protocol["runtime_declarations"]["hardware_identifier"] = hashlib.sha256(
+        canonical_json_bytes(hardware)
+    ).hexdigest()
+    for stage in amendment["stage_gates"]:
+        stage["authorization"] = "not-approved"
+    provenance = amendment["upstream_provenance_binding"]
+    amendment["route_process_bindings"] = {
+        route: {
+            "route": route,
+            "wan_root": f"/local_scratch2/gzappavi/synthetic/{route}",
+            "source_files": {"wan/image2video.py": DIGEST},
+            "adapter": {"path": str(ROOT / "multi_sample_inference/r3_pristine_adapter.py"), "sha256": DIGEST}
+            if route == "official-pristine" else None,
+            "checkout": {key: provenance[source][key] for key in ("commit", "tree")},
+        }
+        for route, source in (
+            ("official-pristine", "official_source"),
+            ("local-custom", "local_source"),
+        )
+    }
+    amendment["production_component_hashes"] = dict.fromkeys(
+        (
+            "experiment_pipeline.py", "fsdp_worker.py", "r3_checkout_binding.py",
+            "r3_route_isolation.py", "r3_pristine_adapter.py", "r3_contracts.py",
+        ),
+        DIGEST,
+    )
+    return protocol
+
+
+def test_v9_schema_fixture_remains_non_executable(tmp_path):
+    fixture = tmp_path / "v9-synthetic.json"
+    fixture.write_text(json.dumps(_synthetic_unapproved_v9()))
+    protocol = load_protocol_bundle(fixture, MATRIX_V3)["protocol"]
+    assert "stage-scoped-authorization-unavailable" in stage_execution_blockers(
+        protocol, "backend-kernel-canary"
+    )
+    assert preflight(fixture, MATRIX_V3)["blockers"]
+    with pytest.raises(RuntimeError):
+        preflight(fixture, MATRIX_V3, execution=True, stage="backend-kernel-canary")
+
+
+@pytest.mark.parametrize("mutation,error", [
+    ("approve-stage", "staged stop gates"),
+    ("approve-host", "cannot inherit host approval"),
+    ("wrong-lineage", "lineage differs"),
+    ("wrong-provenance", "pristine provenance differs"),
+    ("wrong-route", "checkout differs"),
+    ("same-checkout", "cannot share"),
+    ("missing-components", "component hashes"),
+    ("wrong-host", "bind the Bootes host"),
+    ("pollux-hardware", "cannot reuse Pollux hardware"),
+    ("pollux-checkpoint", "cannot reuse Pollux hardware"),
+    ("wrong-adapter-digest", "official adapter differs"),
+])
+def test_v9_schema_fixture_rejects_tampering(tmp_path, mutation, error):
+    protocol = _synthetic_unapproved_v9()
+    amendment = protocol["execution_amendment"]
+    if mutation == "approve-stage":
+        amendment["stage_gates"][0]["authorization"] = "approved"
+    elif mutation == "approve-host":
+        protocol["approvals"]["hardware_environment"] = "approved"
+    elif mutation == "wrong-lineage":
+        protocol["lineage"]["sha256"] = DIGEST
+    elif mutation == "wrong-provenance":
+        amendment["upstream_provenance_binding"]["decision"] = "accepted-local"
+    elif mutation == "wrong-route":
+        amendment["route_process_bindings"]["official-pristine"]["checkout"]["tree"] = "0" * 40
+    elif mutation == "same-checkout":
+        amendment["route_process_bindings"]["local-custom"]["wan_root"] = (
+            amendment["route_process_bindings"]["official-pristine"]["wan_root"]
+        )
+    elif mutation == "missing-components":
+        del amendment["production_component_hashes"]["fsdp_worker.py"]
+    elif mutation == "wrong-host":
+        amendment["environment_binding"]["hostname"] = "pollux.alias"
+    elif mutation == "pollux-hardware":
+        amendment["environment_binding"]["gpu_uuids"] = json.loads(
+            PROTOCOL_V8.read_text()
+        )["execution_amendment"]["environment_binding"]["gpu_uuids"]
+        environment = amendment["environment_binding"]
+        hardware = {key: environment[key] for key in (
+            "hostname", "driver_version", "gpu_model", "gpu_uuids", "gpu_compute_capability",
+        )}
+        protocol["runtime_declarations"]["hardware_identifier"] = hashlib.sha256(
+            canonical_json_bytes(hardware)
+        ).hexdigest()
+    elif mutation == "pollux-checkpoint":
+        amendment["checkpoint_binding"]["path"] = "/local_scratch/gzappavi/checkpoint"
+    elif mutation == "wrong-adapter-digest":
+        amendment["route_process_bindings"]["official-pristine"]["adapter"]["sha256"] = "0" * 64
+    fixture = tmp_path / "v9-tampered.json"
+    fixture.write_text(json.dumps(protocol))
+    with pytest.raises(ValueError, match=error):
+        load_protocol_bundle(fixture, MATRIX_V3)
+
+
+def test_v9_pipeline_rechecks_each_production_component(monkeypatch):
+    protocol = _synthetic_unapproved_v9()
+    source = protocol["execution_amendment"]["source_binding"]
+    components = protocol["execution_amendment"]["production_component_hashes"]
+    for name in components:
+        components[name] = hashlib.sha256(
+            (ROOT / "multi_sample_inference" / name).read_bytes()
+        ).hexdigest()
+    protocol["execution_amendment"]["route_process_bindings"]["official-pristine"][
+        "adapter"
+    ]["sha256"] = components["r3_pristine_adapter.py"]
+    identities = {
+        "parent": {"dirty": False},
+        "wan": {"dirty": False, "revision": source["wan_revision"]},
+        "lama": {"dirty": False, "revision": source["lama_revision"]},
+    }
+    monkeypatch.setattr(
+        pipeline, "production_source_content_sha256",
+        lambda *_: source["parent_production_content_sha256"],
+    )
+    pipeline._validate_v4_source_binding(ROOT, identities, protocol)
+    components["fsdp_worker.py"] = DIGEST
+    with pytest.raises(ValueError, match=r"production component changed: fsdp_worker\.py"):
+        pipeline._validate_v4_source_binding(ROOT, identities, protocol)
+
+
 def test_pollux_backend_canary_evidence_is_bound_and_bounded():
     bundle = load_protocol_bundle(PROTOCOL_V6, MATRIX_V3)
     protocol = bundle["protocol"]

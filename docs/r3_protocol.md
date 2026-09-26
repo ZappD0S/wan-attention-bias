@@ -478,6 +478,33 @@ source drift. A future immutable amendment must bind both complete checkout
 identities, current pipeline/worker/checker hashes and the verified host;
 without it v8 still blocks the next stage.
 
+On 2026-09-26 Bootes CPU/source relocation installed detached transport snapshot
+`cc067079…` separately from the original clean Bootes checkout, copied the
+official pristine checkout at `7c81b2f…`/tree `91b74dfa…`, installed the exact
+local Wan/LaMa worktrees, and rebound a separate GPU-hidden environment against
+the current `uv.lock`. Both real checkout-route bindings passed the new gate,
+127 CPU tests passed, and metadata-only package versions matched the pinned
+Python/Torch/FA2/SAM2 packages. V8 preparation still reports its three blockers.
+Example LFS assets remain pointers; this is not checkpoint/model verification
+or Bootes GPU readiness. Pollux's passed v6/v7 kernel/checkpoint evidence is
+host-bound and cannot stand in for Bootes execution evidence.
+
+A CPU-only schema-v9 validator now accepts only an **unapproved** Bootes
+amendment with immutable-v8 lineage/provenance, both distinct exact-checkout
+process bindings, a current parent production digest, and six explicit
+pipeline/worker/route/checker/adapter/validator file hashes. It resets both
+approvals and all five stages to not-approved, disallows GPU-validated hook
+claims, checks runtime declarations against the Bootes environment binding,
+and rejects missing or altered provenance and checkout identities. Source
+expansion additionally compares the six files with their declared hashes.
+Synthetic v9 fixtures exercise these rules but are not host observations.
+No immutable v9 amendment is frozen yet: final source snapshot and Bootes
+hardware/driver/provisioning/checkpoint declarations need evidence and a
+source-bound freeze first. Even a structurally valid v9 is deliberately
+ineligible for **any** stage-scoped authorization; a separately approved,
+versioned later amendment and fresh per-stage approval are required before GPU
+execution. V8, historical Pollux evidence and the route record remain unchanged.
+
 ## Safe CPU commands now
 
 ```bash
@@ -527,10 +554,13 @@ handoff exists:
    sources and verify the detached pristine checkout remains unchanged;
 3. bind and validate the complete schema-v9 checkout and source identities in
    a later protocol (the current synthetic pipeline plumbing is not sufficient);
-4. install and verify that detached checkout on the target host and revalidate
-   the current locked environment and source identities; and
-5. freeze a later immutable amendment containing the exact command, inputs,
+4. **Completed for CPU preparation on Bootes:** install and verify the detached
+   official checkout, clean isolated source and current locked environment;
+   this does not establish Bootes GPU/runtime compatibility or authorize a stage;
+5. re-establish host-bound GPU prerequisite evidence on Bootes under separately
+   approved, bounded stages (the passed v6/v7 records belong to Pollux); and
+6. freeze a later immutable amendment containing the exact command, inputs,
    output paths, stage stop, and fresh explicit user authorization.
 
-Until all four are complete, model loading, full-model forward, generation,
-parity, decoding and distributed execution remain prohibited.
+Until the remaining gates are complete, model loading, full-model forward,
+generation, parity, decoding and distributed execution remain prohibited.
