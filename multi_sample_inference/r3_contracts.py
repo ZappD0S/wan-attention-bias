@@ -950,9 +950,20 @@ def _validate_v9_execution_amendment(protocol):
         ),
         "R3 protocol v9 cannot reuse Pollux hardware or paths as Bootes evidence",
     )
+    provenance = amendment["upstream_provenance_binding"]
+    route_record = frozen_path.with_name("r3_pristine_route.json")
     _require(
-        amendment["upstream_provenance_binding"] == frozen,
-        "R3 protocol v9 pristine provenance differs from frozen v8",
+        route_record.is_file()
+        and sha256_file(route_record)
+        == "9b3f825ac5ba4e74c41b6b48b177d8f4c4bbbee01809f07749d4afcabf5ffdb4"
+        and isinstance(provenance, dict)
+        and {key: value for key, value in provenance.items() if key != "route_contract"}
+        == {key: value for key, value in frozen.items() if key != "route_contract"}
+        and provenance.get("route_contract") == frozen["route_contract"] | {
+            "observation_adapter": "implemented-exact-hash-binding",
+            "implementation_state": "implemented-and-cpu-validated",
+        },
+        "R3 protocol v9 pristine provenance or CPU route record differs from frozen v8",
     )
     routes = amendment["route_process_bindings"]
     _require(

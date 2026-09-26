@@ -615,6 +615,8 @@ def _synthetic_unapproved_v9():
     for stage in amendment["stage_gates"]:
         stage["authorization"] = "not-approved"
     provenance = amendment["upstream_provenance_binding"]
+    provenance["route_contract"]["observation_adapter"] = "implemented-exact-hash-binding"
+    provenance["route_contract"]["implementation_state"] = "implemented-and-cpu-validated"
     amendment["route_process_bindings"] = {
         route: {
             "route": route,
@@ -646,7 +648,7 @@ def test_v9_schema_fixture_remains_non_executable(tmp_path):
     assert "stage-scoped-authorization-unavailable" in stage_execution_blockers(
         protocol, "backend-kernel-canary"
     )
-    assert preflight(fixture, MATRIX_V3)["blockers"]
+    assert not any(blocker.startswith("pristine-upstream-route:") for blocker in preflight(fixture, MATRIX_V3)["blockers"])
     with pytest.raises(RuntimeError):
         preflight(fixture, MATRIX_V3, execution=True, stage="backend-kernel-canary")
 
@@ -655,7 +657,8 @@ def test_v9_schema_fixture_remains_non_executable(tmp_path):
     ("approve-stage", "staged stop gates"),
     ("approve-host", "cannot inherit host approval"),
     ("wrong-lineage", "lineage differs"),
-    ("wrong-provenance", "pristine provenance differs"),
+    ("wrong-provenance", "pristine provenance or CPU route record differs"),
+    ("route-not-implemented", "pristine provenance or CPU route record differs"),
     ("wrong-route", "checkout differs"),
     ("same-checkout", "cannot share"),
     ("missing-components", "component hashes"),
@@ -675,6 +678,8 @@ def test_v9_schema_fixture_rejects_tampering(tmp_path, mutation, error):
         protocol["lineage"]["sha256"] = DIGEST
     elif mutation == "wrong-provenance":
         amendment["upstream_provenance_binding"]["decision"] = "accepted-local"
+    elif mutation == "route-not-implemented":
+        amendment["upstream_provenance_binding"]["route_contract"]["implementation_state"] = "required-not-implemented"
     elif mutation == "wrong-route":
         amendment["route_process_bindings"]["official-pristine"]["checkout"]["tree"] = "0" * 40
     elif mutation == "same-checkout":
