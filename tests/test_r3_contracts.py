@@ -42,6 +42,7 @@ PROTOCOL_V5 = ROOT / "docs/r3_protocol_v5.json"
 PROTOCOL_V6 = ROOT / "docs/r3_protocol_v6.json"
 PROTOCOL_V7 = ROOT / "docs/r3_protocol_v7.json"
 PROTOCOL_V8 = ROOT / "docs/r3_protocol_v8.json"
+PROTOCOL_V10 = ROOT / "docs/r3_protocol_v10.json"
 POLLUX_BACKEND_EVIDENCE = ROOT / "docs/r3_evidence/pollux-backend-kernel-canary.json"
 POLLUX_HOOK_EVIDENCE = ROOT / "docs/r3_evidence/pollux-checkpoint-load-hook-canary.json"
 POLLUX_HOOK_LOG = ROOT / "docs/r3_evidence/pollux-checkpoint-load-hook-canary.log"
@@ -709,6 +710,44 @@ def test_v9_schema_fixture_rejects_tampering(tmp_path, mutation, error):
     fixture.write_text(json.dumps(protocol))
     with pytest.raises(ValueError, match=error):
         load_protocol_bundle(fixture, MATRIX_V3)
+
+
+def test_v10_bootes_backend_only_authorization():
+    protocol = load_protocol_bundle(PROTOCOL_V10, MATRIX_V3)["protocol"]
+    assert stage_execution_blockers(protocol, "backend-kernel-canary") == []
+    assert stage_execution_blockers(protocol, "checkpoint-load-hook-canary") == [
+        "stage-not-authorized:checkpoint-load-hook-canary"
+    ]
+    assert preflight(PROTOCOL_V10, MATRIX_V3)["evidence_acceptance_ready"] is False
+
+
+@pytest.mark.parametrize("mutation", [
+    "extra-stage", "wrong-device", "wrong-command", "wrong-inventory",
+    "missing-stop", "source-component", "changed-route", "pollux-host",
+])
+def test_v10_rejects_authorization_or_lineage_tampering(tmp_path, mutation):
+    protocol = json.loads(PROTOCOL_V10.read_text())
+    amendment = protocol["execution_amendment"]
+    if mutation == "extra-stage":
+        amendment["stage_gates"][1]["authorization"] = "approved"
+    elif mutation == "wrong-device":
+        amendment["authorization_record"]["gpu_uuid"] = "GPU-other"
+    elif mutation == "wrong-command":
+        amendment["authorization_record"]["command"] += " --unsafe"
+    elif mutation == "wrong-inventory":
+        amendment["authorization_record"]["checkpoint_inventory"] = "elsewhere"
+    elif mutation == "missing-stop":
+        amendment["authorization_record"]["stop_after_stage"] = False
+    elif mutation == "source-component":
+        amendment["production_component_hashes"]["experiment_pipeline.py"] = "0" * 64
+    elif mutation == "changed-route":
+        amendment["route_process_bindings"]["official-pristine"]["wan_root"] = "/tmp/other"
+    else:
+        amendment["environment_binding"]["hostname"] = "pollux"
+    path = tmp_path / "tampered-v10.json"
+    path.write_text(json.dumps(protocol))
+    with pytest.raises(ValueError, match="exceeds its frozen bounded authorization delta"):
+        load_protocol_bundle(path, MATRIX_V3)
 
 
 def test_v9_pipeline_rechecks_each_production_component(monkeypatch):
