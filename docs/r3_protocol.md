@@ -532,8 +532,15 @@ v11 SHA-256 `374d5037…`. It rehashed the official checkpoint, loaded its DiT
 with the **pinned local Wan source** on CPU, moved only layer 0 to one GPU and
 confirmed bitwise-exact synthetic hook neutrality. Evidence SHA-256
 `84c0a956…` is in `docs/r3_evidence/bootes-checkpoint-hook-canary.json`.
-That attempt has ended; generator, pristine-source parity and all later GPU
-stages remain unauthorized. This is not full-model or scientific validation.
+That attempt has ended; it did not validate a full model or scientific result.
+
+One subsequent approved v12 (`75ae0216…`) pristine/local single-rank generator
+pair wrote both videos and final-latent artifacts, but failed its worker
+observation check: the local route emitted 31 unscoped attention events.
+Existing-artifact CPU comparison also failed frozen latent parity. Immutable
+failed record `docs/r3_evidence/bootes-generator-pair-failed-attempt.json`
+(`38c7635d…`) preserves this result. The one attempt stopped; no retry or
+further GPU stage is authorized.
 
 ## Safe CPU commands now
 
@@ -576,8 +583,8 @@ current source.
 
 ## Later GPU handoff commands (not authorized or run)
 
-V10's only authorized GPU command has already run and stopped. No current
-command is valid for the next GPU stage. The old local-standard
+V10–v12's bounded attempts have ended; v12 failed its observation/parity gate.
+No current command is valid for another GPU attempt or stage. The old local-standard
 upstream worker path must not be reused for pristine parity. Before an executable
 handoff exists:
 
@@ -595,5 +602,6 @@ handoff exists:
 6. freeze a later immutable amendment containing the exact command, inputs,
    output paths, stage stop, and fresh explicit user authorization.
 
-Until the remaining gates are complete, model loading, full-model forward,
-generation, parity, decoding and distributed execution remain prohibited.
+Further model loading, generation, decoding, parity or distributed execution
+remains prohibited without fresh approval and a bounded host/source binding;
+the completed v12 attempt does not confer acceptance or retry authorization.

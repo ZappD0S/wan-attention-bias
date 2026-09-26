@@ -685,3 +685,28 @@ sites were self/cross/cross via FA2. Evidence SHA-256 `84c0a956…` is at
 honored; this does not validate the separate official-pristine source, full
 model, generator, parity, distributed mode, video quality or scientific result.
 No later GPU stage is authorized.
+
+## One Bootes generator-pair attempt — 2026-09-26
+
+V12 SHA-256 `75ae0216…` bound one two-route, single-rank attempt from clean
+source `148444d…`, with frozen seed 101, identical initial latent SHA
+`3285c895…`, 81 frames, two sampling steps and checkpoint content
+`80c954fb…`. The CPU-only pair plan and three image hashes passed before
+launch; the GPU-hidden ten-file suite passed 192 tests. The isolated pristine
+and custom-none workers both wrote videos and final-latent artifacts, but the
+runner exited 1 and immutably recorded **failed**, not accepted: local source
+observations include 31 attention-dispatch events without model coordinates
+(511 total versus pristine 480). Failed record SHA-256 `38c7635d…` is
+`docs/r3_evidence/bootes-generator-pair-failed-attempt.json`; original
+worker outputs remain in the non-reusable Bootes attempt directory.
+
+A GPU-hidden offline comparison of the existing final latents found finite
+float32 tensors of identical shape `[16,21,58,104]` but failed frozen
+`atol=1e-5`, `rtol=0.016`: maximum absolute difference
+`0.21618425846099854` (relative maximum `39807.333333333336`). Their
+artifact SHA-256 values are pristine `3388e260…` and local `9edf9c6d…`.
+Text-encoder attention before denoising is a plausible, unproven explanation
+for the extra unscoped events; it does not explain away the measured latent
+mismatch. Both source checkouts remained clean, and the one approved attempt
+stopped. No retry or later GPU stage is authorized; no parity or scientific
+claim is accepted.
