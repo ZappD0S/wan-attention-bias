@@ -221,6 +221,47 @@ def test_v14_arithmetic_pair_rejects_route_and_output_changes():
             validate_protocol(changed, matrix, matrix_sha256=sha256_file(MATRIX))
 
 
+def _synthetic_v15():
+    protocol = json.loads((ROOT / "docs/r3_protocol_v14.json").read_text())
+    protocol["schema_version"] = 15
+    protocol["protocol_id"] = "r3-gpu-contracts-v15"
+    protocol["lineage"] = {"protocol_id": "r3-gpu-contracts-v14",
+                           "sha256": sha256_file(ROOT / "docs/r3_protocol_v14.json")}
+    amendment = protocol["execution_amendment"]
+    amendment["amendment_id"] = "r3-gpu-execution-amendment-v15"
+    amendment["source_binding"]["parent_revision_at_freeze"] = "e" * 40
+    amendment["source_binding"]["parent_production_content_sha256"] = "a" * 64
+    for name in ("r3_contracts.py", "r3_generator_pair.py"):
+        amendment["production_component_hashes"][name] = "b" * 64
+    auth = amendment["authorization_record"]
+    auth["source"] = {"path": "/local_scratch2/gzappavi/r3_stage3/input/source-bytecode-hygiene.json",
+                      "sha256": "2d5c6f6488b92f042d09ecf2ec420b5c79bf21cb743d7f44f30abb2e08eb5839"}
+    auth["output"] = "/local_scratch2/gzappavi/r3_stage3/generator-pair-bytecode-hygiene-attempt"
+    auth["command"] = (
+        f"CUDA_VISIBLE_DEVICES={auth['gpu_uuid']} uv run --no-sync --locked "
+        "python -m multi_sample_inference.r3_generator_pair "
+        "--protocol docs/r3_protocol_v15.json --matrix docs/r3_test_matrix_v3.json "
+        f"--source {auth['source']['path']} --output {auth['output']}"
+    )
+    return protocol
+
+
+def test_v15_hygiene_pair_rejects_source_and_scope_changes():
+    protocol = _synthetic_v15()
+    matrix = json.loads(MATRIX.read_text())
+    assert validate_protocol(protocol, matrix, matrix_sha256=sha256_file(MATRIX))
+    assert stage_execution_blockers(protocol, pair.STAGE) == []
+    for change in (
+        lambda p: p["execution_amendment"]["production_component_hashes"].update(fsdp_worker_py="0" * 64),
+        lambda p: p["execution_amendment"]["authorization_record"].update(output="/tmp/other"),
+        lambda p: p["execution_amendment"]["stage_gates"][3].update(authorization="approved"),
+    ):
+        changed = copy.deepcopy(protocol)
+        change(changed)
+        with pytest.raises(ValueError):
+            validate_protocol(changed, matrix, matrix_sha256=sha256_file(MATRIX))
+
+
 def _pair_fixture(protocol):
     auth = protocol["execution_amendment"]["authorization_record"]
     source = {

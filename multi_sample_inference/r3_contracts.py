@@ -38,6 +38,7 @@ V10_PROTOCOL_SHA256 = "84cc35d0c495b04812e532e02b26c9d7fa7119508e4557718e5b495bf
 V11_PROTOCOL_SHA256 = "374d5037111ec04b7e304ce07e44c261827fdf66c13e9d363b3960209f21f34b"
 V12_PROTOCOL_SHA256 = "75ae0216a275d63f2efc646bd63010c553dd73ebd779fc4213aedc18788955a2"
 V13_PROTOCOL_SHA256 = "84980cee76b99cb1886f8ab4b8dd459285a93373e65854f35dff63b382ccfc23"
+V14_PROTOCOL_SHA256 = "f3b33ce0e0f360859fe445e24329228d90c5b2ff7807bca7a2e213b0394dd68a"
 R3_STAGE_IDS = (
     "backend-kernel-canary",
     "checkpoint-load-hook-canary",
@@ -1411,6 +1412,57 @@ def _validate_v14_execution_amendment(protocol):
     _require(protocol == expected, "R3 v14 exceeds its one-pair arithmetic authorization")
 
 
+def _validate_v15_execution_amendment(protocol):
+    """One clean-source pair after preventing worker bytecode contamination."""
+    frozen = Path(__file__).resolve().parents[1] / "docs/r3_protocol_v14.json"
+    _require(frozen.is_file() and sha256_file(frozen) == V14_PROTOCOL_SHA256,
+             "R3 v15 frozen v14 lineage is unavailable or changed")
+    expected = _read_json(frozen)
+    amendment = protocol.get("execution_amendment")
+    _require(isinstance(amendment, dict), "R3 v15 amendment is missing")
+    source = amendment.get("source_binding")
+    components = amendment.get("production_component_hashes")
+    old = expected["execution_amendment"]
+    _require(isinstance(source, dict) and isinstance(components, dict)
+             and set(components) == set(old["production_component_hashes"]),
+             "R3 v15 production components differ")
+    revision = source.get("parent_revision_at_freeze")
+    digest = source.get("parent_production_content_sha256")
+    _require_git_revision(revision, "R3 v15 parent revision")
+    _require_sha256(digest, "R3 v15 production source")
+    for name, value in components.items():
+        _require_sha256(value, f"R3 v15 {name} component")
+        if name not in {"r3_contracts.py", "r3_generator_pair.py"}:
+            _require(value == old["production_component_hashes"][name],
+                     f"R3 v15 unrelated production component changed: {name}")
+    _require(revision != old["source_binding"]["parent_revision_at_freeze"]
+             and digest != old["source_binding"]["parent_production_content_sha256"]
+             and components["r3_contracts.py"] != old["production_component_hashes"]["r3_contracts.py"]
+             and components["r3_generator_pair.py"] != old["production_component_hashes"]["r3_generator_pair.py"],
+             "R3 v15 must bind new code and source")
+    expected["schema_version"] = 15
+    expected["protocol_id"] = "r3-gpu-contracts-v15"
+    expected["lineage"] = {"protocol_id": "r3-gpu-contracts-v14", "sha256": V14_PROTOCOL_SHA256}
+    expected["frozen_at"] = protocol.get("frozen_at")
+    old["amendment_id"] = "r3-gpu-execution-amendment-v15"
+    old["source_binding"]["parent_revision_at_freeze"] = revision
+    old["source_binding"]["parent_production_content_sha256"] = digest
+    old["production_component_hashes"] = components
+    authorization = old["authorization_record"]
+    authorization["source"] = {
+        "path": "/local_scratch2/gzappavi/r3_stage3/input/source-bytecode-hygiene.json",
+        "sha256": "2d5c6f6488b92f042d09ecf2ec420b5c79bf21cb743d7f44f30abb2e08eb5839",
+    }
+    authorization["output"] = "/local_scratch2/gzappavi/r3_stage3/generator-pair-bytecode-hygiene-attempt"
+    authorization["command"] = (
+        f"CUDA_VISIBLE_DEVICES={authorization['gpu_uuid']} uv run --no-sync --locked "
+        "python -m multi_sample_inference.r3_generator_pair "
+        "--protocol docs/r3_protocol_v15.json --matrix docs/r3_test_matrix_v3.json "
+        f"--source {authorization['source']['path']} --output {authorization['output']}"
+    )
+    _require(protocol == expected, "R3 v15 exceeds its one-pair hygiene authorization")
+
+
 def _validate_protocol_lineage(protocol, schema_version):
     if schema_version == 1:
         return
@@ -1429,6 +1481,7 @@ def _validate_protocol_lineage(protocol, schema_version):
         12: ("r3-gpu-contracts-v11", V11_PROTOCOL_SHA256),
         13: ("r3-gpu-contracts-v12", V12_PROTOCOL_SHA256),
         14: ("r3-gpu-contracts-v13", V13_PROTOCOL_SHA256),
+        15: ("r3-gpu-contracts-v14", V14_PROTOCOL_SHA256),
     }[schema_version]
     _require(
         isinstance(lineage, dict)
@@ -1447,7 +1500,7 @@ def _validate_protocol_lineage(protocol, schema_version):
 def validate_protocol(protocol, matrix, *, matrix_sha256):
     _require(isinstance(protocol, dict), "protocol must be a JSON object")
     schema_version = protocol.get("schema_version")
-    _require(type(schema_version) is int and schema_version in range(1, 15), "unsupported R3 protocol schema_version")
+    _require(type(schema_version) is int and schema_version in range(1, 16), "unsupported R3 protocol schema_version")
     _require(
         protocol.get("protocol_id") == f"r3-gpu-contracts-v{schema_version}",
         "unexpected R3 protocol_id",
@@ -1556,6 +1609,7 @@ def validate_protocol(protocol, matrix, *, matrix_sha256):
             12: _validate_v12_execution_amendment,
             13: _validate_v13_execution_amendment,
             14: _validate_v14_execution_amendment,
+            15: _validate_v15_execution_amendment,
         }[schema_version](protocol)
     return validate_matrix(matrix)
 
@@ -1628,7 +1682,7 @@ def _pristine_route_blockers(protocol):
 def stage_execution_blockers(protocol, stage_id):
     """Return blockers for one explicitly authorized bounded stage."""
     blockers = _base_execution_blockers(protocol)
-    if protocol["schema_version"] not in {5, 6, 7, 8, 10, 11, 12, 13, 14}:
+    if protocol["schema_version"] not in {5, 6, 7, 8, 10, 11, 12, 13, 14, 15}:
         return [*blockers, "stage-scoped-authorization-unavailable"]
     amendment = protocol["execution_amendment"]
     if amendment["authorization_state"] != "approved-bounded-stage":
