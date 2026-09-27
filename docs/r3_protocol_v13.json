@@ -2,7 +2,7 @@
   "schema_version": 13,
   "protocol_id": "r3-gpu-contracts-v13",
   "status": "in-progress",
-  "frozen_at": "2026-09-27T10:12:43.014252+00:00",
+  "frozen_at": "2026-09-27T10:16:25.240753+00:00",
   "claim_boundary": "Only one Bootes single-rank official-pristine/custom-none generator pair is approved; stop after the pair attempt, with no repeat, other jobs, distributed execution, scientific claim, or later stage.",
   "lineage": {
     "protocol_id": "r3-gpu-contracts-v12",
@@ -84,13 +84,13 @@
     "amendment_id": "r3-gpu-execution-amendment-v13",
     "authorization_state": "approved-bounded-stage",
     "source_binding": {
-      "parent_revision_at_freeze": "880836628360ea8ab512db89f1ee6f769ad33e01",
+      "parent_revision_at_freeze": "0acf09815362b3699e1237c9c3239f2be5a34941",
       "parent_production_paths": [
         "multi_sample_inference",
         "pyproject.toml",
         "uv.lock"
       ],
-      "parent_production_content_sha256": "c076b7f4fb094ee956bdc2fb511148d6cc99c49f286a2b97be8ed95296f0384f",
+      "parent_production_content_sha256": "e8eaeda57b2763ccc062a485014bd1d47e697d26865d5ba584842a581bb4c902",
       "wan_revision": "00bde1e719ccb56c66a01a1f18a70c49b278c202",
       "lama_revision": "469acc7358a1c6828b647b4ee20c93474a2f36b4",
       "require_clean_worktrees": true,
@@ -252,7 +252,7 @@
       "r3_checkout_binding.py": "8b39355e7cfeafb40fe95248592f7ca9baa5b76b9999294ff620d0f285f2ac10",
       "r3_route_isolation.py": "f8ffc89cbbe03cee12af799631ce4f5dc2f76a64daa1cbcec8c04b0f02b2450b",
       "r3_pristine_adapter.py": "7f89aa4ba590b7fd810d8e6c0282717663e4151c93bd5e88366c0172323b7e77",
-      "r3_contracts.py": "f0a6daee609932c32b73c68763cbbe375400e963df93e91610998c56a5178102",
+      "r3_contracts.py": "41b70750b33fd0f8ac154a8d173bf9cde5c2f6e6edf62d64683ff655ee72e6bf",
       "r3_checkpoint_hook_canary.py": "437ce26b9bf0e5def3a43033f0d193b9e31f76dc8ee48f61234a14504a0192df",
       "r3_generator_pair.py": "ec9196d001d08be1b91f27764db400255dbeced7283b92e436a80159e321e47d"
     },
@@ -303,11 +303,11 @@
         "later-stage-execution",
         "scientific-claim"
       ],
-      "command": "CUDA_VISIBLE_DEVICES=GPU-c247e0e3-654a-7387-8ec6-46791821a52d uv run --no-sync --locked python -m multi_sample_inference.r3_generator_pair --protocol docs/r3_protocol_v13.json --matrix docs/r3_test_matrix_v3.json --source /local_scratch2/gzappavi/r3_stage3/input/source.json --output /local_scratch2/gzappavi/r3_stage3/generator-pair-fp32-attempt",
+      "command": "CUDA_VISIBLE_DEVICES=GPU-c247e0e3-654a-7387-8ec6-46791821a52d uv run --no-sync --locked python -m multi_sample_inference.r3_generator_pair --protocol docs/r3_protocol_v13.json --matrix docs/r3_test_matrix_v3.json --source /local_scratch2/gzappavi/r3_stage3/input/source-fp32.json --output /local_scratch2/gzappavi/r3_stage3/generator-pair-fp32-attempt",
       "checkpoint_inventory": "docs/u1_checkpoint_inventory.json",
       "source": {
-        "path": "/local_scratch2/gzappavi/r3_stage3/input/source.json",
-        "sha256": "ebceee5b5b3246bf98bb0c434ad81af7e7b33cefa0da64e87f9de3134f6ab5c2"
+        "path": "/local_scratch2/gzappavi/r3_stage3/input/source-fp32.json",
+        "sha256": "528fc048f0956c85e4a17efe281ccc752a7876e37de5a4a1eef784d5e476df3a"
       },
       "output": "/local_scratch2/gzappavi/r3_stage3/generator-pair-fp32-attempt",
       "gpu_uuid": "GPU-c247e0e3-654a-7387-8ec6-46791821a52d",
