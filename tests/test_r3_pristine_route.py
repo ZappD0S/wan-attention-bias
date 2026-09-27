@@ -7,6 +7,7 @@ import types
 from pathlib import Path
 
 import pytest
+import torch
 
 from multi_sample_inference.r3_checkout_binding import validate_checkout_route_binding
 from multi_sample_inference.r3_pristine_adapter import (
@@ -336,6 +337,72 @@ def test_local_observer_scopes_only_pre_model_uncoordinated_dispatches(worker_mo
     ]
     assert records[3]["scope"] == "pre-model" and records[3]["rank"] == 0
     assert records[2]["seed"] == 101
+
+
+def test_parity_custom_none_retains_fp32_weights_and_bf16_runtime(monkeypatch, worker_module):
+    original_config = types.SimpleNamespace(param_dtype=torch.bfloat16)
+    monkeypatch.setattr(worker_module, "i2v_14B", original_config)
+    captured = []
+
+    class FakeWanI2V:
+        def __init__(self, *, config, **kwargs):
+            captured.append((config, kwargs))
+            self.config = config
+            self.param_dtype = config.param_dtype
+            self.model = torch.nn.Linear(2, 2).to(config.param_dtype)
+
+    regional = types.ModuleType("wan.regional_prompt")
+    regional.__path__ = []
+    image2video = types.ModuleType("wan.regional_prompt.image2video")
+    image2video.WanI2V = FakeWanI2V
+    monkeypatch.setitem(sys.modules, "wan.regional_prompt", regional)
+    monkeypatch.setitem(sys.modules, "wan.regional_prompt.image2video", image2video)
+    task = {
+        "config": {"bias_method": "none"},
+        "checkpoint_dir": "/unused",
+        "r3_evidence": {
+            "protocol_schema_version": 12,
+            "route_process": {"route": "local-custom"},
+            "parity_artifact": {"route": "custom-none"},
+        },
+    }
+    kwargs = {"local_rank": 0, "rank": 0, "t5_fsdp": False,
+              "dit_fsdp": False, "t5_cpu": True}
+    matched = worker_module._build_generator(task, **kwargs)
+    assert matched.config is not original_config
+    assert captured[0][0].param_dtype == torch.float32
+    assert next(matched.model.parameters()).dtype == torch.float32
+    assert matched.param_dtype == original_config.param_dtype == torch.bfloat16
+    assert captured[0][1]["init_on_cpu"] is True
+
+    ordinary = worker_module._build_generator({**task, "r3_evidence": {}}, **kwargs)
+    assert captured[1][0] is original_config
+    assert next(ordinary.model.parameters()).dtype == torch.bfloat16
+    legacy = worker_module._build_generator(
+        {**task, "r3_evidence": {**task["r3_evidence"], "protocol_schema_version": 11}},
+        **kwargs,
+    )
+    assert next(legacy.model.parameters()).dtype == torch.bfloat16
+
+    class RoundedWanI2V(FakeWanI2V):
+        def __init__(self, *, config, **kwargs):
+            super().__init__(config=config, **kwargs)
+            self.model.to(torch.bfloat16)
+
+    monkeypatch.setattr(image2video, "WanI2V", RoundedWanI2V)
+    with pytest.raises(ValueError, match="did not retain checkpoint FP32 dtype"):
+        worker_module._build_generator(task, **kwargs)
+    with pytest.raises(ValueError, match="single-rank local custom-none"):
+        worker_module._build_generator(task, **(kwargs | {"dit_fsdp": True}))
+    with pytest.raises(ValueError, match="single-rank local custom-none"):
+        worker_module._build_generator(
+            {**task, "config": {"bias_method": "regional_prompting"}}, **kwargs
+        )
+    with pytest.raises(ValueError, match="single-rank local custom-none"):
+        worker_module._build_generator(
+            {**task, "r3_evidence": {**task["r3_evidence"],
+                                     "route_process": {"route": "official-pristine"}}}, **kwargs
+        )
 
 
 def test_worker_selects_external_adapter_only_for_schema9_pristine_route(

@@ -724,3 +724,15 @@ outputs already differ across pristine/local routes, so this observation fix
 **does not resolve numerical parity**. GPU-hidden focused tests passed 35 and
 the full ten-file suite passed 194; further cause isolation cannot be claimed
 from the existing records alone. No GPU work or retry ran in this follow-up.
+
+CPU-only weight-dtype correction: the official pristine generator omits a
+`torch_dtype` override; the seven official DiT shards contain only F32 tensors.
+The local custom generator requests BF16 when loading and casts the DiT to
+BF16 again during construction. For an explicitly declared, single-rank
+custom-none parity route only, the worker now supplies a copied config with
+FP32 DiT load dtype, verifies every floating model parameter remains FP32,
+and restores its BF16 activation/autocast setting. T5/CLIP/VAE dtype fields
+and ordinary local runs are not changed. Synthetic CPU tests cover the
+FP32/BF16 distinction and reject unintended BF16 weights. This is a plausible
+fix, not a measured result: the old attempt stays failed, and neither new GPU
+execution nor acceptance is authorized.

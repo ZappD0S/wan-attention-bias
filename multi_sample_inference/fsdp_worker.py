@@ -1,4 +1,5 @@
 import argparse
+import copy
 import os
 import pickle
 import time
@@ -283,13 +284,32 @@ def _runtime_observer_context(wan_i2v, task, collector, rank):
 
 
 def _build_generator(task, *, local_rank, rank, t5_fsdp, dit_fsdp, t5_cpu):
-    if generation_route(task) == "upstream":
+    route = generation_route(task)
+    if route == "upstream":
         from wan.image2video import WanI2V  # noqa: PLC0415
     else:
         from wan.regional_prompt.image2video import WanI2V  # noqa: PLC0415
 
-    return WanI2V(
-        config=i2v_14B,
+    evidence = task.get("r3_evidence") or {}
+    parity = evidence.get("parity_artifact") or {}
+    match_pristine_weights = (
+        evidence.get("protocol_schema_version", 0) >= 12
+        and parity.get("route") == "custom-none"
+    )
+    config = i2v_14B
+    if match_pristine_weights:
+        if (route != "custom" or task["config"]["bias_method"] != "none"
+                or evidence.get("route_process", {}).get("route") != "local-custom"
+                or rank != 0 or t5_fsdp or dit_fsdp or i2v_14B.param_dtype != torch.bfloat16):
+            raise ValueError("R3 FP32 parity weight load requires single-rank local custom-none BF16 runtime")
+        # The official checkpoint stores F32 DiT weights; the pristine constructor
+        # preserves them. Copy only this generator's configuration so normal jobs
+        # retain their BF16 weight loading and neither Wan checkout is modified.
+        config = copy.copy(i2v_14B)
+        config.param_dtype = torch.float32
+
+    generator = WanI2V(
+        config=config,
         checkpoint_dir=task["checkpoint_dir"],
         device_id=local_rank,
         rank=rank,
@@ -299,6 +319,15 @@ def _build_generator(task, *, local_rank, rank, t5_fsdp, dit_fsdp, t5_cpu):
         t5_cpu=t5_cpu,
         init_on_cpu=True,
     )
+    if match_pristine_weights:
+        floating_dtypes = {param.dtype for param in generator.model.parameters()
+                           if param.is_floating_point()}
+        if floating_dtypes != {torch.float32}:
+            raise ValueError("R3 parity DiT weights did not retain checkpoint FP32 dtype")
+        # The local generator also uses param_dtype for activation/autocast;
+        # preserve its original BF16 runtime while keeping the DiT weights F32.
+        generator.param_dtype = i2v_14B.param_dtype
+    return generator
 
 
 def main():
