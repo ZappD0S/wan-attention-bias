@@ -131,7 +131,11 @@ def _terminate_process_group(process):
 
 
 def _run_bounded_command(command, repo, timeout):
-    process = subprocess.Popen(command, cwd=repo, start_new_session=True)
+    # Wan imports precede worker checkout validation; never let either pair process
+    # create ignored bytecode that makes the next clean-checkout gate fail.
+    environment = os.environ.copy()
+    environment["PYTHONDONTWRITEBYTECODE"] = "1"
+    process = subprocess.Popen(command, cwd=repo, env=environment, start_new_session=True)
     try:
         exit_code = process.wait(timeout=timeout)
     except BaseException:

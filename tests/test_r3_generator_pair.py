@@ -2,6 +2,7 @@
 
 import copy
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -336,6 +337,23 @@ def test_bound_assets_rechecked_and_source_paths_fixed(tmp_path):
     scene["actors"][0]["isolated_image"] = "mask-left.png"
     with pytest.raises(ValueError, match="reference or isolated images differ"):
         pair._verify_bound_assets(auth, source)
+
+
+def test_pair_commands_do_not_create_importable_wan_bytecode(monkeypatch, tmp_path):
+    wan = tmp_path / "wan"
+    wan.mkdir()
+    (wan / "__init__.py").write_text("value = 1\n")
+    monkeypatch.setenv("PYTHONDONTWRITEBYTECODE", "0")
+    commands = [
+        [sys.executable, "-c", "import wan; assert wan.value == 1"],
+        [sys.executable, "-c", "import subprocess, sys; "
+         "subprocess.run([sys.executable, '-c', 'import wan; assert wan.value == 1'], "
+         "check=True)"],
+    ]
+    pair._run_job_commands(commands, tmp_path, 30)
+    assert os.environ["PYTHONDONTWRITEBYTECODE"] == "0"
+    assert not list(wan.rglob("*.pyc"))
+    assert not list(wan.rglob("__pycache__"))
 
 
 def test_bounded_command_kills_descendant_on_timeout(tmp_path):
