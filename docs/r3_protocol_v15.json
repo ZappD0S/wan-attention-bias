@@ -1,0 +1,385 @@
+{
+  "schema_version": 15,
+  "protocol_id": "r3-gpu-contracts-v15",
+  "status": "in-progress",
+  "frozen_at": "2026-09-27T12:38:27Z",
+  "claim_boundary": "Only one Bootes single-rank official-pristine/custom-none generator pair is approved; stop after the pair attempt, with no repeat, other jobs, distributed execution, scientific claim, or later stage.",
+  "lineage": {
+    "protocol_id": "r3-gpu-contracts-v14",
+    "sha256": "f3b33ce0e0f360859fe445e24329228d90c5b2ff7807bca7a2e213b0394dd68a"
+  },
+  "matrix": {
+    "path": "docs/r3_test_matrix_v3.json",
+    "matrix_id": "r3-gpu-contract-matrix-v3",
+    "sha256": "e1776af152b3b0594c3af7497ffe95ec31db263fc9e3974bc9ea3c1d838fbd86"
+  },
+  "approvals": {
+    "gpu_execution": "approved",
+    "hardware_environment": "approved"
+  },
+  "runtime_hooks": {
+    "initial_latent_all_rank": "implemented-source-hook-gpu-unvalidated",
+    "all_rank_masks_and_self_cross": "implemented-source-hook-gpu-unvalidated",
+    "cfg_branch_outputs": "implemented-source-hook-gpu-unvalidated",
+    "actual_attention_backend": "implemented-source-hook-gpu-unvalidated",
+    "fixed_tracker_call_count": "implemented-source-hook-gpu-unvalidated",
+    "full_generator_parity": "implemented-source-hook-gpu-unvalidated"
+  },
+  "runtime_declarations": {
+    "checkpoint_content_sha256": "80c954fbb46c39139a300a7dd41ed5a8b1c6b11c5f952c1bfb3c763d6e73ebb7",
+    "hardware_identifier": "c00515354b8e093449921a06249e13bdf17a9e8558b22d606126b7108f9c4f50",
+    "torch_version": "2.10.0+cu128",
+    "cuda_version": "12.8",
+    "flash_attention_version": "2.8.3",
+    "flex_attention_version": "2.10.0+cu128",
+    "intended_fsdp_rank_count": 2
+  },
+  "numerical_tolerances": {
+    "full_generator_parity": {
+      "atol": 0.00001,
+      "rtol": 0.016,
+      "amendment_required": false
+    }
+  },
+  "exact_contracts": {
+    "rank_initial_latent_hashes": "exact-equality",
+    "mask_identity_hashes": "exact-equality",
+    "finiteness": "all-values-finite",
+    "cardinality": "exact"
+  },
+  "source_hook_state": {
+    "implementation_scope": "sol-bootes-v9-cpu-source-preparation",
+    "default_behavior": "observer-uninstalled-no-op",
+    "collector": "bounded-digest-metadata-within-event-alias-cache-only",
+    "distributed_gather": "rank-local-ordinals-all-ranks-call-rank-zero-receives",
+    "contract_validation_gate": "fully-approved-declared-amendment-may-run-with-gpu-unvalidated-hooks",
+    "evidence_acceptance_gate": "all-source-hooks-must-be-gpu-validated-and-marked-implemented",
+    "gpu_validation": "not-run"
+  },
+  "parity_artifact_state": {
+    "producer": "bounded-immutable-numpy-artifact",
+    "consumer": "offline-chunked-numerical-comparator",
+    "accepted_evidence_class": "not-enabled",
+    "gpu_validation": "not-run"
+  },
+  "execution_state": {
+    "cpu_schema_and_preflight": "prepared",
+    "checkpoint_bound_gpu_runtime": "not-run-on-bootes",
+    "flash_attention_2": "not-run-on-bootes",
+    "flex_attention": "not-run-on-bootes",
+    "single_rank": "not-run-on-bootes",
+    "intended_fsdp_ranks": "not-run-on-bootes",
+    "full_generator_parity": "not-run-on-bootes",
+    "flash_attention_3": "not-run-on-bootes"
+  },
+  "amendment_rule": "Stop after one single-rank-generator-canary pair attempt, including partial failure. Any subsequent stage or retry requires fresh approval and a versioned amendment.",
+  "backend_contract": {
+    "request_semantics": "expected-self-attention-coverage",
+    "flash_attention_3": "unsupported-fail-before-model-load",
+    "flash_attention_2": "required-for-all-routes",
+    "flex_attention": "declared-and-available-dispatched-only-when-derived",
+    "dispatch_derivation": "trusted-route-method-self-routing-and-schedules"
+  },
+  "execution_amendment": {
+    "amendment_id": "r3-gpu-execution-amendment-v15",
+    "authorization_state": "approved-bounded-stage",
+    "source_binding": {
+      "parent_revision_at_freeze": "38db1552e955fdfeaca2d57d8228c8e1f05bf816",
+      "parent_production_paths": [
+        "multi_sample_inference",
+        "pyproject.toml",
+        "uv.lock"
+      ],
+      "parent_production_content_sha256": "8f5f161d8dcecb120fb9091420542b005f5a42ea43d1844dc9f11153baf33a54",
+      "wan_revision": "21edac00066a9eeeec8e9e9b935f299fb0e77841",
+      "lama_revision": "469acc7358a1c6828b647b4ee20c93474a2f36b4",
+      "require_clean_worktrees": true,
+      "manifest_repository_identity": "exact-head-and-dirty-fingerprint"
+    },
+    "checkpoint_binding": {
+      "identifier": "Wan-AI/Wan2.1-I2V-14B-480P@6b73f84e66371cdfe870c72acd6826e1d61cf279",
+      "snapshot_revision": "6b73f84e66371cdfe870c72acd6826e1d61cf279",
+      "inventory_sha256": "e6b7adbd6f6e5dfcb7fa06e09d5d2edfcb179e80ff25f1c743567d1948701dd4",
+      "content_sha256": "80c954fbb46c39139a300a7dd41ed5a8b1c6b11c5f952c1bfb3c763d6e73ebb7",
+      "path": "/local_scratch2/gzappavi/hf/hub/models--Wan-AI--Wan2.1-I2V-14B-480P/snapshots/6b73f84e66371cdfe870c72acd6826e1d61cf279"
+    },
+    "environment_binding": {
+      "hostname": "bootes.alias",
+      "python_version": "3.11.13",
+      "torch_version": "2.10.0+cu128",
+      "cuda_runtime_version": "12.8",
+      "flash_attention_version": "2.8.3",
+      "flex_attention_version": "2.10.0+cu128",
+      "sam2_version": "1.1.0",
+      "driver_version": "580.173.02",
+      "gpu_model": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+      "gpu_uuids": [
+        "GPU-c247e0e3-654a-7387-8ec6-46791821a52d",
+        "GPU-b7ce3d3e-fcc2-d2d5-91dc-c11e024f4cd5"
+      ],
+      "gpu_compute_capability": "12.0",
+      "pyproject_sha256": "1c5028d1c669b2c4bfd1c8f7fcdcb8a28b2f1acd1dde9cefa79d8b663784862b",
+      "uv_lock_sha256": "1be5614ef4f6ab8b44fd1f8b743b30a3a2ae77efaac96740c0d74b4a77fb2de3"
+    },
+    "provisioning_binding": {
+      "cuda_toolkit_path": "/local_scratch2/gzappavi/toolchains/cuda-12.8.1",
+      "cuda_toolkit_version": "12.8.1",
+      "nvcc_version": "12.8.93",
+      "installer_sha256": "228f6bcaf5b7618d032939f431914fc92d0e5ed39ebe37098a24502f26a19797",
+      "flash_attention_distribution_version": "2.8.3+cu128torch2.10",
+      "static_sm120_cubins": [
+        "flash_attention_2",
+        "sam2"
+      ],
+      "inter_gpu_topology": "SYS-no-NVLink"
+    },
+    "rank_decision": {
+      "intended_fsdp_rank_count": 2,
+      "basis": "Two historically observed Bootes GPUs; declared for future revalidation only, not current availability or distributed readiness."
+    },
+    "tolerance_decision": {
+      "atol": 0.00001,
+      "rtol": 0.016,
+      "basis": "Predeclared two-BF16-epsilon relative allowance with a near-zero absolute floor; shape, dtype, finiteness, identities and exact-contract checks remain separate hard gates.",
+      "u1_values_not_inherited": true
+    },
+    "stage_gates": [
+      {
+        "id": "backend-kernel-canary",
+        "authorization": "approved",
+        "prerequisites": [],
+        "scope": "One bounded FA2, flex-attention, and SAM2 CUDA canary; no checkpoint or model load.",
+        "stop_on": [
+          "environment-identity-mismatch",
+          "FA3-availability",
+          "kernel-error",
+          "nonfinite-output"
+        ]
+      },
+      {
+        "id": "checkpoint-load-hook-canary",
+        "authorization": "approved",
+        "prerequisites": [
+          "backend-kernel-canary"
+        ],
+        "scope": "Load the bound checkpoint and exercise the smallest source-hook neutrality canary.",
+        "stop_on": [
+          "checkpoint-mismatch",
+          "load-error",
+          "hook-mutation",
+          "unsupported-final-latent-dtype"
+        ]
+      },
+      {
+        "id": "single-rank-generator-canary",
+        "authorization": "approved",
+        "prerequisites": [
+          "backend-kernel-canary",
+          "checkpoint-load-hook-canary"
+        ],
+        "scope": "One single-rank, checkpoint-bound pair: official Wan from the separately verified pristine checkout and custom-none from the pinned local Wan checkout, in isolated Python processes.",
+        "stop_on": [
+          "pristine-route-identity-or-isolation-failure",
+          "parity-failure",
+          "finiteness-failure",
+          "seed-mismatch",
+          "hook-cardinality-failure"
+        ]
+      },
+      {
+        "id": "single-rank-contract-cases",
+        "authorization": "not-approved",
+        "prerequisites": [
+          "backend-kernel-canary",
+          "checkpoint-load-hook-canary",
+          "single-rank-generator-canary"
+        ],
+        "scope": "Runnable single-rank contract cases only; rejected v3 lineage cases remain pre-launch failures.",
+        "stop_on": [
+          "backend-route-mismatch",
+          "mask-identity-failure",
+          "tracker-contract-failure",
+          "artifact-failure"
+        ]
+      },
+      {
+        "id": "intended-rank-fsdp",
+        "authorization": "not-approved",
+        "prerequisites": [
+          "backend-kernel-canary",
+          "checkpoint-load-hook-canary",
+          "single-rank-generator-canary",
+          "single-rank-contract-cases"
+        ],
+        "scope": "Two-rank FSDP cases after single-rank evidence review; no scientific generation.",
+        "stop_on": [
+          "collective-failure",
+          "rank-seed-mismatch",
+          "rank-mask-mismatch",
+          "distributed-parity-failure"
+        ]
+      }
+    ],
+    "upstream_provenance_binding": {
+      "record": {
+        "path": "docs/r3_upstream_provenance.json",
+        "sha256": "7db6e5cf983c181aed11e4631f98b625a640bd159fed485fbb7c4f7d9266ad33"
+      },
+      "comparison_digest_sha256": "e54a8ca9757a2ade239c38a848a83a8681327d1ff44c58d343b22410abad422f",
+      "decision": "separate-pristine-route-required",
+      "official_source": {
+        "repository_url": "https://github.com/Wan-Video/Wan2.1.git",
+        "commit": "7c81b2f27defa56c7e627a4b6717c8f2292eee58",
+        "tree": "91b74dfa24e32dc86350fe2ef2b5f2f2e06f6ee9",
+        "require_clean_detached_checkout": true
+      },
+      "local_source": {
+        "commit": "00bde1e719ccb56c66a01a1f18a70c49b278c202",
+        "tree": "ee7dddb233e6acc14a89cf96951cca6536587fee"
+      },
+      "route_contract": {
+        "upstream": "separate-pristine-checkout",
+        "custom_none": "pinned-local-wan-checkout",
+        "process_isolation": "separate-python-processes-no-shared-wan-modules",
+        "pristine_source_mutation": "forbidden",
+        "observation_adapter": "implemented-exact-hash-binding",
+        "implementation_state": "implemented-and-cpu-validated"
+      }
+    },
+    "production_component_hashes": {
+      "experiment_pipeline.py": "b96c670f9e707d9165ee88588d08c68d026c8dc08a65996a7b4590765a4a7627",
+      "fsdp_worker.py": "e4ac104e6763c306e03f1b6ca94619ae65d73eb7f376bb3c580942669a4a1dc4",
+      "r3_checkout_binding.py": "8b39355e7cfeafb40fe95248592f7ca9baa5b76b9999294ff620d0f285f2ac10",
+      "r3_route_isolation.py": "f8ffc89cbbe03cee12af799631ce4f5dc2f76a64daa1cbcec8c04b0f02b2450b",
+      "r3_pristine_adapter.py": "7f89aa4ba590b7fd810d8e6c0282717663e4151c93bd5e88366c0172323b7e77",
+      "r3_contracts.py": "2a36efea566f4520b90dd873dcb4387d2c3ba098cbc84f54ee6bb59d249dae49",
+      "r3_checkpoint_hook_canary.py": "437ce26b9bf0e5def3a43033f0d193b9e31f76dc8ee48f61234a14504a0192df",
+      "r3_generator_pair.py": "0e7be7c8eda05208dddbbda0b3956e9fb3547b3c825ae4e0693f4c4dea81d4ae"
+    },
+    "route_process_bindings": {
+      "official-pristine": {
+        "route": "official-pristine",
+        "wan_root": "/local_scratch2/gzappavi/pristine-Wan2.1",
+        "source_files": {
+          "wan/image2video.py": "ab3906d53831c2a6717e543a02d66c13377910257ae710705515bd826212b924",
+          "wan/modules/model.py": "c1572ade3bf7345bd4c00d4a19535788fab62f9c08b5aeb15f6d01f4435bb47a",
+          "wan/modules/attention.py": "23fe7c6f6e4065242d95e5e188cb2d1a16bd283f05dca7e7e878977158fcfdbc"
+        },
+        "adapter": {
+          "path": "/local_scratch2/gzappavi/wan_experiments_r3_cpu_20260926/multi_sample_inference/r3_pristine_adapter.py",
+          "sha256": "7f89aa4ba590b7fd810d8e6c0282717663e4151c93bd5e88366c0172323b7e77"
+        },
+        "checkout": {
+          "commit": "7c81b2f27defa56c7e627a4b6717c8f2292eee58",
+          "tree": "91b74dfa24e32dc86350fe2ef2b5f2f2e06f6ee9"
+        }
+      },
+      "local-custom": {
+        "route": "local-custom",
+        "wan_root": "/local_scratch2/gzappavi/wan_experiments_r3_cpu_20260926/wan2.1",
+        "source_files": {
+          "wan/image2video.py": "54805c566441ffeec8d90121eb9af8944dc4c281f8e11141e2926eaffa097ab0",
+          "wan/modules/model.py": "c7aef0bf587c8bffb3bd018aa6637935aae6e5a0b44b8b85c33f7e08afd829b1",
+          "wan/modules/attention.py": "4bf8975015f74b85f581c1491ef66ccafce4537e6db88b67c350daaf79804378",
+          "wan/modules/custom_model.py": "6a8f757f575768e0a925fbdbde870149574d5df5c0f4b4c1fc89cac9859ce69a"
+        },
+        "adapter": null,
+        "checkout": {
+          "commit": "21edac00066a9eeeec8e9e9b935f299fb0e77841",
+          "tree": "054dd51ee8f6d32a9b4bd70f3ff6c9bd5a47b02b"
+        }
+      }
+    },
+    "authorization_record": {
+      "authorized_stage": "single-rank-generator-canary",
+      "authorization_source": "explicit-current-session-user-approval",
+      "authorized_operations": [
+        "verify-bootes-host-source-environment-checkpoint-and-prerequisites",
+        "two-sequential-isolated-single-rank-generator-jobs-and-offline-parity"
+      ],
+      "prohibited_operations": [
+        "repeat-attempt",
+        "additional-jobs",
+        "distributed-execution",
+        "later-stage-execution",
+        "scientific-claim"
+      ],
+      "command": "CUDA_VISIBLE_DEVICES=GPU-c247e0e3-654a-7387-8ec6-46791821a52d uv run --no-sync --locked python -m multi_sample_inference.r3_generator_pair --protocol docs/r3_protocol_v15.json --matrix docs/r3_test_matrix_v3.json --source /local_scratch2/gzappavi/r3_stage3/input/source-bytecode-hygiene.json --output /local_scratch2/gzappavi/r3_stage3/generator-pair-bytecode-hygiene-attempt",
+      "checkpoint_inventory": "docs/u1_checkpoint_inventory.json",
+      "source": {
+        "path": "/local_scratch2/gzappavi/r3_stage3/input/source-bytecode-hygiene.json",
+        "sha256": "2d5c6f6488b92f042d09ecf2ec420b5c79bf21cb743d7f44f30abb2e08eb5839"
+      },
+      "output": "/local_scratch2/gzappavi/r3_stage3/generator-pair-bytecode-hygiene-attempt",
+      "gpu_uuid": "GPU-c247e0e3-654a-7387-8ec6-46791821a52d",
+      "min_free_gpu_bytes": 75161927680,
+      "job_timeout_seconds": 1800,
+      "assets": {
+        "reference.png": {
+          "path": "/local_scratch2/gzappavi/r3_stage3/input/reference.png",
+          "sha256": "3f24239d8b0eef18cb022f46ef81b9a0bbcbe76cab9bffe3bf018b94be6ca17b"
+        },
+        "mask-left.png": {
+          "path": "/local_scratch2/gzappavi/r3_stage3/input/mask-left.png",
+          "sha256": "ec534110d2c7c022847e2e9edcd1bb2c3bdeffa807cd43e336382dfce572b7bd"
+        },
+        "mask-right.png": {
+          "path": "/local_scratch2/gzappavi/r3_stage3/input/mask-right.png",
+          "sha256": "f7c53ec340a68e501182bb2987750bfaecb7dfc9d57536edbf36a6c629820b56"
+        }
+      },
+      "stop_after_stage": true
+    },
+    "prerequisite_evidence": [
+      {
+        "stage_id": "backend-kernel-canary",
+        "path": "docs/r3_evidence/bootes-backend-kernel-canary.json",
+        "sha256": "8f90996b5bb7fc5ba9f55ba4a5e20160aeab8a51009151d8691de60a18a54793",
+        "protocol_sha256": "84cc35d0c495b04812e532e02b26c9d7fa7119508e4557718e5b495bff536bfc",
+        "status": "passed"
+      },
+      {
+        "stage_id": "checkpoint-load-hook-canary",
+        "path": "docs/r3_evidence/bootes-checkpoint-hook-canary.json",
+        "sha256": "84c0a95647d0923af7d8eb5572a2a0b5143a986d06be295a7cee13aff9c0adc7",
+        "protocol_sha256": "374d5037111ec04b7e304ce07e44c261827fdf66c13e9d363b3960209f21f34b",
+        "status": "passed"
+      }
+    ],
+    "hook_canary_contract": {
+      "checkpoint_inventory_path": "docs/u1_checkpoint_inventory.json",
+      "route": "upstream",
+      "loader": "wan.modules.model.WanModel.from_pretrained",
+      "model_type": "wan.modules.model.WanModel",
+      "selected_layer_index": 0,
+      "selected_layer_type": "wan.modules.model.WanAttentionBlock",
+      "torch_dtype": "bfloat16",
+      "expected_selected_layer_state_sha256": "eb1b247ba29d7974605b3f8c64c7ab82de411c74be6c4b083768250aa806c8c0",
+      "synthetic_input": {
+        "seed": 2026091701,
+        "sequence_length": 128,
+        "grid_size": [
+          2,
+          8,
+          8
+        ],
+        "context_length": 769,
+        "model_dim": 5120
+      },
+      "expected_observer_events": [
+        "observer-installed",
+        "attention-dispatch",
+        "attention-dispatch",
+        "attention-dispatch",
+        "observer-completed"
+      ],
+      "expected_attention_sites": [
+        "self",
+        "cross",
+        "cross"
+      ],
+      "expected_attention_backend": "flash_attention_2",
+      "neutrality": "bitwise-exact-output-input-and-layer-state"
+    }
+  }
+}
