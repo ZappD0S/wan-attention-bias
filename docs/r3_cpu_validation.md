@@ -734,5 +734,33 @@ FP32 DiT load dtype, verifies every floating model parameter remains FP32,
 and restores its BF16 activation/autocast setting. T5/CLIP/VAE dtype fields
 and ordinary local runs are not changed. Synthetic CPU tests cover the
 FP32/BF16 distinction and reject unintended BF16 weights. This is a plausible
-fix, not a measured result: the old attempt stays failed, and neither new GPU
-execution nor acceptance is authorized.
+fix, not a measured result at that point: the old attempt stays failed.
+
+## One bounded Bootes FP32-weight pair attempt — 2026-09-27
+
+The user's fresh approval covered one pair only. Immutable v13 SHA-256
+`84980cee…` bound clean Bootes source `a71e96e…`, new source input SHA-256
+`528fc048…`, unused output, the same checkpoint and seed 101, one selected
+GPU and the unchanged `atol=1e-5`/`rtol=0.016` tolerance. A first **CPU-only**
+preflight found that the old input still selected v12; a separate v13 input
+was then bound. The ten-file Bootes GPU-hidden suite passed **196** tests;
+source/checkout/route/pair preflight, focused Ruff, lock and whitespace checks
+passed. No GPU work preceded that correction.
+
+Both isolated single-rank jobs completed and wrote videos and final-latent
+artifacts. Source observations validated with 480 model attention dispatches
+per route; the local CLIP path emitted 31 *separately scoped* pre-model
+dispatches. Initial latent SHA-256 matched (`3285c895…`), but the first
+conditional CFG output identities differ. The pristine route's final-latent
+artifact SHA-256 (`3388e260…`) and first CFG output SHA-256 (`6ef7e01e…`)
+match the previous attempt; the corrected local route's hashes differ from
+its earlier BF16-weight run. The offline comparator returned
+**failed**, finite tensors of shape `[16,21,58,104]`, maximum absolute error
+`0.15103888511657715` and maximum relative error `37976.9`. This does not
+establish improvement over v12 or isolate the remaining cause. The runner
+exited 1 and its immutable failed record is
+`docs/r3_evidence/bootes-generator-pair-fp32-failed-attempt.json` SHA-256
+`0fe6378e…`; the original output and log remain under Bootes
+`/local_scratch2/gzappavi/r3_stage3/`. No evidence was promoted to acceptance.
+The one approved attempt stopped. No additional GPU work or scientific claim
+is authorized.
