@@ -327,6 +327,7 @@ def _build_generator(task, *, local_rank, rank, t5_fsdp, dit_fsdp, t5_cpu):
         # The local generator also uses param_dtype for activation/autocast;
         # preserve its original BF16 runtime while keeping the DiT weights F32.
         generator.param_dtype = i2v_14B.param_dtype
+        generator.model._r3_pristine_parity_arithmetic = True
     return generator
 
 

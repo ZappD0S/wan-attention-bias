@@ -167,6 +167,59 @@ def test_v13_retry_is_bounded_and_rejects_changed_inputs():
             validate_protocol(changed, matrix, matrix_sha256=sha256_file(MATRIX))
 
 
+def _synthetic_v14():
+    protocol = json.loads((ROOT / "docs/r3_protocol_v13.json").read_text())
+    protocol["schema_version"] = 14
+    protocol["protocol_id"] = "r3-gpu-contracts-v14"
+    protocol["lineage"] = {"protocol_id": "r3-gpu-contracts-v13",
+                           "sha256": sha256_file(ROOT / "docs/r3_protocol_v13.json")}
+    amendment = protocol["execution_amendment"]
+    amendment["amendment_id"] = "r3-gpu-execution-amendment-v14"
+    binding = amendment["source_binding"]
+    binding["parent_revision_at_freeze"] = "d" * 40
+    binding["parent_production_content_sha256"] = "a" * 64
+    binding["wan_revision"] = "21edac00066a9eeeec8e9e9b935f299fb0e77841"
+    for name in ("r3_contracts.py", "fsdp_worker.py", "r3_generator_pair.py"):
+        amendment["production_component_hashes"][name] = "b" * 64
+    local = amendment["route_process_bindings"]["local-custom"]
+    local["checkout"] = {"commit": "21edac00066a9eeeec8e9e9b935f299fb0e77841",
+                         "tree": "054dd51ee8f6d32a9b4bd70f3ff6c9bd5a47b02b"}
+    local["source_files"]["wan/modules/custom_model.py"] = (
+        "6a8f757f575768e0a925fbdbde870149574d5df5c0f4b4c1fc89cac9859ce69a"
+    )
+    auth = amendment["authorization_record"]
+    auth["source"] = {
+        "path": "/local_scratch2/gzappavi/r3_stage3/input/source-parity-arithmetic.json",
+        "sha256": "2ea2ae97be5e3671f4c4d9efe0eff7ef44d02c4a06be7427d729772dc71a3baa",
+    }
+    auth["output"] = "/local_scratch2/gzappavi/r3_stage3/generator-pair-arithmetic-attempt"
+    auth["command"] = (
+        f"CUDA_VISIBLE_DEVICES={auth['gpu_uuid']} uv run --no-sync --locked "
+        "python -m multi_sample_inference.r3_generator_pair "
+        "--protocol docs/r3_protocol_v14.json --matrix docs/r3_test_matrix_v3.json "
+        f"--source {auth['source']['path']} --output {auth['output']}"
+    )
+    return protocol
+
+
+def test_v14_arithmetic_pair_rejects_route_and_output_changes():
+    protocol = _synthetic_v14()
+    matrix = json.loads(MATRIX.read_text())
+    assert validate_protocol(protocol, matrix, matrix_sha256=sha256_file(MATRIX))
+    assert stage_execution_blockers(protocol, pair.STAGE) == []
+    for change in (
+        lambda p: p["execution_amendment"]["source_binding"].update(wan_revision="0" * 40),
+        lambda p: p["execution_amendment"]["route_process_bindings"]["local-custom"]
+        ["source_files"].update({"wan/modules/custom_model.py": "0" * 64}),
+        lambda p: p["execution_amendment"]["authorization_record"].update(output="/tmp/other"),
+        lambda p: p["execution_amendment"]["stage_gates"][3].update(authorization="approved"),
+    ):
+        changed = copy.deepcopy(protocol)
+        change(changed)
+        with pytest.raises(ValueError):
+            validate_protocol(changed, matrix, matrix_sha256=sha256_file(MATRIX))
+
+
 def _pair_fixture(protocol):
     auth = protocol["execution_amendment"]["authorization_record"]
     source = {
