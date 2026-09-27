@@ -140,8 +140,11 @@ def _synthetic_v13():
     for name in ("r3_contracts.py", "fsdp_worker.py", "r3_generator_pair.py"):
         amendment["production_component_hashes"][name] = "b" * 64
     auth = amendment["authorization_record"]
+    auth["source"] = {"path": "/local_scratch2/gzappavi/r3_stage3/input/source-fp32.json",
+                      "sha256": "528fc048f0956c85e4a17efe281ccc752a7876e37de5a4a1eef784d5e476df3a"}
     auth["output"] = "/local_scratch2/gzappavi/r3_stage3/generator-pair-fp32-attempt"
     auth["command"] = auth["command"].replace("r3_protocol_v12.json", "r3_protocol_v13.json").replace(
+        "source.json", "source-fp32.json").replace(
         "generator-pair-attempt", "generator-pair-fp32-attempt")
     return protocol
 

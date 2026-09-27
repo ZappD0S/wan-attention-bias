@@ -1334,6 +1334,10 @@ def _validate_v13_execution_amendment(protocol):
     old["source_binding"]["parent_production_content_sha256"] = digest
     old["production_component_hashes"] = components
     authorization = old["authorization_record"]
+    authorization["source"] = {
+        "path": "/local_scratch2/gzappavi/r3_stage3/input/source-fp32.json",
+        "sha256": "528fc048f0956c85e4a17efe281ccc752a7876e37de5a4a1eef784d5e476df3a",
+    }
     output = "/local_scratch2/gzappavi/r3_stage3/generator-pair-fp32-attempt"
     authorization["output"] = output
     authorization["command"] = (
