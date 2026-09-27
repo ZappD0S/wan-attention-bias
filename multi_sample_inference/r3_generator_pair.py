@@ -222,7 +222,7 @@ def run_generator_pair(protocol_path, matrix_path, source_path, output):  # noqa
     _require(protocol_path in {repo / f"docs/r3_protocol_v{version}.json"
                                for version in (12, 13, 14, 15)}
              and matrix_path == repo / "docs/r3_test_matrix_v3.json",
-             "R3 pair requires its exact frozen v12–v15 protocol and matrix paths")
+             "R3 pair requires its exact frozen v12-v15 protocol and matrix paths")
     bundle = load_protocol_bundle(protocol_path, matrix_path)
     protocol = bundle["protocol"]
     _require(protocol["schema_version"] in {12, 13, 14, 15}
