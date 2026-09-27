@@ -127,6 +127,43 @@ def test_synthetic_v12_rejects_authorization_changes(change):
         validate_protocol(protocol, matrix, matrix_sha256=sha256_file(MATRIX))
 
 
+def _synthetic_v13():
+    protocol = json.loads((ROOT / "docs/r3_protocol_v12.json").read_text())
+    protocol["schema_version"] = 13
+    protocol["protocol_id"] = "r3-gpu-contracts-v13"
+    protocol["lineage"] = {"protocol_id": "r3-gpu-contracts-v12",
+                           "sha256": sha256_file(ROOT / "docs/r3_protocol_v12.json")}
+    amendment = protocol["execution_amendment"]
+    amendment["amendment_id"] = "r3-gpu-execution-amendment-v13"
+    amendment["source_binding"]["parent_revision_at_freeze"] = "f" * 40
+    amendment["source_binding"]["parent_production_content_sha256"] = "a" * 64
+    for name in ("r3_contracts.py", "fsdp_worker.py", "r3_generator_pair.py"):
+        amendment["production_component_hashes"][name] = "b" * 64
+    auth = amendment["authorization_record"]
+    auth["output"] = "/local_scratch2/gzappavi/r3_stage3/generator-pair-fp32-attempt"
+    auth["command"] = auth["command"].replace("r3_protocol_v12.json", "r3_protocol_v13.json").replace(
+        "generator-pair-attempt", "generator-pair-fp32-attempt")
+    return protocol
+
+
+def test_v13_retry_is_bounded_and_rejects_changed_inputs():
+    protocol = _synthetic_v13()
+    matrix = json.loads(MATRIX.read_text())
+    assert validate_protocol(protocol, matrix, matrix_sha256=sha256_file(MATRIX))
+    assert stage_execution_blockers(protocol, pair.STAGE) == []
+    assert "staged-execution-gates" in execution_blockers(protocol)
+    for change in (
+        lambda p: p["execution_amendment"]["authorization_record"].update(output="/tmp/other"),
+        lambda p: p["execution_amendment"]["authorization_record"]["source"].update(sha256="0" * 64),
+        lambda p: p["execution_amendment"]["production_component_hashes"].update(experiment_pipeline_py="0" * 64),
+        lambda p: p["execution_amendment"]["stage_gates"][3].update(authorization="approved"),
+    ):
+        changed = copy.deepcopy(protocol)
+        change(changed)
+        with pytest.raises(ValueError):
+            validate_protocol(changed, matrix, matrix_sha256=sha256_file(MATRIX))
+
+
 def _pair_fixture(protocol):
     auth = protocol["execution_amendment"]["authorization_record"]
     source = {

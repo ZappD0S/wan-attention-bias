@@ -215,12 +215,14 @@ def run_generator_pair(protocol_path, matrix_path, source_path, output):  # noqa
     repo = Path(__file__).resolve().parents[1]
     protocol_path, matrix_path = Path(protocol_path).resolve(), Path(matrix_path).resolve()
     source_path, output = Path(source_path).resolve(), Path(output).resolve()
-    _require(protocol_path == repo / "docs/r3_protocol_v12.json"
+    _require(protocol_path in {repo / "docs/r3_protocol_v12.json", repo / "docs/r3_protocol_v13.json"}
              and matrix_path == repo / "docs/r3_test_matrix_v3.json",
-             "R3 pair requires its exact frozen v12 protocol and matrix paths")
+             "R3 pair requires its exact frozen v12 or v13 protocol and matrix paths")
     bundle = load_protocol_bundle(protocol_path, matrix_path)
     protocol = bundle["protocol"]
-    _require(protocol["schema_version"] == 12, "R3 pair requires v12")
+    _require(protocol["schema_version"] in {12, 13}
+             and protocol_path.name == f"r3_protocol_v{protocol['schema_version']}.json",
+             "R3 pair protocol version/path mismatch")
     auth = protocol["execution_amendment"]["authorization_record"]
     _require(os.environ.get("CUDA_VISIBLE_DEVICES") == auth["gpu_uuid"]
              and source_path == Path(auth["source"]["path"])

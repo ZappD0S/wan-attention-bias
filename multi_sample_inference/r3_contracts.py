@@ -36,6 +36,7 @@ V8_PROTOCOL_SHA256 = "f8a9c578f47957e8818f70c42d8bad7bfa8947bbbf7cf5eac1917a7e10
 V9_PROTOCOL_SHA256 = "9806d626993b48771ccecdbd3fe61f4f81b296ab3222633f514c09df74771302"
 V10_PROTOCOL_SHA256 = "84cc35d0c495b04812e532e02b26c9d7fa7119508e4557718e5b495bff536bfc"
 V11_PROTOCOL_SHA256 = "374d5037111ec04b7e304ce07e44c261827fdf66c13e9d363b3960209f21f34b"
+V12_PROTOCOL_SHA256 = "75ae0216a275d63f2efc646bd63010c553dd73ebd779fc4213aedc18788955a2"
 R3_STAGE_IDS = (
     "backend-kernel-canary",
     "checkpoint-load-hook-canary",
@@ -1297,6 +1298,53 @@ def _validate_v12_execution_amendment(protocol):
     _require(protocol == expected, "R3 v12 exceeds its single-pair authorization delta")
 
 
+def _validate_v13_execution_amendment(protocol):
+    """One fresh Bootes pair with the corrected local FP32-weight route."""
+    frozen = Path(__file__).resolve().parents[1] / "docs/r3_protocol_v12.json"
+    _require(frozen.is_file() and sha256_file(frozen) == V12_PROTOCOL_SHA256,
+             "R3 v13 frozen v12 lineage is unavailable or changed")
+    expected = _read_json(frozen)
+    amendment = protocol.get("execution_amendment")
+    _require(isinstance(amendment, dict), "R3 v13 amendment is missing")
+    source = amendment.get("source_binding")
+    components = amendment.get("production_component_hashes")
+    _require(isinstance(source, dict) and isinstance(components, dict)
+             and set(components) == set(expected["execution_amendment"]["production_component_hashes"]),
+             "R3 v13 source components differ")
+    revision = source.get("parent_revision_at_freeze")
+    digest = source.get("parent_production_content_sha256")
+    _require_git_revision(revision, "R3 v13 parent revision")
+    _require_sha256(digest, "R3 v13 production source")
+    for name, value in components.items():
+        _require_sha256(value, f"R3 v13 {name} component")
+        if name not in {"r3_contracts.py", "fsdp_worker.py", "r3_generator_pair.py"}:
+            _require(value == expected["execution_amendment"]["production_component_hashes"][name],
+                     f"R3 v13 unrelated production component changed: {name}")
+    old = expected["execution_amendment"]
+    _require(revision != old["source_binding"]["parent_revision_at_freeze"]
+             and digest != old["source_binding"]["parent_production_content_sha256"]
+             and components["fsdp_worker.py"] != old["production_component_hashes"]["fsdp_worker.py"],
+             "R3 v13 must bind corrected worker source")
+    expected["schema_version"] = 13
+    expected["protocol_id"] = "r3-gpu-contracts-v13"
+    expected["lineage"] = {"protocol_id": "r3-gpu-contracts-v12", "sha256": V12_PROTOCOL_SHA256}
+    expected["frozen_at"] = protocol.get("frozen_at")
+    old["amendment_id"] = "r3-gpu-execution-amendment-v13"
+    old["source_binding"]["parent_revision_at_freeze"] = revision
+    old["source_binding"]["parent_production_content_sha256"] = digest
+    old["production_component_hashes"] = components
+    authorization = old["authorization_record"]
+    output = "/local_scratch2/gzappavi/r3_stage3/generator-pair-fp32-attempt"
+    authorization["output"] = output
+    authorization["command"] = (
+        f"CUDA_VISIBLE_DEVICES={authorization['gpu_uuid']} uv run --no-sync --locked "
+        "python -m multi_sample_inference.r3_generator_pair "
+        "--protocol docs/r3_protocol_v13.json --matrix docs/r3_test_matrix_v3.json "
+        f"--source {authorization['source']['path']} --output {output}"
+    )
+    _require(protocol == expected, "R3 v13 exceeds its one-pair retry binding")
+
+
 def _validate_protocol_lineage(protocol, schema_version):
     if schema_version == 1:
         return
@@ -1313,6 +1361,7 @@ def _validate_protocol_lineage(protocol, schema_version):
         10: ("r3-gpu-contracts-v9", V9_PROTOCOL_SHA256),
         11: ("r3-gpu-contracts-v10", V10_PROTOCOL_SHA256),
         12: ("r3-gpu-contracts-v11", V11_PROTOCOL_SHA256),
+        13: ("r3-gpu-contracts-v12", V12_PROTOCOL_SHA256),
     }[schema_version]
     _require(
         isinstance(lineage, dict)
@@ -1331,7 +1380,7 @@ def _validate_protocol_lineage(protocol, schema_version):
 def validate_protocol(protocol, matrix, *, matrix_sha256):
     _require(isinstance(protocol, dict), "protocol must be a JSON object")
     schema_version = protocol.get("schema_version")
-    _require(type(schema_version) is int and schema_version in range(1, 13), "unsupported R3 protocol schema_version")
+    _require(type(schema_version) is int and schema_version in range(1, 14), "unsupported R3 protocol schema_version")
     _require(
         protocol.get("protocol_id") == f"r3-gpu-contracts-v{schema_version}",
         "unexpected R3 protocol_id",
@@ -1438,6 +1487,7 @@ def validate_protocol(protocol, matrix, *, matrix_sha256):
             10: _validate_v10_execution_amendment,
             11: _validate_v11_execution_amendment,
             12: _validate_v12_execution_amendment,
+            13: _validate_v13_execution_amendment,
         }[schema_version](protocol)
     return validate_matrix(matrix)
 
@@ -1510,7 +1560,7 @@ def _pristine_route_blockers(protocol):
 def stage_execution_blockers(protocol, stage_id):
     """Return blockers for one explicitly authorized bounded stage."""
     blockers = _base_execution_blockers(protocol)
-    if protocol["schema_version"] not in {5, 6, 7, 8, 10, 11, 12}:
+    if protocol["schema_version"] not in {5, 6, 7, 8, 10, 11, 12, 13}:
         return [*blockers, "stage-scoped-authorization-unavailable"]
     amendment = protocol["execution_amendment"]
     if amendment["authorization_state"] != "approved-bounded-stage":
