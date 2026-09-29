@@ -373,19 +373,16 @@ def test_parity_custom_none_retains_fp32_weights_and_bf16_runtime(monkeypatch, w
     assert captured[0][0].param_dtype == torch.float32
     assert next(matched.model.parameters()).dtype == torch.float32
     assert matched.param_dtype == original_config.param_dtype == torch.bfloat16
-    assert matched.model._r3_pristine_parity_arithmetic is True
     assert captured[0][1]["init_on_cpu"] is True
 
     ordinary = worker_module._build_generator({**task, "r3_evidence": {}}, **kwargs)
     assert captured[1][0] is original_config
     assert next(ordinary.model.parameters()).dtype == torch.bfloat16
-    assert not getattr(ordinary.model, "_r3_pristine_parity_arithmetic", False)
     legacy = worker_module._build_generator(
         {**task, "r3_evidence": {**task["r3_evidence"], "protocol_schema_version": 11}},
         **kwargs,
     )
     assert next(legacy.model.parameters()).dtype == torch.bfloat16
-    assert not getattr(legacy.model, "_r3_pristine_parity_arithmetic", False)
 
     class RoundedWanI2V(FakeWanI2V):
         def __init__(self, *, config, **kwargs):

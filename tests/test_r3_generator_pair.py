@@ -262,6 +262,60 @@ def test_v15_hygiene_pair_rejects_source_and_scope_changes():
             validate_protocol(changed, matrix, matrix_sha256=sha256_file(MATRIX))
 
 
+
+def _synthetic_v16():
+    protocol = json.loads((ROOT / "docs/r3_protocol_v15.json").read_text())
+    protocol["schema_version"] = 16
+    protocol["protocol_id"] = "r3-gpu-contracts-v16"
+    protocol["lineage"] = {"protocol_id": "r3-gpu-contracts-v15",
+                           "sha256": sha256_file(ROOT / "docs/r3_protocol_v15.json")}
+    amendment = protocol["execution_amendment"]
+    amendment["amendment_id"] = "r3-gpu-execution-amendment-v16"
+    binding = amendment["source_binding"]
+    binding["parent_revision_at_freeze"] = "f" * 40
+    binding["parent_production_content_sha256"] = "a" * 64
+    binding["wan_revision"] = "00ebc14c34648ba2bea87f3814ed842d9b596181"
+    for name in ("r3_contracts.py", "fsdp_worker.py", "r3_generator_pair.py"):
+        amendment["production_component_hashes"][name] = "c" * 64
+    local = amendment["route_process_bindings"]["local-custom"]
+    local["checkout"] = {"commit": "00ebc14c34648ba2bea87f3814ed842d9b596181",
+                         "tree": "bde5e18e8cde15f68323c3d7950c9d0455b8b964"}
+    local["source_files"]["wan/modules/custom_model.py"] = (
+        "7e8676233e00e440ade32cbaf97133b694e01629113b602737ecb2952c82cc15"
+    )
+    auth = amendment["authorization_record"]
+    auth["source"] = {"path": "/local_scratch2/gzappavi/r3_stage3/input/source-unpatchify-parity.json",
+                      "sha256": "0556b71a022305b39a91469e2b0c40ac1f2a92cf14bf071c3932624df4b5490e"}
+    auth["output"] = "/local_scratch2/gzappavi/r3_stage3/generator-pair-unpatchify-attempt"
+    auth["command"] = (
+        f"CUDA_VISIBLE_DEVICES={auth['gpu_uuid']} uv run --no-sync --locked "
+        "python -m multi_sample_inference.r3_generator_pair "
+        "--protocol docs/r3_protocol_v16.json --matrix docs/r3_test_matrix_v3.json "
+        f"--source {auth['source']['path']} --output {auth['output']}"
+    )
+    return protocol
+
+
+def test_v16_unpatchify_pair_rejects_route_source_and_scope_changes():
+    protocol = _synthetic_v16()
+    matrix = json.loads(MATRIX.read_text())
+    assert validate_protocol(protocol, matrix, matrix_sha256=sha256_file(MATRIX))
+    assert stage_execution_blockers(protocol, pair.STAGE) == []
+    for change in (
+        lambda p: p["execution_amendment"]["source_binding"].update(wan_revision="0" * 40),
+        lambda p: p["execution_amendment"]["route_process_bindings"]["local-custom"]
+        ["source_files"].update({"wan/modules/custom_model.py": "0" * 64}),
+        lambda p: p["execution_amendment"]["production_component_hashes"].update(
+            {"r3_pristine_adapter.py": "0" * 64}),
+        lambda p: p["execution_amendment"]["authorization_record"].update(output="/tmp/other"),
+        lambda p: p["execution_amendment"]["stage_gates"][3].update(authorization="approved"),
+        lambda p: p.update(lineage={"protocol_id": "r3-gpu-contracts-v14", "sha256": "0" * 64}),
+    ):
+        changed = copy.deepcopy(protocol)
+        change(changed)
+        with pytest.raises(ValueError):
+            validate_protocol(changed, matrix, matrix_sha256=sha256_file(MATRIX))
+
 def _pair_fixture(protocol):
     auth = protocol["execution_amendment"]["authorization_record"]
     source = {
