@@ -764,3 +764,242 @@ exited 1 and its immutable failed record is
 `/local_scratch2/gzappavi/r3_stage3/`. No evidence was promoted to acceptance.
 The one approved attempt stopped. No additional GPU work or scientific claim
 is authorized.
+
+## CPU-only custom-none arithmetic candidate — 2026-09-27
+
+After the failed v13 pair, source inspection found custom self-attention casts
+RoPE Q/K back to BF16 before `flash_attention`, unlike the pristine FP32 RoPE
+path. The custom block also casts its self-attention and FFN inputs early.
+A parity-only flag, set only for the single-rank FP32-weight custom-none
+worker route, now retains the pristine intermediate dtype at those points;
+ordinary custom runs retain the old casts. This is a candidate, not a
+measured fix for the first-CFG divergence. The local Wan checkout is dirty;
+old immutable protocol/source bindings cannot be reused to claim parity.
+Any new GPU work needs fresh approval and newly bound clean source/protocol.
+
+## One bounded Bootes v14 arithmetic pair attempt — 2026-09-27
+
+Fresh approval covered one pair, not a retry. Immutable v14 SHA-256
+`f3b33ce0e0f360859fe445e24329228d90c5b2ff7807bca7a2e213b0394dd68a`
+bound parent `8f28079…`, clean Wan `21edac0…`, source input SHA
+`2ea2ae97…`, the same checkpoint/seed 101/assets/GPU, and unchanged
+`atol=1e-5`/`rtol=0.016` tolerance. The GPU-hidden eleven-file Bootes suite
+passed **201 tests**, with focused lint, lock, source, checkout, route and pair
+preflight passing before launch.
+
+The pristine route completed sampling and wrote a video and validated final
+latent (SHA `3388e260…`). The custom-none worker then failed during its
+**pre-model-load** checkout validation: 26 ignored `.pyc` files were present
+inside the local Wan checkout, timestamped immediately before the custom
+worker's validation. The gate rejects ignored importable files. Their exact
+creator (preceding job or second job's adapter) has not been isolated. The candidate custom arithmetic was
+not executed; no v14 numerical comparison or scientific parity claim exists.
+Runner exit 1 and immutable failed record
+`docs/r3_evidence/bootes-generator-pair-arithmetic-failed-attempt.json` SHA-256
+`88706ea393975f667313c20fb7c7439e368f1c8e00702b41025dfa8ee7018125`;
+original partial output and log (SHA-256 `d87484b5…`) remain on Bootes under
+`/local_scratch2/gzappavi/r3_stage3/`. The one attempt stopped. CPU-only
+investigation of bytecode generation/launch hygiene is appropriate, but any
+future GPU run needs fresh approval; no retry, distributed work or acceptance
+was authorized by this result.
+
+## CPU-only pair launcher bytecode hygiene — 2026-09-27
+
+The failing custom worker imports `wan` at module scope before its checkout
+gate, so ordinary Python bytecode caching can invalidate its own otherwise
+clean Wan checkout. The bounded pair launcher now passes an environment copy
+with `PYTHONDONTWRITEBYTECODE=1` to both the adapter and isolated worker;
+worker descendants inherit the setting. The gate still rejects existing
+ignored `.py`, `.pyc`, `.so`, `.pyd` or `.pth` files; it was not weakened.
+A regression test uses sequential imports, including a nested subprocess,
+and confirms that no `__pycache__` appears even with a conflicting parent
+setting. The eleven-file GPU-hidden local suite passed **202** tests;
+focused Ruff, `uv lock --check` and whitespace checks passed. The candidate
+was committed only in the isolated local worktree as `978a7cd…`, not
+transported into the frozen Bootes v14 source. It has no GPU parity result.
+
+The 26 ignored `.pyc` files created around the failed v14 run were inventoried
+with paths, hashes and timestamps outside the checkout at
+`/local_scratch2/gzappavi/r3_stage3/v14-pyc-hygiene-inventory.json`
+(SHA-256 `0c22b2bd91e8c81592c6177abcef57e49c8c032c4378e9732686e635965f2f4e`).
+A bounded cleanup child (`856c1397…`) timed out after removing those files;
+its terminal report was a **timeout**, not success. Independent read-only
+checks confirmed 26 inventoried paths, no remaining ignored importables,
+unchanged Wan HEAD `21edac0…` and tree `054dd51…`, and clean parent/Wan
+Git status. The original v14 failed output, log and frozen protocol remain
+untouched. No GPU retry was run or authorized under v14; a future attempt
+needed fresh approval and source binding.
+
+## One bounded Bootes v15 hygiene pair — 2026-09-27
+
+Fresh approval covered one new generator pair, not distributed work or retries.
+V15 `docs/r3_protocol_v15.json` SHA-256
+`4a2c349ca69459653237ab5f91ac504d3f6d96d2d497fec1e071f6b49a859623`
+binds parent source `29a4451…`, unchanged Wan `21edac0…`, input SHA
+`2d5c6f64…`, one GPU UUID, the same checkpoint and seed 101, and the same
+`atol=1e-5`/`rtol=0.016`. Transport bundle SHA-256 `f540b82e…` installed
+cleanly on Bootes. Eleven GPU-hidden test files passed **203** tests, with
+focused Ruff, lock, exact checkout/source/route and pair preflight passing.
+
+Both isolated single-rank jobs generated videos and valid source observations:
+480 model attention events on each route, plus 31 correctly scoped local
+pre-model events. The seed-101 initial latent SHA `3285c895…` was identical.
+Neither route created ignored Wan importables; the bytecode hygiene fix
+removed the v14 checkout blocker. The runner nonetheless exited **1**:
+the offline CPU comparison of the two *existing* FP32 final-latent tensors
+(shape `[16,21,58,104]`, finite) failed at the frozen tolerance, with max
+absolute error `0.15103888511657715` and max relative error `37976.9`.
+First conditional CFG SHAs already differ: pristine `6ef7e01e…` versus local
+`f7fbacf5…`. Both final-latent SHAs (`3388e260…` and `28f20eff…`) and those
+first CFG SHAs match v13 exactly. The equality across attempts is not a
+root-cause attribution or parity evidence.
+
+Immutable failed record
+`docs/r3_evidence/bootes-generator-pair-bytecode-hygiene-failed-attempt.json`
+SHA-256 `681f96e5efb0f6e2025bf1c78eb3471c7e9d183d54e46b0fb49f53842a90be3b`
+and Bootes log SHA-256 `b34acbbdb8d0213eac4ee9eb28f9eb18a2347796a76975afbb4afe836275641e`
+preserve this one attempt; original outputs remain at
+`/local_scratch2/gzappavi/r3_stage3/generator-pair-bytecode-hygiene-attempt`.
+No retry, numerical acceptance, distributed execution, or scientific result
+was authorized or obtained. R3 remains IN PROGRESS.
+
+## CPU-only divergence probe — 2026-09-29
+
+Source analysis explains why v15 reproduced v13 byte for byte: the guarded
+FP32-intermediate toggle is reached but numerically inert. `rope_apply`
+already returns FP32, `flash_attention` casts q/k/v to BF16 itself, BF16
+autocast casts every `nn.Linear` input, and the residual stream is FP32 from
+block 0. Existing hooks digest neither the DiT conditioning inputs (T5
+context, CLIP features, VAE `y`, timestep) nor per-block outputs, so no
+recorded evidence localizes the first divergence.
+
+`multi_sample_inference/r3_divergence_probe.py` is a diagnostic, not an
+acceptance stage. It binds no protocol and always writes `r3_acceptance: false`.
+Inside one isolated route process it reuses the retained task pickle,
+`fsdp_worker._build_generator` and `run_inference`, and wraps T5/CLIP/VAE and
+the DiT forward at class level. For the step-0 conditional forward it saves
+full tensors for:
+- the DiT inputs;
+- the first-call outputs of the patch, time, text and image embeddings;
+- all block outputs;
+- the head output.
+
+It then stops after the step-0 negative forward. Every wrapper and hook is
+removed on exit. `--replay` substitutes a reference capture's DiT inputs into
+local custom-none. `compare` reports the first non-bitwise stage, with
+frozen-tolerance metrics. T5 captures are keyed by prompt text, so differing
+encoder call order still matches.
+
+Eight synthetic tests cover:
+- stop and restore;
+- the fail-closed paths;
+- first-divergent-block localization;
+- replay separating conditioning from arithmetic;
+- dtype-mismatch upcast metrics;
+- the isolated launch command.
+
+A manual check also covered capture and replay under `inference_mode`. The
+GPU-hidden twelve-file suite passed 211 tests. Ruff, syntax, `uv lock --check`
+and `git diff --check` passed.
+
+No GPU, checkpoint or Bootes work occurred. The probe itself is not
+checkpoint-validated. Running it requires fresh bounded approval.
+
+## Bootes divergence probe run and unpatchify fix — 2026-09-29
+
+**Approval and setup.**
+- **Approval:** the user explicitly approved one bounded probe run.
+- **Source:** transport commit `63af3b2` (probe only, on top of `29a4451`), delivered via a verified bundle (SHA-256 `f7cbcbc6…`) into a separate detached worktree `/local_scratch2/gzappavi/r3_probe_src`.
+- **Checkouts:** the v15 source checkout and both Wan checkouts were untouched.
+- **Inputs:** the retained v15 task pickles, on GPU `GPU-c247e0e3…`.
+- **Tests:** the Bootes GPU-hidden probe and pristine-route tests passed 18 before the run.
+
+**Run.** Three sequential single-forward processes ran (22:23–22:31 CEST):
+- official-pristine capture;
+- local custom-none capture;
+- local replay of the pristine DiT inputs.
+
+All three completed, with FP32 DiT weights and a BF16 runtime. Manifests:
+- pristine `d0ff3297…`
+- local `38188f64…`
+- replay `7be148e0…`
+
+The log is `06b72de7…`, and outputs (75 GB) are at `/local_scratch2/gzappavi/r3_stage3/divergence-probe/`.
+
+**Result.** Everything before the model output is **bitwise identical**:
+- every T5/CLIP/VAE input and output;
+- every DiT input;
+- the patch/time/text/image embeddings;
+- all 40 block outputs;
+- the head output.
+
+The first divergence is `dit/conditional/output` (max absolute `0.0156`, max relative `0.00391` ≈ 2⁻⁸). The same holds for replay.
+
+A CPU check showed the pristine output equals `bfloat16(local).float()` exactly for both branches.
+
+The reports are copied to:
+- `docs/r3_evidence/bootes-divergence-probe-pristine-vs-local.json` (`6ec9a547…`)
+- `docs/r3_evidence/bootes-divergence-probe-pristine-vs-replay.json` (`aef76f4f…`)
+
+The only local-only stage is the unused general-prompt T5 call.
+
+**Root cause.** Upstream `WanModel.unpatchify` uses `torch.einsum`, which BF16 autocast executes in BF16, so every upstream noise prediction is rounded to BF16. Custom `CustomWanModel.unpatchify` used an einops `rearrange` (a pure permute) and kept FP32.
+
+**Fix.** Custom `unpatchify` now uses upstream's exact `view`/`einsum`/`reshape` for all methods. `tests/test_r3_unpatchify_parity.py` checks bitwise equality with the upstream method source in FP32 and under CPU BF16 autocast. The GPU-hidden thirteen-file suite passed 213 tests.
+
+**Not yet shown.**
+- The fix is not GPU-validated.
+- A re-probe (local capture plus comparison) should show a bitwise-identical first forward.
+- An acceptance pair must still pass the frozen tolerance.
+- Removing the inert FP32-intermediate toggle is still pending.
+
+No parity or scientific claim is made.
+
+### Bounded re-probe with the unpatchify fix — 2026-09-29
+
+After fresh user approval, Wan commit `ef6ab86` (the einsum `unpatchify` fix on top of `21edac0`) was transported via a verified bundle (SHA-256 `f39de2ca…`) into the separate detached worktree `/local_scratch2/gzappavi/r3_probe_wan`. The existing checkouts were untouched.
+
+One local custom-none capture ran on GPU `c247e0e3…` from 22:38 to 22:41 CEST, using the same v15 task pickle. It completed with 34 Wan modules loaded, all from that worktree. The manifest is `cb924e89…` and the log `5c30c95a…`.
+
+The CPU comparison against the saved pristine capture found **all 67 stages bitwise identical**, including the conditional and negative step-0 DiT outputs. The only local-only stage is the unused general-prompt T5 call. The report is `docs/r3_evidence/bootes-divergence-probe-pristine-vs-local-fixed.json` (`f074512e…`).
+
+This establishes a bitwise-identical first denoising step. It is not full-generator parity: the multi-step acceptance pair, which needs a new binding and fresh approval, remains pending. No new Wan bytecode was created.
+
+### Removal of the inert FP32-intermediate toggle — 2026-09-29
+
+With user authorization, the `_r3_pristine_parity_arithmetic` toggle was removed:
+- from `custom_model.py`, by reverse-applying Wan commit `21edac0`;
+- the flag assignment in `fsdp_worker._build_generator`;
+- its assertions in `tests/test_r3_pristine_route.py`;
+- the untracked `tests/test_r3_parity_arithmetic.py`.
+
+The FP32-weight parity load is retained. The local Wan working file now differs from `00bde1e` only by the einsum `unpatchify` fix. The GPU-hidden twelve-file suite passed 209 tests.
+
+The re-probed Wan commit `ef6ab86` still contains the inert toggle. The acceptance pair must bind a fresh commit of the current source; the toggle was shown to have no numerical effect (v13/v15 identity), but that pair is the check.
+
+## One bounded Bootes v16 unpatchify-parity pair — PASSED — 2026-09-29
+
+**Binding.** Under fresh user approval, immutable v16 (`11943c85…`) bound:
+- clean detached parent `de61ebe` (code commit `5082368` plus the protocol freeze), on top of `29a4451`;
+- Wan `00ebc14` (tree `bde5e18…`): the einsum `unpatchify` fix `ef6ab86` plus removal of the inert toggle;
+- new source input `source-unpatchify-parity.json` (`0556b71a…`), changed from v15 only in its protocol path;
+- an unused output;
+- the same checkpoint (`80c954fb…`), seed 101, assets, GPU `c247e0e3…` and frozen `atol=1e-5` / `rtol=0.016`.
+
+Bundles `f5aaa73d…` (parent) and `b9ae7ab6…` (Wan) were verified before transport.
+
+**Preflight.** The Bootes GPU-hidden twelve-file suite passed 210 tests. The CPU preflight also passed:
+- zero stage blockers;
+- prerequisites;
+- source/checkout/route binding;
+- pair plan;
+- assets.
+
+**Result.** Both sequential isolated single-rank jobs completed, and the runner exited 0 with `status: passed`. The offline final-latent comparison gave maximum absolute error **0.0** and maximum relative error **0.0** (finite FP32 `[16,21,58,104]`). Both routes produced the same final-latent artifact (`3388e260…`) and the same video (`733e50d1…`).
+
+**Records.**
+- Attempt record: `docs/r3_evidence/bootes-generator-pair-unpatchify-passed-attempt.json` (SHA-256 `c63ec115…`).
+- Log: `1117794f…`.
+- Outputs: `/local_scratch2/gzappavi/r3_stage3/generator-pair-unpatchify-attempt`.
+
+**Scope.** This is single-rank, two-step, single-seed full-generator parity for the bound case. The record keeps `r3_acceptance: false`. Distributed/FSDP execution, the remaining matrix and other R3 gates are not claimed, and there is no scientific result.
