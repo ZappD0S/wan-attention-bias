@@ -1003,3 +1003,25 @@ Bundles `f5aaa73d…` (parent) and `b9ae7ab6…` (Wan) were verified before tran
 - Outputs: `/local_scratch2/gzappavi/r3_stage3/generator-pair-unpatchify-attempt`.
 
 **Scope.** This is single-rank, two-step, single-seed full-generator parity for the bound case. The record keeps `r3_acceptance: false`. Distributed/FSDP execution, the remaining matrix and other R3 gates are not claimed, and there is no scientific result.
+
+## Bootes v17 single-rank contract cases — FAILED at job 6/200 — 2026-09-30
+
+**Binding.** Under fresh user approval, immutable v17 (`fe76507f…`) authorized 200 sequential single-rank jobs from four stage-4 sources, stopping at the first failure.
+
+**Result.** Both parity pairs **passed** bitwise:
+- dpm++ pair: latent `b5aa3e7d…`, video `9e3a23c0…`;
+- UniPC pair: latent `728c13a5…`, video `733e50d1…`, identical to v16.
+
+The next non-parity flash job (`concept_weaver`) also passed. Job 6 (`job-3e1761c40b214c42`: dpm++/flex, `ediff-i`, `hard:dynamic`, self-attention routing) then generated normally, but evidence validation raised `pre-model attention is malformed, unbound, or outside its scope`.
+
+**Cause.** This is a validator contradiction, not a runtime fault. Pre-model attention (the dynamic-mask computation) always runs on flash, and the validator requires `backend == flash_attention_2`. However, it compared `backend_version` against the *requested* backend's declaration. On flex sources that is the flex/torch version (`2.10.0+cu128`), whereas the records correctly carry flash `2.8.3`. Every flex source with custom masks would therefore fail.
+
+**Fix.** `validate_source_observations` takes an explicit `pre_model_backend_version`. The only production caller (`_verify_declared_r3_worker_evidence`) binds it to `runtime_declarations["flash_attention_version"]`. Without it, the validator falls back to the previous behaviour. A new CPU test covers the flex binding.
+
+Replaying the fixed validator on Bootes over all six jobs' real observations: the failed job is now accepted, and the other five still pass.
+
+**Evidence.**
+- Attempt record: `docs/r3_evidence/bootes-contract-cases-v17-failed-attempt.json` (SHA-256 `0746f995…`).
+- Outputs: `/local_scratch2/gzappavi/r3_stage3/contract-cases-attempt`.
+
+**Scope.** The v17 approval is consumed. Rerunning stage 4 requires a new bounded amendment that binds the changed `r3_runtime.py` and `experiment_pipeline.py`, plus fresh approval. `r3_acceptance` remains false.

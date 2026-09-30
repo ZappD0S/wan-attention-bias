@@ -536,6 +536,7 @@ def validate_source_observations(
     require_masks=True,
     mask_configuration=None,
     dispatch_contract=None,
+    pre_model_backend_version=None,
 ):
     """Validate lifecycle and exact source coordinates without claiming GPU success."""
     cardinalities = (rank_count, sampling_steps, num_layers)
@@ -551,6 +552,11 @@ def validate_source_observations(
         not isinstance(expected_backend_version, str) or not expected_backend_version
     ):
         raise ValueError("source-hook expected backend version is invalid")
+    # Pre-model attention always runs on flash, so a flex route binds it to the flash version.
+    if pre_model_backend_version is None:
+        pre_model_backend_version = expected_backend_version
+    elif not isinstance(pre_model_backend_version, str) or not pre_model_backend_version:
+        raise ValueError("source-hook pre-model backend version is invalid")
     if type(expected_seed) is not int:
         raise ValueError("source-hook expected seed is invalid")
     if dispatch_contract is not None:
@@ -566,7 +572,7 @@ def validate_source_observations(
     _validate_gathered_stream_order(records, expected_ranks)
     _validate_lifecycle(records, expected_ranks, expected_seed)
     _validate_cfg(records, expected_ranks, sampling_steps)
-    _validate_pre_model_dispatches(records, expected_ranks, expected_backend_version, require_masks)
+    _validate_pre_model_dispatches(records, expected_ranks, pre_model_backend_version, require_masks)
     _validate_dispatches(
         records,
         expected_ranks,

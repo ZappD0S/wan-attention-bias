@@ -387,6 +387,27 @@ def test_pre_model_attention_is_separate_and_strictly_scoped():
         validate_source_observations(late, **kwargs)
 
 
+def test_flex_route_binds_pre_model_attention_to_the_flash_version():
+    records = _source_records()
+    records.insert(2, {
+        "event": "pre-model-attention-dispatch", "rank": 0, "ordinal": 2,
+        "backend": "flash_attention_2", "backend_version": "test-fa2", "scope": "pre-model",
+    })
+    for ordinal, item in enumerate(records):
+        item["ordinal"] = ordinal
+    kwargs = {
+        "rank_count": 1, "sampling_steps": 1, "num_layers": 1,
+        "require_masks": True, "mask_configuration": "fixed:fixed",
+        "requested_backend": "flash_attention_2", "expected_backend_version": "test-flex",
+    }
+    with pytest.raises(ValueError, match="pre-model attention"):
+        validate_source_observations(records, **kwargs)
+    with pytest.raises(ValueError, match="pre-model attention"):
+        validate_source_observations(records, **kwargs, pre_model_backend_version="test-flex")
+    with pytest.raises(ValueError, match="pre-model backend version"):
+        validate_source_observations(records, **kwargs, pre_model_backend_version="")
+
+
 def test_tracker_events_prove_fixed_zero_and_dynamic_coordinate_coverage():
     fixed = _source_records(tracker=False)
     assert validate_source_observations(

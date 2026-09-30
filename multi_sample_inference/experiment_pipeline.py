@@ -1144,6 +1144,9 @@ def _verify_declared_r3_worker_evidence(manifest):
             expected_backend_version=bundle["protocol"]["runtime_declarations"][
                 backend_key
             ],
+            pre_model_backend_version=bundle["protocol"]["runtime_declarations"][
+                "flash_attention_version"
+            ],
             expected_seed=binding["requested"]["diffusion_seed"],
             dispatch_contract=binding["requested"].get("dispatch_contract"),
         )
