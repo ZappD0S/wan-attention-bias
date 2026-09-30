@@ -45,7 +45,7 @@ from .r3_generator_pair import (
 )
 
 STAGE = "single-rank-contract-cases"
-SCHEMA_VERSION = 17
+SCHEMA_VERSION = 18
 JOB_FAMILIES = {"custom-generator", "upstream-generator"}
 PARITY_FAMILY = "upstream-custom-none-parity"
 PARITY_CONDITIONS = {"upstream": "upstream-joint", "custom-none": "custom-none-joint"}

@@ -9,6 +9,7 @@ import pytest
 from multi_sample_inference import r3_contract_cases as cases
 from multi_sample_inference.r3_contracts import (
     STAGE4_SOURCES,
+    STAGE4_V18_SOURCES,
     sha256_file,
     stage_execution_blockers,
     validate_protocol,
@@ -199,3 +200,51 @@ def test_case_plan_rejects_missing_duplicate_rerouted_or_unbound_jobs(monkeypatc
     mutation(sources, manifests)
     with pytest.raises(ValueError):
         cases.validate_case_plan(protocol, matrix, sources, manifests, output)
+
+
+def _synthetic_v18():
+    protocol = json.loads((ROOT / "docs/r3_protocol_v17.json").read_text())
+    protocol["schema_version"] = 18
+    protocol["protocol_id"] = "r3-gpu-contracts-v18"
+    protocol["lineage"] = {"protocol_id": "r3-gpu-contracts-v17",
+                           "sha256": sha256_file(ROOT / "docs/r3_protocol_v17.json")}
+    amendment = protocol["execution_amendment"]
+    amendment["amendment_id"] = "r3-gpu-execution-amendment-v18"
+    amendment["source_binding"]["parent_revision_at_freeze"] = "1" * 40
+    amendment["source_binding"]["parent_production_content_sha256"] = "a" * 64
+    for index, name in enumerate(("r3_contracts.py", "r3_contract_cases.py", "experiment_pipeline.py")):
+        amendment["production_component_hashes"][name] = str(index) * 64
+    record = amendment["authorization_record"]
+    output = f"{ROOT_INPUT}/contract-cases-attempt-2"
+    record["command"] = record["command"].replace("r3_protocol_v17.json", "r3_protocol_v18.json").replace(
+        f"--output {record['output']}", f"--output {output}")
+    record["output"] = output
+    record["sources"] = {name: {"path": f"{ROOT_INPUT}/input/source-stage4-v18-{name}.json",
+                                "sha256": digest} for name, digest in STAGE4_V18_SOURCES.items()}
+    return protocol
+
+
+def test_v18_reruns_only_contract_cases_with_the_bound_validator_fix():
+    protocol = _synthetic_v18()
+    matrix = json.loads(MATRIX.read_text())
+    assert validate_protocol(protocol, matrix, matrix_sha256=sha256_file(MATRIX))
+    assert stage_execution_blockers(protocol, cases.STAGE) == []
+    assert stage_execution_blockers(protocol, "intended-rank-fsdp")
+    assert cases.SCHEMA_VERSION == 18
+    old = json.loads((ROOT / "docs/r3_protocol_v17.json").read_text())["execution_amendment"]
+    for change in (
+        lambda p: p["execution_amendment"]["production_component_hashes"].update(
+            {"fsdp_worker.py": "0" * 64}),
+        lambda p: p["execution_amendment"]["production_component_hashes"].update(
+            {"experiment_pipeline.py": old["production_component_hashes"]["experiment_pipeline.py"]}),
+        lambda p: p["execution_amendment"]["authorization_record"].update(output=old["authorization_record"]["output"]),
+        lambda p: p["execution_amendment"]["authorization_record"]["sources"]["unipc-flex"]
+        .update(sha256=STAGE4_SOURCES["unipc-flex"]),
+        lambda p: p["execution_amendment"]["authorization_record"].update(expected_jobs=195),
+        lambda p: p["execution_amendment"]["stage_gates"][4].update(authorization="approved"),
+        lambda p: p["execution_amendment"]["source_binding"].update(wan_revision="0" * 40),
+    ):
+        changed = copy.deepcopy(protocol)
+        change(changed)
+        with pytest.raises(ValueError):
+            validate_protocol(changed, matrix, matrix_sha256=sha256_file(MATRIX))
