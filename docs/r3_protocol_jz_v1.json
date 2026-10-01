@@ -2,7 +2,7 @@
   "schema_version": 19,
   "protocol_id": "r3-gpu-contracts-jz-v1",
   "status": "in-progress",
-  "frozen_at": null,
+  "frozen_at": "2026-10-01T10:56:43Z",
   "claim_boundary": "J1 qualifies one Jean Zay A100 node class for R3's code-level conclusions. Only the stages approved in this version may run, one attempt each, on one SLURM-allocated A100; no scientific claim, distributed execution, contract cases, or bitwise cross-architecture claim.",
   "lineage": {
     "protocol_id": "r3-gpu-contracts-v19",
@@ -14,8 +14,8 @@
     "sha256": "e1776af152b3b0594c3af7497ffe95ec31db263fc9e3974bc9ea3c1d838fbd86"
   },
   "approvals": {
-    "gpu_execution": "required-not-approved",
-    "hardware_environment": "required-not-approved"
+    "gpu_execution": "approved",
+    "hardware_environment": "approved"
   },
   "runtime_hooks": {
     "initial_latent_all_rank": "implemented-source-hook-gpu-unvalidated",
@@ -82,15 +82,15 @@
   },
   "execution_amendment": {
     "amendment_id": "r3-gpu-execution-amendment-jz-v1",
-    "authorization_state": "not-approved",
+    "authorization_state": "approved-bounded-stage",
     "source_binding": {
-      "parent_revision_at_freeze": null,
+      "parent_revision_at_freeze": "1f88df3028586e0d162356706132e0febcbdd3df",
       "parent_production_paths": [
         "multi_sample_inference",
         "pyproject.toml",
         "uv.lock"
       ],
-      "parent_production_content_sha256": null,
+      "parent_production_content_sha256": "540e7919e062b7305323468cf8f01ad736a92db91f0a3e60a3440b69986b2e6e",
       "wan_revision": "4b822d5b053e8383a5bd76b25f58b75cb3344602",
       "lama_revision": "469acc7358a1c6828b647b4ee20c93474a2f36b4",
       "require_clean_worktrees": true,
@@ -185,7 +185,7 @@
           "kernel-error",
           "nonfinite-output"
         ],
-        "authorization": "not-approved"
+        "authorization": "approved"
       },
       {
         "id": "step0-cross-architecture-probe",
@@ -245,22 +245,22 @@
       }
     },
     "production_component_hashes": {
-      "experiment_pipeline.py": null,
-      "fsdp_worker.py": null,
-      "r3_checkout_binding.py": null,
-      "r3_route_isolation.py": null,
-      "r3_pristine_adapter.py": null,
-      "r3_contracts.py": null,
-      "r3_checkpoint_hook_canary.py": null,
-      "r3_generator_pair.py": null,
-      "r3_contract_cases.py": null,
-      "j1_stage.py": null,
-      "j1_step0_probe.py": null,
-      "r3_backend_canary.py": null,
-      "r3_divergence_probe.py": null,
-      "r3_environment.py": null,
-      "r3_jz.py": null,
-      "r3_preflight.py": null
+      "experiment_pipeline.py": "5dcaa4576cc64ad6d9994ff5ff2a55fbb63a549d8abd53f16b1a668c7dde5379",
+      "fsdp_worker.py": "b4b8d03e4011eb7a6f8ed108ad5889572238b178e4f9fd2a7e6a38f03f1cec69",
+      "r3_checkout_binding.py": "8b39355e7cfeafb40fe95248592f7ca9baa5b76b9999294ff620d0f285f2ac10",
+      "r3_route_isolation.py": "f8ffc89cbbe03cee12af799631ce4f5dc2f76a64daa1cbcec8c04b0f02b2450b",
+      "r3_pristine_adapter.py": "7f89aa4ba590b7fd810d8e6c0282717663e4151c93bd5e88366c0172323b7e77",
+      "r3_contracts.py": "ffe89433509b5df3ecf9ffc8596febad1d3e3ac25af38a3f41ed59a91c18a480",
+      "r3_checkpoint_hook_canary.py": "437ce26b9bf0e5def3a43033f0d193b9e31f76dc8ee48f61234a14504a0192df",
+      "r3_generator_pair.py": "25eb22be4554600e58dc3272f0238a5df320a48c190d08659be1473e2facfac1",
+      "r3_contract_cases.py": "8a1f2ceab80bb2ffad2a0d268c39f93eb2f2e6e1eb603e9aa615156673324078",
+      "j1_stage.py": "b7572af764ebc356d3a7447a27d225563bbd3f7f42abff097ade47b6a1ba046f",
+      "j1_step0_probe.py": "93bedffd96a414cacecd574020cbe558492fc27a0bb1c80bd3c3ca3b4ecd7d2f",
+      "r3_backend_canary.py": "83f888dfd690f99cb25eee6ece6b2fd00b2f6d87d5f7d836727cf95e6e51c72c",
+      "r3_divergence_probe.py": "9ff96846817b49432952f0329765b91e21b7edb0319412033ea85b0953d8003a",
+      "r3_environment.py": "dbf1140b887fab78f5b50aa0018e7d5c258cda9e580c7a79b121798eb8660fdd",
+      "r3_jz.py": "c7a848dc1ac81f453d06fbe867305275171d0104ce71860b067e4dc248be61ad",
+      "r3_preflight.py": "f03bbe313bc3bdfccf172afc3c0f8789efbf31efb68a36dc7b5f83c0f2d9423b"
     },
     "route_process_bindings": {
       "official-pristine": {
