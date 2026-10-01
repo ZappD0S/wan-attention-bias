@@ -1,0 +1,4 @@
+start 2026-10-01T11:52:16Z job 448407 node jean-zay-iam11 stage backend-kernel-canary commit 67d9cfd87843bb64393b09aaa34a099ff66a63b9
+GPU-cab2cec0-a9ab-7707-c261-e1d4fd4e9ae9, NVIDIA A100-SXM4-80GB, 595.71.05, 8.0, 81920 MiB
+{"output_path": "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/backend-canary/attempt-2/backend-kernel-canary.json", "output_sha256": "b505d04dfd48dc07d6e0030eb0239b9ea3cbd0a2eb5a51cd224b1850719d31ef", "protocol_sha256": "8e7d7a01b20365d8760dbe76f5a8c4f7707c0da276150ac381db0c4584c3784a", "stage_id": "backend-kernel-canary", "status": "passed"}
+end 2026-10-01T11:56:56Z
