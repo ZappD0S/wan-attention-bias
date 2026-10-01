@@ -1,0 +1,31 @@
+/var/spool/slurmd/job445490/slurm_script: line 41: git: command not found
+start 2026-10-01T10:57:54Z job 445490 node jean-zay-iam05 stage backend-kernel-canary commit 
+GPU-01b335fe-1002-a174-fe9f-3d359d19a633, NVIDIA A100-SXM4-80GB, 595.71.05, 8.0, 81920 MiB
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/lustre/fswork/projects/rech/xvh/ukl39yh/wan_experiments_j1/multi_sample_inference/j1_stage.py", line 69, in <module>
+    main()
+  File "/lustre/fswork/projects/rech/xvh/ukl39yh/wan_experiments_j1/multi_sample_inference/j1_stage.py", line 65, in main
+    print(json.dumps(run_stage(args.protocol, args.stage), sort_keys=True, default=str))
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/lustre/fswork/projects/rech/xvh/ukl39yh/wan_experiments_j1/multi_sample_inference/j1_stage.py", line 37, in run_stage
+    return run_backend_canary(protocol_path, matrix_path, output)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/lustre/fswork/projects/rech/xvh/ukl39yh/wan_experiments_j1/multi_sample_inference/r3_backend_canary.py", line 143, in run_backend_canary
+    "parent": repository_identity(repo),
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/lustre/fswork/projects/rech/xvh/ukl39yh/wan_experiments_j1/multi_sample_inference/experiment_pipeline.py", line 164, in repository_identity
+    revision = _git_output(repo, "rev-parse", "HEAD").decode().strip()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/lustre/fswork/projects/rech/xvh/ukl39yh/wan_experiments_j1/multi_sample_inference/experiment_pipeline.py", line 156, in _git_output
+    return subprocess.run(
+           ^^^^^^^^^^^^^^^
+  File "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_tools/python/cpython-3.11.13-linux-x86_64-gnu/lib/python3.11/subprocess.py", line 548, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_tools/python/cpython-3.11.13-linux-x86_64-gnu/lib/python3.11/subprocess.py", line 1026, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+  File "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_tools/python/cpython-3.11.13-linux-x86_64-gnu/lib/python3.11/subprocess.py", line 1955, in _execute_child
+    raise child_exception_type(errno_num, err_msg, err_filename)
+FileNotFoundError: [Errno 2] No such file or directory: 'git'
