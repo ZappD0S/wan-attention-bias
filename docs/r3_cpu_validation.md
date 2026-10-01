@@ -1025,3 +1025,18 @@ Replaying the fixed validator on Bootes over all six jobs' real observations: th
 - Outputs: `/local_scratch2/gzappavi/r3_stage3/contract-cases-attempt`.
 
 **Scope.** The v17 approval is consumed. Rerunning stage 4 requires a new bounded amendment that binds the changed `r3_runtime.py` and `experiment_pipeline.py`, plus fresh approval. `r3_acceptance` remains false.
+
+## Bootes v18 single-rank contract cases — FAILED at job 48/200 — 2026-09-30
+
+**Binding.** Under fresh user approval, immutable v18 (`2a2ff18e…`) reran the 200 v17 jobs with the pre-model validator fix. Output: `/local_scratch2/gzappavi/r3_stage3/contract-cases-attempt-2`. Stop on first failure.
+
+**Result.** Both parity pairs passed bitwise again and reproduced the v17 latents (dpm++ `b5aa3e7d…`). Jobs 1–47 passed, including the v17 failure class (flex jobs with custom masks). Together they exercised every method, mask configuration and self-attention setting, plus `mask_sharing` `current`/`first`. Job 48 (`job-98afc6e5f2319e1c`, dpm++/flex) was the first with `mask_sharing=previous_generated`; its worker crashed in the first denoising step with `mask_sharing must be one of none/current, first/block0, or prev/previous-generated`.
+
+**Cause.** A real runtime fault in Wan, not a validator issue. `normalize_mask_sharing` mapped the aliases `prev`/`previous-generated` to the canonical `previous_generated`, but rejected the canonical spelling itself. The pipeline and matrix pass canonical names, so all 66 `previous_generated` cases would fail. `current` and `first` only worked because they are their own canonical forms.
+
+**Fix.** `wan2.1` `4b822d5` (tree `bc214c83…`) adds the identity entry `previous_generated → previous_generated`. `update_shared_simil_masks` already handles the canonical policy. The CPU test now requires every pipeline `mask_sharing` value (`REQUIRED_CUSTOM_AXES`) to normalize to itself; it fails without the fix.
+
+**Evidence.**
+- Attempt record: `docs/r3_evidence/bootes-contract-cases-v18-failed-attempt.json` (SHA-256 `b42a5b44…`).
+
+**Scope.** The v18 approval is consumed. A v19 gate (rerun all 200 jobs, binding the new Wan revision and local-custom checkout; output `contract-cases-attempt-3`) is prepared but not frozen or approved. `r3_acceptance` remains false.

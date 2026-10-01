@@ -5,6 +5,8 @@ import pytest
 import torch
 import torch.nn.functional as F
 
+from multi_sample_inference.r3_contracts import REQUIRED_CUSTOM_AXES
+
 ROOT = Path(__file__).parents[1]
 
 
@@ -83,6 +85,9 @@ def test_mask_sharing_aliases_are_explicit():
     assert attention.normalize_mask_sharing(None) == "current"
     assert attention.normalize_mask_sharing("block0") == "first"
     assert attention.normalize_mask_sharing("previous-generated") == "previous_generated"
+    # The pipeline passes canonical values, so normalization must be idempotent.
+    for canonical in REQUIRED_CUSTOM_AXES["mask_sharing"]:
+        assert attention.normalize_mask_sharing(canonical) == canonical
     with pytest.raises(ValueError):
         attention.normalize_mask_sharing("average")
 
