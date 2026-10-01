@@ -23,6 +23,7 @@ whose ``r3_evidence.protocol`` names that version's protocol file.
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import re
 import subprocess
@@ -589,7 +590,8 @@ def expected_jz_protocol(protocol):
         "prerequisite_evidence": _prerequisite_evidence(amendment, approved, frozen),
         "hook_canary_contract": old["hook_canary_contract"],
     }
-    return expected
+    # Never alias module constants: a caller mutating the result must not change the binding.
+    return copy.deepcopy(expected)
 
 
 def validate_jz_protocol_identity(protocol):

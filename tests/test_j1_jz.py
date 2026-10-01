@@ -30,14 +30,17 @@ from multi_sample_inference.r3_preflight import validate_v4_runtime_environment
 from tools import j1_freeze
 
 ROOT = Path(__file__).parents[1]
-DRAFT = ROOT / "docs/r3_protocol_jz_v1.json"
+# The committed jz-v1 is frozen (canary approved); the draft is rebuilt in memory.
+FROZEN_V1 = ROOT / "docs/r3_protocol_jz_v1.json"
 MATRIX = ROOT / "docs/r3_test_matrix_v3.json"
 SLURM_ENV = {"SLURM_JOB_ID": "444270", "SLURM_JOB_PARTITION": "gpu_p5",
              "SLURM_JOB_ACCOUNT": "xvh@a100", "SLURM_JOB_NODELIST": "jean-zay-iam07"}
 
 
 def _draft():
-    return json.loads(DRAFT.read_text())
+    components = dict.fromkeys((*j1_freeze.V19_COMPONENTS, *r3_jz.JZ_EXTRA_COMPONENTS))
+    return j1_freeze.build_protocol("r3-gpu-contracts-jz-v1", frozen_at=None, revision=None,
+                                    production=None, components=components)
 
 
 def _validate(protocol):
@@ -50,8 +53,8 @@ def test_v19_constant_matches_frozen_file():
 
 
 def test_draft_validates_and_every_stage_is_blocked():
-    bundle = load_protocol_bundle(DRAFT, MATRIX)
-    protocol = bundle["protocol"]
+    protocol = _draft()
+    assert _validate(protocol)
     assert protocol["schema_version"] == 19
     assert protocol["lineage"] == {"protocol_id": "r3-gpu-contracts-v19", "sha256": V19_PROTOCOL_SHA256}
     environment = protocol["execution_amendment"]["environment_binding"]
@@ -241,7 +244,7 @@ def test_jz_source_rewrites_only_paths_and_protocol_references():
 def _freeze_repo(tmp_path, monkeypatch):
     (tmp_path / "docs").mkdir()
     (tmp_path / "docs/r3_test_matrix_v3.json").write_bytes(MATRIX.read_bytes())
-    (tmp_path / "docs/r3_protocol_jz_v1.json").write_bytes(DRAFT.read_bytes())
+    (tmp_path / "docs/r3_protocol_jz_v1.json").write_text(json.dumps(_draft(), indent=2) + "\n")
     monkeypatch.setattr(j1_freeze, "collect_repo_state", lambda _repo: FAKE_STATE)
     return tmp_path
 
@@ -271,7 +274,7 @@ def test_freeze_of_probe_version_requires_reference_and_writes_source(tmp_path, 
     with pytest.raises(ValueError, match="reference capture"):
         j1_freeze.freeze("r3-gpu-contracts-jz-v2", prerequisites=prerequisite, repo=repo)
     monkeypatch.setitem(r3_jz.JZ_VERSIONS, "r3-gpu-contracts-jz-v2", r3_jz.JZ_VERSIONS[
-        "r3-gpu-contracts-jz-v2"] | {"lineage": ("r3-gpu-contracts-jz-v1", sha256_file(DRAFT))})
+        "r3-gpu-contracts-jz-v2"] | {"lineage": ("r3-gpu-contracts-jz-v1", sha256_file(repo / "docs/r3_protocol_jz_v1.json"))})
     source = tmp_path / "source.json"
     result = j1_freeze.freeze("r3-gpu-contracts-jz-v2", reference_manifest_sha256="e" * 64,
                               prerequisites=prerequisite, write_source=source, repo=repo)
@@ -330,23 +333,43 @@ def test_legacy_exact_host_mode_is_unchanged(monkeypatch):
         validate_v4_runtime_environment(protocol, expected | {"hostname": "jean-zay-iam07"})
 
 
-def test_runners_reject_draft_before_gpu_access(tmp_path):
+def test_expected_protocol_does_not_alias_binding_constants():
     protocol = _draft()
+    _amendment(protocol)["cross_architecture_decision"]["relative_l2_max"] = 0.5
+    _amendment(protocol)["environment_binding"]["gpu_model"] = "tampered"
+    fresh = _draft()
+    assert _amendment(fresh)["cross_architecture_decision"]["relative_l2_max"] == 2e-2
+    assert _amendment(fresh)["environment_binding"]["gpu_model"] == "NVIDIA A100-SXM4-80GB"
+
+
+def test_committed_jz_v1_is_frozen_for_the_canary_only():
+    protocol = load_protocol_bundle(FROZEN_V1, MATRIX)["protocol"]
+    binding = _amendment(protocol)["source_binding"]
+    assert protocol == j1_freeze.build_protocol(
+        "r3-gpu-contracts-jz-v1", frozen_at=protocol["frozen_at"],
+        revision=binding["parent_revision_at_freeze"],
+        production=binding["parent_production_content_sha256"],
+        components=_amendment(protocol)["production_component_hashes"])
+    assert stage_execution_blockers(protocol, "backend-kernel-canary") == []
+    for stage in (r3_jz.STEP0_STAGE, "single-rank-generator-canary"):
+        assert f"stage-not-authorized:{stage}" in stage_execution_blockers(protocol, stage)
+
+
+def test_runners_reject_unapproved_stages_before_gpu_access(tmp_path):
+    protocol = load_protocol_bundle(FROZEN_V1, MATRIX)["protocol"]
     records = _amendment(protocol)["authorization_record"]
-    with pytest.raises(RuntimeError, match="preflight blocked"):
-        run_backend_canary(DRAFT, MATRIX, records["backend-kernel-canary"]["output"])
     pair_record = records["single-rank-generator-canary"]
     with pytest.raises(ValueError, match="J1 pair preflight blocked"):
-        pair.run_generator_pair(DRAFT, MATRIX, pair_record["source"]["path"], pair_record["output"])
+        pair.run_generator_pair(FROZEN_V1, MATRIX, pair_record["source"]["path"], pair_record["output"])
     with pytest.raises(ValueError, match="J1 step-0 preflight blocked"):
-        j1_stage.run_stage(DRAFT, r3_jz.STEP0_STAGE)
+        j1_stage.run_stage(FROZEN_V1, r3_jz.STEP0_STAGE)
     with pytest.raises(ValueError):
-        run_backend_canary(DRAFT, MATRIX, tmp_path / "unbound.json")
+        run_backend_canary(FROZEN_V1, MATRIX, tmp_path / "unbound.json")
     copied = tmp_path / "r3_protocol_jz_v1.json"
-    copied.write_bytes(DRAFT.read_bytes())
+    copied.write_bytes(FROZEN_V1.read_bytes())
     with pytest.raises(ValueError):
         r3_jz.require_jz_protocol_path(ROOT, copied, MATRIX, protocol)
-    assert j1_stage.bound_output(DRAFT, "backend-kernel-canary") == (
+    assert j1_stage.bound_output(FROZEN_V1, "backend-kernel-canary") == (
         records["backend-kernel-canary"]["output"])
 
 
@@ -360,6 +383,8 @@ def test_slurm_wrapper_is_bound_by_every_stage_command():
         assert directive in script
     # An untracked log inside the checkout would fail the clean-worktree gate.
     assert "#SBATCH --output=/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/slurm-logs/" in script
+    # Compute nodes lack system git; the source/checkout gates shell out to it.
+    assert "module load arch/a100 cuda/12.8.0 git/2.53.0" in script
 
 
 def _capture(directory, route, tensors, values=None):

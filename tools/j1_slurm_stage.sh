@@ -23,7 +23,8 @@ REPO=${J1_REPO:-$WORK/wan_experiments_j1}
 TOOLS=${J1_TOOLS:-$WORK/j1_tools}
 
 module purge
-module load arch/a100 cuda/12.8.0
+# Compute nodes have no system git (login nodes do); the source gates need it.
+module load arch/a100 cuda/12.8.0 git/2.53.0
 set -u
 
 # Compute nodes are offline: never reach the Hub or download interpreters.
