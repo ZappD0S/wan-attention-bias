@@ -7,7 +7,6 @@ set -eo pipefail
 UV_VERSION=0.12.17
 UV_TARBALL=uv-x86_64-unknown-linux-gnu.tar.gz
 UV_TARBALL_SHA256=fa82fd8dde8e8eefdecada6aa0889666556cfceb690d06e0c3bca49eb3070a63
-PYTHON_VERSION=3.11.13
 
 REPO=${J1_REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}
 TOOLS=${J1_TOOLS:-$WORK/j1_tools}
@@ -28,8 +27,8 @@ fi
 module load cuda/12.8.0
 set -u
 export CUDA_VISIBLE_DEVICES='' TORCH_CUDA_ARCH_LIST=8.0 MAX_JOBS=4
-# uv-managed interpreter: the system Python lacks headers and SAM2 fails to build.
-export UV_PYTHON=$PYTHON_VERSION UV_PYTHON_PREFERENCE=only-managed UV_PYTHON_DOWNLOADS=automatic
+# Interpreter from .python-version, uv-managed: the system Python lacks headers and SAM2 fails to build.
+export UV_PYTHON_PREFERENCE=only-managed UV_PYTHON_DOWNLOADS=automatic
 export UV_CACHE_DIR=$TOOLS/uv-cache UV_PYTHON_INSTALL_DIR=$TOOLS/python
 export PATH=$TOOLS/bin:$PATH
 
@@ -43,7 +42,7 @@ uv sync --locked
 uv sync --locked
 
 # GPU-free probe: versions and SAM2 cubin architectures; no model is loaded.
-uv run --no-sync --locked python - "$PYTHON_VERSION" <<'EOF'
+uv run --no-sync --locked python - "$(cat .python-version)" <<'EOF'
 import importlib.metadata
 import platform
 import sys
