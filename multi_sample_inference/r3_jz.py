@@ -206,8 +206,11 @@ JZ_STAGE_SLURM = {
 }
 # Frozen jz files bound as lineage by later versions (verified on disk at validation).
 JZ_V1_PROTOCOL_SHA256 = "6ef409e45045a0f5217023c2cbd91611d26dfa8fea4846f9cd1f8897fa8aa5db"
+JZ_V2_PROTOCOL_SHA256 = "8e7d7a01b20365d8760dbe76f5a8c4f7707c0da276150ac381db0c4584c3784a"
 # ``attempts`` numbers a stage's one-shot output directory; it defaults to 1. A retry
-# after a consumed approval is a new version with the next attempt number.
+# after a consumed approval is a new version with the next attempt number; a stage
+# that already passed keeps its used attempt, so its runner refuses a rerun.
+# ``prerequisite_protocols`` pins which frozen version produced each prerequisite record.
 JZ_VERSIONS = {
     "r3-gpu-contracts-jz-v1": {
         "lineage": ("r3-gpu-contracts-v19", V19_PROTOCOL_SHA256),
@@ -220,6 +223,14 @@ JZ_VERSIONS = {
         "draft_allowed": False,
         "approved_stages": ("backend-kernel-canary",),
         "attempts": {"backend-kernel-canary": 2},
+    },
+    # Step-0 probe after the passed jz-v2 canary (job 448407).
+    "r3-gpu-contracts-jz-v3": {
+        "lineage": ("r3-gpu-contracts-jz-v2", JZ_V2_PROTOCOL_SHA256),
+        "draft_allowed": False,
+        "approved_stages": ("backend-kernel-canary", STEP0_STAGE),
+        "attempts": {"backend-kernel-canary": 2},
+        "prerequisite_protocols": {"backend-kernel-canary": JZ_V2_PROTOCOL_SHA256},
     },
 }
 _FROZEN_AT = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z")
@@ -452,7 +463,7 @@ def _stage_authorization(stage_id, protocol_id, assets, frozen_values):
     }
 
 
-def _prerequisite_evidence(amendment, approved, frozen):
+def _prerequisite_evidence(amendment, approved, frozen, spec):
     """Frozen versions bind the passed evidence of the last approved stage's prerequisites."""
     declared = amendment.get("prerequisite_evidence")
     if not frozen or not approved:
@@ -478,6 +489,8 @@ def _prerequisite_evidence(amendment, approved, frozen):
         )
         _require_sha256(entry["sha256"], "J1 prerequisite evidence sha256")
         _require_sha256(entry["protocol_sha256"], "J1 prerequisite protocol sha256")
+        _require(entry["protocol_sha256"] == spec.get("prerequisite_protocols", {}).get(entry["stage_id"]),
+                 f"J1 prerequisite {entry['stage_id']} was not produced by its pinned frozen version")
     return declared
 
 
@@ -599,7 +612,7 @@ def expected_jz_protocol(protocol):
             stage: _stage_authorization(stage, protocol_id, assets, frozen_values)
             for stage in J1_STAGE_IDS
         },
-        "prerequisite_evidence": _prerequisite_evidence(amendment, approved, frozen),
+        "prerequisite_evidence": _prerequisite_evidence(amendment, approved, frozen, spec),
         "hook_canary_contract": old["hook_canary_contract"],
     }
     # Never alias module constants: a caller mutating the result must not change the binding.

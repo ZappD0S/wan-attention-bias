@@ -172,19 +172,13 @@ def test_jz_v1_frozen_approves_only_the_canary_without_input_hashes():
             _validate(changed)
 
 
-def _probe_version(monkeypatch):
-    monkeypatch.setitem(r3_jz.JZ_VERSIONS, "r3-gpu-contracts-jz-v3", {
-        "lineage": ("r3-gpu-contracts-jz-v1", r3_jz.JZ_V1_PROTOCOL_SHA256),
-        "draft_allowed": False,
-        "approved_stages": ("backend-kernel-canary", r3_jz.STEP0_STAGE),
-    })
+def _probe_version(_monkeypatch=None):
     evidence = [{"stage_id": "backend-kernel-canary",
                  "path": "docs/j1_evidence/jean-zay-backend-kernel-canary.json",
-                 "sha256": "1" * 64, "protocol_sha256": "2" * 64, "status": "passed"}]
-    protocol = _frozen("r3-gpu-contracts-jz-v3", source_sha256="d" * 64,
-                       reference_manifest_sha256="e" * 64, prerequisite_evidence=evidence)
-    protocol["lineage"] = {"protocol_id": "r3-gpu-contracts-jz-v1", "sha256": r3_jz.JZ_V1_PROTOCOL_SHA256}
-    return protocol
+                 "sha256": "1" * 64, "protocol_sha256": r3_jz.JZ_V2_PROTOCOL_SHA256,
+                 "status": "passed"}]
+    return _frozen("r3-gpu-contracts-jz-v3", source_sha256="d" * 64,
+                   reference_manifest_sha256="e" * 64, prerequisite_evidence=evidence)
 
 
 def test_probe_version_binds_its_own_source_and_reference(monkeypatch):
@@ -269,7 +263,7 @@ def test_freeze_of_probe_version_requires_reference_and_writes_source(tmp_path, 
     evidence = repo / "docs/j1_evidence/jean-zay-backend-kernel-canary.json"
     evidence.parent.mkdir()
     evidence.write_text(json.dumps({"stage_id": "backend-kernel-canary", "status": "passed",
-                                    "bindings": {"protocol_sha256": "2" * 64}}))
+                                    "bindings": {"protocol_sha256": r3_jz.JZ_V2_PROTOCOL_SHA256}}))
     prerequisite = [("backend-kernel-canary", "docs/j1_evidence/jean-zay-backend-kernel-canary.json")]
     with pytest.raises(ValueError, match="reference capture"):
         j1_freeze.freeze("r3-gpu-contracts-jz-v3", prerequisites=prerequisite, repo=repo)
@@ -581,3 +575,23 @@ def test_jz_v2_requires_the_unchanged_frozen_predecessor_file(monkeypatch):
     protocol["lineage"]["sha256"] = "0" * 64
     with pytest.raises(ValueError, match="frozen predecessor"):
         _validate(protocol)
+
+
+def test_jz_v3_pins_canary_evidence_to_the_jz_v2_protocol():
+    protocol = _probe_version()
+    assert _validate(protocol)
+    assert protocol["lineage"] == {"protocol_id": "r3-gpu-contracts-jz-v2",
+                                   "sha256": r3_jz.JZ_V2_PROTOCOL_SHA256}
+    records = _amendment(protocol)["authorization_record"]
+    # The passed canary keeps its used attempt-2 path, so the canary runner refuses a rerun.
+    assert records["backend-kernel-canary"]["output"].endswith("/attempt-2/backend-kernel-canary.json")
+    assert records[r3_jz.STEP0_STAGE]["output"].endswith("/step0-probe/attempt-1")
+    assert "stage-not-authorized:single-rank-generator-canary" in stage_execution_blockers(
+        protocol, "single-rank-generator-canary")
+    _amendment(protocol)["prerequisite_evidence"][0]["protocol_sha256"] = r3_jz.JZ_V1_PROTOCOL_SHA256
+    with pytest.raises(ValueError, match="pinned frozen version"):
+        _validate(protocol)
+
+
+def test_jz_v2_constant_matches_committed_frozen_file():
+    assert sha256_file(ROOT / "docs/r3_protocol_jz_v2.json") == r3_jz.JZ_V2_PROTOCOL_SHA256
