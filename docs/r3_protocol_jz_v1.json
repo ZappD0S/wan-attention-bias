@@ -337,7 +337,7 @@
           "scientific-claim"
         ],
         "source": {
-          "path": "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/inputs/source-j1-pair.json",
+          "path": "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/inputs/jz_v1/source-j1-pair.json",
           "sha256": null
         },
         "assets": {
@@ -384,7 +384,7 @@
           "scientific-claim"
         ],
         "source": {
-          "path": "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/inputs/source-j1-pair.json",
+          "path": "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/inputs/jz_v1/source-j1-pair.json",
           "sha256": null
         },
         "assets": {

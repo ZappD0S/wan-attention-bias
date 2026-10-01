@@ -27,6 +27,7 @@ from multi_sample_inference.r3_contracts import (
 )
 from multi_sample_inference.r3_divergence_probe import _Capture, _write_manifest
 from multi_sample_inference.r3_preflight import validate_v4_runtime_environment
+from tools import j1_freeze
 
 ROOT = Path(__file__).parents[1]
 DRAFT = ROOT / "docs/r3_protocol_jz_v1.json"
@@ -124,48 +125,43 @@ def test_unknown_jz_identity_is_rejected():
         _validate(protocol)
 
 
-def _frozen_v2(monkeypatch):
-    """A synthetic frozen jz-v2 approving only the canary, via the extension point."""
-    monkeypatch.setitem(r3_jz.JZ_VERSIONS, "r3-gpu-contracts-jz-v2", {
-        "lineage": ("r3-gpu-contracts-jz-v1", sha256_file(DRAFT)),
-        "frozen": True,
-        "approved_stages": ("backend-kernel-canary",),
-    })
-    protocol = _draft()
-    protocol["protocol_id"] = "r3-gpu-contracts-jz-v2"
-    protocol["lineage"] = {"protocol_id": "r3-gpu-contracts-jz-v1", "sha256": sha256_file(DRAFT)}
-    protocol["frozen_at"] = "2026-10-02T09:00:00Z"
-    protocol["approvals"] = {"gpu_execution": "approved", "hardware_environment": "approved"}
-    amendment = _amendment(protocol)
-    amendment["amendment_id"] = "r3-gpu-execution-amendment-jz-v2"
-    amendment["authorization_state"] = "approved-bounded-stage"
-    amendment["stage_gates"][0]["authorization"] = "approved"
-    amendment["source_binding"]["parent_revision_at_freeze"] = "a" * 40
-    amendment["source_binding"]["parent_production_content_sha256"] = "b" * 64
-    for name in amendment["production_component_hashes"]:
-        amendment["production_component_hashes"][name] = "c" * 64
-    for stage, record in amendment["authorization_record"].items():
-        record["command"] = record["command"].replace("jz_v1", "jz_v2")
-        if "source" in record:
-            record["source"]["sha256"] = "d" * 64
-        if stage == r3_jz.STEP0_STAGE:
-            record["reference_capture"]["manifest_sha256"] = "e" * 64
-    return protocol
+FAKE_STATE = {
+    "revision": "a" * 40,
+    "production": "b" * 64,
+    "components": dict.fromkeys((*j1_freeze.V19_COMPONENTS, *r3_jz.JZ_EXTRA_COMPONENTS), "c" * 64),
+}
 
 
-def test_extension_point_scopes_a_frozen_canary_approval(monkeypatch):
-    protocol = _frozen_v2(monkeypatch)
+def _frozen(protocol_id="r3-gpu-contracts-jz-v1", **values):
+    return j1_freeze.build_protocol(protocol_id, frozen_at="2026-10-02T09:00:00Z",
+                                    revision=FAKE_STATE["revision"],
+                                    production=FAKE_STATE["production"],
+                                    components=FAKE_STATE["components"], **values)
+
+
+def test_jz_v1_frozen_approves_only_the_canary_without_input_hashes():
+    protocol = _frozen()
     assert _validate(protocol)
+    amendment = _amendment(protocol)
+    assert [gate["authorization"] for gate in amendment["stage_gates"]] == [
+        "approved", "not-approved", "not-approved"]
+    assert amendment["authorization_state"] == "approved-bounded-stage"
     assert stage_execution_blockers(protocol, "backend-kernel-canary") == []
     assert "stage-not-authorized:step0-cross-architecture-probe" in stage_execution_blockers(
         protocol, r3_jz.STEP0_STAGE)
-    assert r3_jz.jz_protocol_relative_path(protocol["protocol_id"]) == "docs/r3_protocol_jz_v2.json"
+    step0 = amendment["authorization_record"][r3_jz.STEP0_STAGE]
+    assert step0["source"]["sha256"] is None and step0["reference_capture"]["manifest_sha256"] is None
+    assert "source" not in amendment["authorization_record"]["backend-kernel-canary"]
     for change in (
         lambda p: _amendment(p)["source_binding"].update(parent_revision_at_freeze=None),
         lambda p: _amendment(p)["stage_gates"][1].update(authorization="approved"),
-        lambda p: p.update(frozen_at=None),
+        lambda p: _amendment(p)["authorization_record"][r3_jz.STEP0_STAGE]["source"].update(
+            sha256="d" * 64),
         lambda p: _amendment(p)["authorization_record"][r3_jz.STEP0_STAGE][
-            "reference_capture"].update(manifest_sha256="bad"),
+            "reference_capture"].update(manifest_sha256="e" * 64),
+        lambda p: p.update(approvals={"gpu_execution": "required-not-approved",
+                                      "hardware_environment": "required-not-approved"}),
+        lambda p: p.update(frozen_at="yesterday"),
     ):
         changed = copy.deepcopy(protocol)
         change(changed)
@@ -173,28 +169,114 @@ def test_extension_point_scopes_a_frozen_canary_approval(monkeypatch):
             _validate(changed)
 
 
-def test_frozen_stage_requires_bound_prerequisite_evidence(monkeypatch):
+def _probe_version(monkeypatch):
     monkeypatch.setitem(r3_jz.JZ_VERSIONS, "r3-gpu-contracts-jz-v2", {
-        "lineage": ("r3-gpu-contracts-jz-v1", sha256_file(DRAFT)),
-        "frozen": True,
+        "lineage": ("r3-gpu-contracts-jz-v1", "f" * 64),
+        "draft_allowed": False,
         "approved_stages": ("backend-kernel-canary", r3_jz.STEP0_STAGE),
     })
-    protocol = _frozen_v2(monkeypatch)
-    monkeypatch.setitem(r3_jz.JZ_VERSIONS, "r3-gpu-contracts-jz-v2", {
-        "lineage": ("r3-gpu-contracts-jz-v1", sha256_file(DRAFT)),
-        "frozen": True,
-        "approved_stages": ("backend-kernel-canary", r3_jz.STEP0_STAGE),
-    })
-    _amendment(protocol)["stage_gates"][1]["authorization"] = "approved"
-    with pytest.raises(ValueError):
-        _validate(protocol)
-    _amendment(protocol)["prerequisite_evidence"] = [{
-        "stage_id": "backend-kernel-canary",
-        "path": "docs/j1_evidence/jean-zay-backend-kernel-canary.json",
-        "sha256": "f" * 64, "protocol_sha256": "a" * 64, "status": "passed",
-    }]
+    evidence = [{"stage_id": "backend-kernel-canary",
+                 "path": "docs/j1_evidence/jean-zay-backend-kernel-canary.json",
+                 "sha256": "1" * 64, "protocol_sha256": "2" * 64, "status": "passed"}]
+    protocol = _frozen("r3-gpu-contracts-jz-v2", source_sha256="d" * 64,
+                       reference_manifest_sha256="e" * 64, prerequisite_evidence=evidence)
+    protocol["lineage"] = {"protocol_id": "r3-gpu-contracts-jz-v1", "sha256": "f" * 64}
+    return protocol
+
+
+def test_probe_version_binds_its_own_source_and_reference(monkeypatch):
+    protocol = _probe_version(monkeypatch)
     assert _validate(protocol)
     assert stage_execution_blockers(protocol, r3_jz.STEP0_STAGE) == []
+    record = _amendment(protocol)["authorization_record"][r3_jz.STEP0_STAGE]
+    assert record["source"]["path"].endswith("/j1_runs/inputs/jz_v2/source-j1-pair.json")
+    assert record["command"].endswith("docs/r3_protocol_jz_v2.json")
+    for change in (
+        lambda p: _amendment(p)["authorization_record"][r3_jz.STEP0_STAGE][
+            "reference_capture"].update(manifest_sha256=None),
+        lambda p: _amendment(p)["authorization_record"][r3_jz.STEP0_STAGE]["source"].update(
+            sha256=None),
+        lambda p: _amendment(p).update(prerequisite_evidence=[]),
+        lambda p: p.update(frozen_at=None),
+    ):
+        changed = copy.deepcopy(protocol)
+        change(changed)
+        with pytest.raises(ValueError):
+            _validate(changed)
+
+
+def _diff(left, right, path=()):
+    if isinstance(left, dict) and isinstance(right, dict):
+        assert set(left) == set(right)
+        return [item for key in left for item in _diff(left[key], right[key], (*path, key))]
+    if isinstance(left, list) and isinstance(right, list):
+        assert len(left) == len(right)
+        return [item for index, pair in enumerate(zip(left, right, strict=True))
+                for item in _diff(*pair, (*path, index))]
+    return [] if left == right else ["/".join(map(str, path))]
+
+
+def test_jz_source_rewrites_only_paths_and_protocol_references():
+    bootes = json.loads(j1_freeze.BOOTES_V16_SOURCE.read_bytes())
+    data = j1_freeze.derive_jz_source("r3-gpu-contracts-jz-v1")
+    assert data == j1_freeze.derive_jz_source("r3-gpu-contracts-jz-v1")
+    derived = json.loads(data)
+    assert sorted(_diff(bootes, derived)) == sorted([
+        "checkpoint/path", "checkpoint/inventory", "scenes/0/reference_image",
+        "scenes/0/actors/0/isolated_image", "scenes/0/actors/1/isolated_image",
+        "scenes/0/segmentation_masks/actor-left", "scenes/0/segmentation_masks/actor-right",
+        "r3_evidence/protocol", "r3_evidence/matrix",
+    ])
+    assert derived["r3_evidence"]["protocol"] == f"{r3_jz.JZ_REPO_ROOT}/docs/r3_protocol_jz_v1.json"
+    assert derived["checkpoint"]["path"] == r3_jz.JZ_CHECKPOINT_PATH
+    assert derived["inference"]["sampling_steps"] == 2 and derived["video_seeds"][0]["value"] == 101
+    assets = _amendment(_draft())["authorization_record"]["single-rank-generator-canary"]["assets"]
+    scene = derived["scenes"][0]
+    assert scene["reference_image"] == assets["reference.png"]["path"]
+    assert scene["segmentation_masks"]["actor-left"] == assets["mask-left.png"]["path"]
+    with pytest.raises(ValueError):
+        j1_freeze.derive_jz_source("r3-gpu-contracts-jz-v1", j1_freeze.BOOTES_V16_SOURCE.read_bytes() + b" ")
+
+
+def _freeze_repo(tmp_path, monkeypatch):
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs/r3_test_matrix_v3.json").write_bytes(MATRIX.read_bytes())
+    (tmp_path / "docs/r3_protocol_jz_v1.json").write_bytes(DRAFT.read_bytes())
+    monkeypatch.setattr(j1_freeze, "collect_repo_state", lambda _repo: FAKE_STATE)
+    return tmp_path
+
+
+def test_freeze_writes_canary_version_and_refuses_refreeze(tmp_path, monkeypatch):
+    repo = _freeze_repo(tmp_path, monkeypatch)
+    with pytest.raises(ValueError):
+        j1_freeze.freeze("r3-gpu-contracts-jz-v1", reference_manifest_sha256="e" * 64, repo=repo)
+    result = j1_freeze.freeze("r3-gpu-contracts-jz-v1", repo=repo, frozen_at="2026-10-02T09:00:00Z")
+    assert result["approved_stage"] == "backend-kernel-canary" and result["source_sha256"] is None
+    assert result["command"] == (
+        "sbatch tools/j1_slurm_stage.sh backend-kernel-canary docs/r3_protocol_jz_v1.json")
+    written = json.loads((repo / "docs/r3_protocol_jz_v1.json").read_text())
+    assert written == _frozen()
+    with pytest.raises(ValueError, match="refusing to overwrite"):
+        j1_freeze.freeze("r3-gpu-contracts-jz-v1", repo=repo)
+
+
+def test_freeze_of_probe_version_requires_reference_and_writes_source(tmp_path, monkeypatch):
+    _probe_version(monkeypatch)
+    repo = _freeze_repo(tmp_path, monkeypatch)
+    evidence = repo / "docs/j1_evidence/jean-zay-backend-kernel-canary.json"
+    evidence.parent.mkdir()
+    evidence.write_text(json.dumps({"stage_id": "backend-kernel-canary", "status": "passed",
+                                    "bindings": {"protocol_sha256": "2" * 64}}))
+    prerequisite = [("backend-kernel-canary", "docs/j1_evidence/jean-zay-backend-kernel-canary.json")]
+    with pytest.raises(ValueError, match="reference capture"):
+        j1_freeze.freeze("r3-gpu-contracts-jz-v2", prerequisites=prerequisite, repo=repo)
+    monkeypatch.setitem(r3_jz.JZ_VERSIONS, "r3-gpu-contracts-jz-v2", r3_jz.JZ_VERSIONS[
+        "r3-gpu-contracts-jz-v2"] | {"lineage": ("r3-gpu-contracts-jz-v1", sha256_file(DRAFT))})
+    source = tmp_path / "source.json"
+    result = j1_freeze.freeze("r3-gpu-contracts-jz-v2", reference_manifest_sha256="e" * 64,
+                              prerequisites=prerequisite, write_source=source, repo=repo)
+    assert result["source_sha256"] == sha256_file(source)
+    assert json.loads(source.read_text())["r3_evidence"]["protocol"].endswith("r3_protocol_jz_v2.json")
 
 
 def _observations(protocol):

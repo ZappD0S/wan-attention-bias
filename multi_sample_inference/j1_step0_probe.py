@@ -272,6 +272,8 @@ def run_step0_probe(protocol_path, matrix_path, output):  # noqa: PLR0915
     reference = auth["reference_capture"]
     verify_reference_capture(repo, reference)
     source = _read_json(source_path)
+    _require(Path(source["r3_evidence"]["protocol"]).resolve() == protocol_path,
+             "J1 pair source must name the authorizing jz protocol file")
     manifests = expand_source(source_path, output / "pair", write=False)
     by_route = validate_pair_plan(protocol, source, manifests, output, auth)
     _verify_bound_assets(auth, source)

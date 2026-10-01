@@ -12,10 +12,13 @@ Node-class hardware identifier: SHA-256 of the canonical JSON of the
 SLURM-assigned hostname and GPU UUID are observed and recorded as evidence;
 they are never predeclared.
 
-Extension point: a later approval or freeze adds one ``JZ_VERSIONS`` entry
-(lineage to the previous jz file, ``frozen=True`` once all freeze-time values are
-known, and the approved stage prefix). ``jz-v1`` is an unfrozen draft that can
-never execute.
+Versions: each ``JZ_VERSIONS`` entry names its lineage and the stage prefix it
+approves once frozen (``frozen_at`` set). ``jz-v1`` is either the unfrozen draft
+(nothing approved, never executable) or frozen with only the backend canary
+approved. Later stages add one entry each (lineage to the previous frozen jz
+file). Source and Bootes-capture hashes are freeze-time values only for versions
+that approve the step-0 probe or later; each version binds its own pair source,
+whose ``r3_evidence.protocol`` names that version's protocol file.
 """
 
 from __future__ import annotations
@@ -203,8 +206,8 @@ JZ_STAGE_SLURM = {
 JZ_VERSIONS = {
     "r3-gpu-contracts-jz-v1": {
         "lineage": ("r3-gpu-contracts-v19", V19_PROTOCOL_SHA256),
-        "frozen": False,
-        "approved_stages": (),
+        "draft_allowed": True,
+        "approved_stages": ("backend-kernel-canary",),
     },
 }
 _FROZEN_AT = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z")
@@ -216,9 +219,7 @@ def is_jz_protocol(protocol):
 
 def jz_protocol_relative_path(protocol_id):
     """``r3-gpu-contracts-jz-v1`` -> ``docs/r3_protocol_jz_v1.json``."""
-    _require(protocol_id in JZ_VERSIONS, "unknown J1 jz protocol identity")
-    suffix = protocol_id.removeprefix("r3-gpu-contracts-").replace("-", "_")
-    return f"docs/r3_protocol_{suffix}.json"
+    return f"docs/r3_protocol_{jz_version_suffix(protocol_id)}.json"
 
 
 def require_jz_protocol_path(repo, protocol_path, matrix_path, protocol):
@@ -230,6 +231,17 @@ def require_jz_protocol_path(repo, protocol_path, matrix_path, protocol):
         and Path(matrix_path).resolve() == repo / JZ_MATRIX_PATH,
         "J1 runner requires the exact jz protocol and v3 matrix paths",
     )
+
+
+def jz_version_suffix(protocol_id):
+    """``r3-gpu-contracts-jz-v1`` -> ``jz_v1``."""
+    _require(protocol_id in JZ_VERSIONS, "unknown J1 jz protocol identity")
+    return protocol_id.removeprefix("r3-gpu-contracts-").replace("-", "_")
+
+
+def jz_source_path(protocol_id):
+    """Each version binds its own pair source naming that version's protocol file."""
+    return f"{JZ_RUN_ROOT}/inputs/{jz_version_suffix(protocol_id)}/source-j1-pair.json"
 
 
 def jz_authorization(protocol, stage_id):
@@ -350,11 +362,11 @@ class GpuMemorySampler:
         }
 
 
-def _freeze(value, frozen, check, label):
-    if frozen:
+def _freeze(value, required, check, label):
+    if required:
         check(value, label)
         return value
-    _require(value is None, f"J1 draft {label} must remain pending (null) until freeze")
+    _require(value is None, f"J1 {label} must be null when this version does not bind it")
     return None
 
 
@@ -362,7 +374,8 @@ def _check_frozen_at(value, label):
     _require(isinstance(value, str) and _FROZEN_AT.fullmatch(value), f"{label} must be a UTC timestamp")
 
 
-def _stage_authorization(stage_id, protocol_file, assets, frozen_values):
+def _stage_authorization(stage_id, protocol_id, assets, frozen_values):
+    protocol_file = jz_protocol_relative_path(protocol_id)
     command = (
         f"sbatch {JZ_STAGE_SLURM[stage_id]}tools/j1_slurm_stage.sh {stage_id} {protocol_file}"
     )
@@ -373,8 +386,7 @@ def _stage_authorization(stage_id, protocol_file, assets, frozen_values):
         "checkpoint_inventory": "docs/u1_checkpoint_inventory.json",
         "stop_after_stage": True,
     }
-    source = {"path": f"{JZ_RUN_ROOT}/inputs/source-j1-pair.json",
-              "sha256": frozen_values["source_sha256"]}
+    source = {"path": jz_source_path(protocol_id), "sha256": frozen_values["source_sha256"]}
     if stage_id == "backend-kernel-canary":
         return common | {
             "authorized_operations": [
@@ -460,10 +472,13 @@ def expected_jz_protocol(protocol):
     """Reconstruct the only acceptable jz protocol for ``protocol['protocol_id']``."""
     protocol_id = protocol.get("protocol_id")
     spec = JZ_VERSIONS[protocol_id]
-    frozen = spec["frozen"]
-    approved = list(spec["approved_stages"])
-    _require(approved == list(J1_STAGE_IDS[: len(approved)]),
+    frozen = protocol.get("frozen_at") is not None
+    _require(frozen or spec["draft_allowed"], f"{protocol_id} must be frozen")
+    approved = list(spec["approved_stages"]) if frozen else []
+    _require(approved == list(J1_STAGE_IDS[: len(approved)]) and (bool(approved) or not frozen),
              "J1 stages must be approved in sequence")
+    # Canary-only versions never depend on the pair source or the Bootes capture.
+    binds_inputs = STEP0_STAGE in approved
     base = Path(__file__).resolve().parents[1] / "docs/r3_protocol_v19.json"
     _require(base.is_file() and sha256_file(base) == V19_PROTOCOL_SHA256,
              "J1 frozen v19 base is unavailable or changed")
@@ -498,9 +513,9 @@ def expected_jz_protocol(protocol):
             name: _freeze(value, frozen, _require_sha256, f"{name} component")
             for name, value in components.items()
         },
-        "source_sha256": _freeze(pair_source.get("sha256"), frozen, _require_sha256,
+        "source_sha256": _freeze(pair_source.get("sha256"), binds_inputs, _require_sha256,
                                  "pair source sha256"),
-        "reference_manifest_sha256": _freeze(reference.get("manifest_sha256"), frozen,
+        "reference_manifest_sha256": _freeze(reference.get("manifest_sha256"), binds_inputs,
                                              _require_sha256, "reference capture manifest sha256"),
     }
     old_environment = old["environment_binding"]
@@ -529,7 +544,6 @@ def expected_jz_protocol(protocol):
         name: {"path": f"{JZ_REFERENCE_ROOT}/bootes-inputs/{name}", "sha256": asset["sha256"]}
         for name, asset in old["authorization_record"]["assets"].items()
     }
-    protocol_file = jz_protocol_relative_path(protocol_id)
     approval = "approved" if approved else "required-not-approved"
 
     expected["protocol_id"] = protocol_id
@@ -569,7 +583,7 @@ def expected_jz_protocol(protocol):
         "production_component_hashes": frozen_values["components"],
         "route_process_bindings": routes,
         "authorization_record": {
-            stage: _stage_authorization(stage, protocol_file, assets, frozen_values)
+            stage: _stage_authorization(stage, protocol_id, assets, frozen_values)
             for stage in J1_STAGE_IDS
         },
         "prerequisite_evidence": _prerequisite_evidence(amendment, approved, frozen),
@@ -600,7 +614,7 @@ def jz_stage_execution_blockers(protocol, stage_id, base_blockers):
     amendment = protocol["execution_amendment"]
     if amendment["authorization_state"] != "approved-bounded-stage":
         blockers.append("explicit-user-authorization")
-    if not JZ_VERSIONS[protocol["protocol_id"]]["frozen"]:
+    if protocol.get("frozen_at") is None:
         blockers.append("jz-draft-not-frozen")
     stages = {stage["id"]: stage for stage in amendment["stage_gates"]}
     if stage_id not in stages:

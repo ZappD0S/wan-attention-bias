@@ -299,6 +299,9 @@ def run_generator_pair(protocol_path, matrix_path, source_path, output):  # noqa
         ("parent", repo), ("wan", repo / "wan2.1"), ("lama", repo / "lama"))}
     _validate_v4_source_binding(repo, repositories, protocol)
     source = _read_json(source_path)
+    if jz:
+        _require(Path(source["r3_evidence"]["protocol"]).resolve() == protocol_path,
+                 "J1 pair source must name the authorizing jz protocol file")
     manifests = expand_source(source_path, output, write=False)
     by_route = validate_pair_plan(protocol, source, manifests, output, auth)
     _verify_bound_assets(auth, source)
