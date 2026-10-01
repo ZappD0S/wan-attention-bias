@@ -29,6 +29,7 @@ from .r3_contracts import (
     write_immutable_json,
 )
 from .r3_environment import observe_attention_runtime, observe_runtime_environment
+from .r3_jz import protocol_offload_model
 from .r3_preflight import validate_backend_runtime, validate_v4_runtime_environment
 from .r3_runtime import (
     R3RuntimeCollector,
@@ -44,11 +45,11 @@ from .task_contracts import (
 
 
 @torch.inference_mode()
-def run_inference(wan_i2v, task):
+def run_inference(wan_i2v, task, *, offload_model=False):
     validate_worker_task(task)
     settings = resolve_inference_settings(task.get("inference_settings"))
     if generation_route(task) == "upstream":
-        return run_generator(wan_i2v, task, settings)
+        return run_generator(wan_i2v, task, settings, offload_model=offload_model)
 
     masks = task["masks"]
     if masks.ndim != 3 or masks.shape[0] == 0:
@@ -111,7 +112,9 @@ def run_inference(wan_i2v, task):
         ).to(wan_i2v.param_dtype),
     } | config
 
-    return run_generator(wan_i2v, task, settings, bias_kwargs=bias_kwargs)
+    return run_generator(
+        wan_i2v, task, settings, bias_kwargs=bias_kwargs, offload_model=offload_model
+    )
 
 
 def save_outputs(video, extra_data, task, max_retries=5):
@@ -178,6 +181,7 @@ def save_outputs(video, extra_data, task, max_retries=5):
 
 
 def _validate_r3_before_model_load(task, manifest_path):
+    """Validate R3 bindings; return the protocol-bound Wan ``offload_model`` (default False)."""
     evidence = task.get("r3_evidence")
     schema_version = (
         evidence.get("protocol_schema_version")
@@ -197,13 +201,13 @@ def _validate_r3_before_model_load(task, manifest_path):
     if manifest_path is None:
         if task_has_v3_material:
             raise ValueError("R3 v3+ worker requires its immutable manifest binding")
-        return
+        return False
     manifest = _read_json(manifest_path)
     if task_has_v3_material:
         verify_repository_identity(manifest)
     dispatch_contract = validate_r3_worker_task_binding(task, manifest)
     if dispatch_contract is None:
-        return
+        return False
     attention_runtime = observe_attention_runtime()
     validate_backend_runtime(dispatch_contract, attention_runtime)
     if schema_version >= 4:
@@ -214,6 +218,8 @@ def _validate_r3_before_model_load(task, manifest_path):
         validate_v4_runtime_environment(
             bundle["protocol"], observe_runtime_environment(attention_runtime)
         )
+        return protocol_offload_model(bundle["protocol"])
+    return False
 
 
 def _validate_r3_route_process_before_model_load(task):
@@ -350,7 +356,7 @@ def main():
     with open(args.task_file, "rb") as f:
         task = pickle.load(f)
     validate_worker_task(task)
-    _validate_r3_before_model_load(task, args.manifest_file)
+    offload_model = _validate_r3_before_model_load(task, args.manifest_file)
     _validate_r3_route_process_before_model_load(task)
 
     is_fsdp = args.mode == "fsdp"
@@ -374,7 +380,7 @@ def main():
         with _runtime_observer_context(
             wan_i2v, task, collector, dist.get_rank()
         ):
-            outputs = run_inference(wan_i2v, task)
+            outputs = run_inference(wan_i2v, task, offload_model=offload_model)
         gathered = gather_rank_observations(
             collector.snapshot(),
             rank=dist.get_rank(),
@@ -382,7 +388,7 @@ def main():
             gather_object=dist.gather_object,
         )
     else:
-        outputs = run_inference(wan_i2v, task)
+        outputs = run_inference(wan_i2v, task, offload_model=offload_model)
         gathered = None
 
     if gathered is not None and dist.get_rank() == 0:

@@ -37,6 +37,7 @@ from .r3_jz import (
     JZ_RUN_ROOT,
     GpuMemorySampler,
     jz_authorization,
+    protocol_offload_model,
     require_jz_protocol_path,
     require_node_class_cuda_device,
     validate_node_class_observation,
@@ -323,6 +324,7 @@ def run_generator_pair(protocol_path, matrix_path, source_path, output):  # noqa
     }
     if jz:
         base["j1_node_observation"] = node_observation
+        base["generation_settings"] = {"offload_model": protocol_offload_model(protocol)}
     else:
         base["gpu_uuid"] = auth["gpu_uuid"]
     completed = []

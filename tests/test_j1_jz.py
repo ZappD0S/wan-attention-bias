@@ -1,5 +1,6 @@
 """CPU-only contracts for the J1 Jean Zay ``r3-gpu-contracts-jz-v*`` branch."""
 
+import ast
 import copy
 import json
 import subprocess
@@ -595,3 +596,121 @@ def test_jz_v3_pins_canary_evidence_to_the_jz_v2_protocol():
 
 def test_jz_v2_constant_matches_committed_frozen_file():
     assert sha256_file(ROOT / "docs/r3_protocol_jz_v2.json") == r3_jz.JZ_V2_PROTOCOL_SHA256
+
+
+def test_committed_jz_v1_to_v3_validate_unchanged_without_offload():
+    for version, digest in ((1, r3_jz.JZ_V1_PROTOCOL_SHA256), (2, r3_jz.JZ_V2_PROTOCOL_SHA256),
+                            (3, r3_jz.JZ_V3_PROTOCOL_SHA256)):
+        path = ROOT / f"docs/r3_protocol_jz_v{version}.json"
+        assert sha256_file(path) == digest
+        protocol = load_protocol_bundle(path, MATRIX)["protocol"]
+        assert "generation_settings" not in _amendment(protocol)
+        assert r3_jz.protocol_offload_model(protocol) is False
+    for name in ("r3_protocol_v16.json", "r3_protocol_v19.json"):
+        protocol = load_protocol_bundle(ROOT / "docs" / name, MATRIX)["protocol"]
+        assert r3_jz.protocol_offload_model(protocol) is False
+
+
+CANARY_EVIDENCE = {
+    "stage_id": "backend-kernel-canary",
+    "path": "docs/j1_evidence/jean-zay-backend-kernel-canary.json",
+    "sha256": sha256_file(ROOT / "docs/j1_evidence/jean-zay-backend-kernel-canary.json"),
+    "protocol_sha256": r3_jz.JZ_V2_PROTOCOL_SHA256,
+    "status": "passed",
+}
+
+
+def _jz_v4(**values):
+    values = {"source_sha256": "d" * 64, "prerequisite_evidence": [CANARY_EVIDENCE]} | values
+    return _frozen("r3-gpu-contracts-jz-v4", **values)
+
+
+def test_jz_v4_approves_the_offload_pair_after_the_jz_v2_canary():
+    protocol = _jz_v4()
+    assert _validate(protocol)
+    assert protocol["lineage"] == {"protocol_id": "r3-gpu-contracts-jz-v3",
+                                   "sha256": r3_jz.JZ_V3_PROTOCOL_SHA256}
+    amendment = _amendment(protocol)
+    assert amendment["generation_settings"] == {"offload_model": True}
+    assert r3_jz.protocol_offload_model(protocol) is True
+    gates = {gate["id"]: gate for gate in amendment["stage_gates"]}
+    assert gates[r3_jz.STEP0_STAGE]["authorization"] == "not-approved"
+    assert gates["single-rank-generator-canary"]["prerequisites"] == ["backend-kernel-canary"]
+    assert stage_execution_blockers(protocol, "single-rank-generator-canary") == []
+    assert "stage-not-authorized:step0-cross-architecture-probe" in stage_execution_blockers(
+        protocol, r3_jz.STEP0_STAGE)
+    records = amendment["authorization_record"]
+    pair_record = records["single-rank-generator-canary"]
+    assert "report_only_bootes_v16_reference" not in pair_record
+    assert pair_record["output"].endswith("/generator-pair/attempt-1")
+    assert pair_record["source"] == {
+        "path": f"{r3_jz.JZ_RUN_ROOT}/inputs/jz_v4/source-j1-pair.json", "sha256": "d" * 64}
+    assert pair_record["command"] == ("sbatch --qos=qos_gpu_a100-t3 --time=04:00:00 "
+                                      "tools/j1_slurm_stage.sh single-rank-generator-canary "
+                                      "docs/r3_protocol_jz_v4.json")
+    assert records["backend-kernel-canary"]["output"].endswith("/attempt-2/backend-kernel-canary.json")
+    assert records[r3_jz.STEP0_STAGE]["reference_capture"]["manifest_sha256"] is None
+
+
+@pytest.mark.parametrize("change", [
+    lambda p: _amendment(p).update(generation_settings={"offload_model": False}),
+    lambda p: _amendment(p).pop("generation_settings"),
+    lambda p: _amendment(p)["stage_gates"][1].update(authorization="approved"),
+    lambda p: _amendment(p)["stage_gates"][2].update(
+        prerequisites=["backend-kernel-canary", r3_jz.STEP0_STAGE]),
+    lambda p: _amendment(p)["authorization_record"]["single-rank-generator-canary"].update(
+        report_only_bootes_v16_reference=r3_jz.JZ_BOOTES_V16_REFERENCE),
+    lambda p: _amendment(p)["authorization_record"][r3_jz.STEP0_STAGE][
+        "reference_capture"].update(manifest_sha256="e" * 64),
+    lambda p: _amendment(p)["prerequisite_evidence"][0].update(
+        protocol_sha256=r3_jz.JZ_V1_PROTOCOL_SHA256),
+    lambda p: _amendment(p).update(prerequisite_evidence=[]),
+    lambda p: p["lineage"].update(sha256=r3_jz.JZ_V2_PROTOCOL_SHA256),
+])
+def test_jz_v4_rejects_unbound_changes(change):
+    protocol = _jz_v4()
+    change(protocol)
+    with pytest.raises(ValueError):
+        _validate(protocol)
+
+
+def test_jz_v4_requires_its_pair_source_hash():
+    with pytest.raises(ValueError):
+        _jz_v4(source_sha256=None)
+
+
+def test_worker_threads_offload_only_from_the_validated_protocol():
+    """fsdp_worker needs CUDA at import, so check its offload threading structurally."""
+    tree = ast.parse((ROOT / "multi_sample_inference/fsdp_worker.py").read_text())
+    calls = [node for node in ast.walk(tree) if isinstance(node, ast.Call)
+             and getattr(node.func, "id", None) in {"run_generator", "run_inference"}]
+    assert len(calls) == 4
+    for call in calls:
+        keyword = next(k for k in call.keywords if k.arg == "offload_model")
+        assert isinstance(keyword.value, ast.Name) and keyword.value.id == "offload_model"
+    validator = next(node for node in tree.body if isinstance(node, ast.FunctionDef)
+                     and node.name == "_validate_r3_before_model_load")
+    returns = [ast.unparse(node.value) for node in ast.walk(validator)
+               if isinstance(node, ast.Return)]
+    assert set(returns) == {"False", "protocol_offload_model(bundle['protocol'])"}
+    main = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == "main")
+    assert "offload_model = _validate_r3_before_model_load(task, args.manifest_file)" in ast.unparse(main)
+
+
+def test_freeze_of_jz_v4_binds_source_and_canary_without_reference(tmp_path, monkeypatch):
+    repo = _freeze_repo(tmp_path, monkeypatch)
+    evidence = repo / CANARY_EVIDENCE["path"]
+    evidence.parent.mkdir()
+    evidence.write_bytes((ROOT / CANARY_EVIDENCE["path"]).read_bytes())
+    prerequisite = [("backend-kernel-canary", CANARY_EVIDENCE["path"])]
+    with pytest.raises(ValueError, match="reference capture"):
+        j1_freeze.freeze("r3-gpu-contracts-jz-v4", reference_manifest_sha256="e" * 64,
+                         prerequisites=prerequisite, repo=repo)
+    source = tmp_path / "source.json"
+    result = j1_freeze.freeze("r3-gpu-contracts-jz-v4", prerequisites=prerequisite,
+                              write_source=source, repo=repo, frozen_at="2026-10-02T09:00:00Z")
+    assert result["approved_stage"] == "single-rank-generator-canary"
+    assert result["source_sha256"] == sha256_file(source)
+    assert json.loads(source.read_text())["r3_evidence"]["protocol"].endswith("r3_protocol_jz_v4.json")
+    written = json.loads((repo / "docs/r3_protocol_jz_v4.json").read_text())
+    assert written == _jz_v4(source_sha256=sha256_file(source))

@@ -148,17 +148,19 @@ def freeze(protocol_id, *, reference_manifest_sha256=None, prerequisites=(), wri
     repo = Path(repo).resolve()
     _require(protocol_id in JZ_VERSIONS, f"no JZ_VERSIONS entry for {protocol_id}")
     approved = JZ_VERSIONS[protocol_id]["approved_stages"]
-    binds_inputs = STEP0_STAGE in approved
-    _require(binds_inputs or (reference_manifest_sha256 is None and write_source is None),
-             "a canary-only version binds neither the pair source nor the Bootes capture")
-    _require(not binds_inputs or reference_manifest_sha256 is not None,
-             "this version requires the Bootes reference capture manifest SHA-256")
+    binds_reference = STEP0_STAGE in approved
+    binds_source = binds_reference or "single-rank-generator-canary" in approved
+    _require(binds_source or write_source is None,
+             "a canary-only version binds no pair source")
+    _require(binds_reference == (reference_manifest_sha256 is not None),
+             "only versions approving the step-0 probe bind the Bootes reference capture manifest "
+             "SHA-256, and they require it")
     target = repo / jz_protocol_relative_path(protocol_id)
     _require(not target.exists() or _read_json(target).get("frozen_at") is None,
              f"refusing to overwrite frozen {target.name}")
     state = collect_repo_state(repo)
     source_sha256 = None
-    if binds_inputs:
+    if binds_source:
         source_bytes = derive_jz_source(protocol_id)
         source_sha256 = hashlib.sha256(source_bytes).hexdigest()
         if write_source is not None:

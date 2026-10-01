@@ -31,7 +31,10 @@ def generation_route(task):
     return "custom"
 
 
-def _common_generate_kwargs(task, settings):
+def _common_generate_kwargs(task, settings, offload_model=False):
+    # offload_model is a protocol binding (J1 jz-v4+ only); never a task or env choice.
+    if type(offload_model) is not bool:
+        raise TypeError("offload_model must be a bool from a validated protocol binding")
     return {
         "max_area": settings["target_size"][0] * settings["target_size"][1],
         "sampling_steps": settings["sampling_steps"],
@@ -40,7 +43,7 @@ def _common_generate_kwargs(task, settings):
         "sample_solver": settings["sample_solver"],
         "guide_scale": settings["guide_scale"],
         "seed": task["diffusion_seed"],
-        "offload_model": False,
+        "offload_model": offload_model,
     }
 
 
@@ -64,12 +67,12 @@ def rank_zero_output(outputs, rank):
     return outputs
 
 
-def run_generator(generator, task, settings, *, bias_kwargs=None):
+def run_generator(generator, task, settings, *, bias_kwargs=None, offload_model=False):
     """Call the selected API while keeping upstream and custom routes distinct."""
     route = generation_route(task)
     if route == UPSTREAM_METHOD and settings.get("frame_num") != UPSTREAM_FRAME_NUM:
         raise ValueError(f"pinned upstream Wan generation requires frame_num={UPSTREAM_FRAME_NUM}")
-    kwargs = _common_generate_kwargs(task, settings)
+    kwargs = _common_generate_kwargs(task, settings, offload_model)
     negative_prompt = task.get("negative_prompt")
     if negative_prompt is not None:
         kwargs["n_prompt"] = negative_prompt

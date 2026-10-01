@@ -207,10 +207,16 @@ JZ_STAGE_SLURM = {
 # Frozen jz files bound as lineage by later versions (verified on disk at validation).
 JZ_V1_PROTOCOL_SHA256 = "6ef409e45045a0f5217023c2cbd91611d26dfa8fea4846f9cd1f8897fa8aa5db"
 JZ_V2_PROTOCOL_SHA256 = "8e7d7a01b20365d8760dbe76f5a8c4f7707c0da276150ac381db0c4584c3784a"
+JZ_V3_PROTOCOL_SHA256 = "8b0765f2a781797ca1e50ece9704bbe0e727fcd079f1c0bce3dbc9a5c071755f"
 # ``attempts`` numbers a stage's one-shot output directory; it defaults to 1. A retry
 # after a consumed approval is a new version with the next attempt number; a stage
 # that already passed keeps its used attempt, so its runner refuses a rerun.
 # ``prerequisite_protocols`` pins which frozen version produced each prerequisite record.
+# ``withdrawn_stages`` leave the approval sequence (never approved again), and
+# ``stage_gate_overrides`` replace named gate fields for that version only.
+# ``generation_settings`` (jz-v4 on) is the only trusted source of Wan ``offload_model``;
+# every version without it, and every Bootes protocol, runs with ``offload_model=False``.
+# ``drop_report_only_reference`` removes the non-comparable Bootes v16 latent/video binding.
 JZ_VERSIONS = {
     "r3-gpu-contracts-jz-v1": {
         "lineage": ("r3-gpu-contracts-v19", V19_PROTOCOL_SHA256),
@@ -231,6 +237,27 @@ JZ_VERSIONS = {
         "approved_stages": ("backend-kernel-canary", STEP0_STAGE),
         "attempts": {"backend-kernel-canary": 2},
         "prerequisite_protocols": {"backend-kernel-canary": JZ_V2_PROTOCOL_SHA256},
+    },
+    # Post-measurement amendment: step-0 probe withdrawn (A100 OOM; CUDA initial noise differs
+    # across GPU models); one within-A100 parity pair with offload, after the jz-v2 canary.
+    "r3-gpu-contracts-jz-v4": {
+        "lineage": ("r3-gpu-contracts-jz-v3", JZ_V3_PROTOCOL_SHA256),
+        "draft_allowed": False,
+        "approved_stages": ("backend-kernel-canary", "single-rank-generator-canary"),
+        "attempts": {"backend-kernel-canary": 2},
+        "prerequisite_protocols": {"backend-kernel-canary": JZ_V2_PROTOCOL_SHA256},
+        "withdrawn_stages": (STEP0_STAGE,),
+        "stage_gate_overrides": {
+            STEP0_STAGE: {
+                "scope": (
+                    "Withdrawn by the 2026-10-01 post-measurement amendment: the A100 capture ran "
+                    "out of memory and CUDA initial noise differs across GPU models."
+                ),
+            },
+            "single-rank-generator-canary": {"prerequisites": ["backend-kernel-canary"]},
+        },
+        "generation_settings": {"offload_model": True},
+        "drop_report_only_reference": True,
     },
 }
 _FROZEN_AT = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z")
@@ -265,6 +292,29 @@ def jz_version_suffix(protocol_id):
 def jz_source_path(protocol_id):
     """Each version binds its own pair source naming that version's protocol file."""
     return f"{JZ_RUN_ROOT}/inputs/{jz_version_suffix(protocol_id)}/source-j1-pair.json"
+
+
+def jz_stage_gates(protocol_id, approved):
+    """Stage gates of one version, with its overrides and approved prefix."""
+    overrides = JZ_VERSIONS[protocol_id].get("stage_gate_overrides", {})
+    return [
+        gate | overrides.get(gate["id"], {})
+        | {"authorization": "approved" if gate["id"] in approved else "not-approved"}
+        for gate in JZ_STAGE_GATES
+    ]
+
+
+def protocol_offload_model(protocol):
+    """Wan ``offload_model`` from a validated protocol: only jz-v4+ bindings may enable it."""
+    if not is_jz_protocol(protocol):
+        return False
+    settings = protocol["execution_amendment"].get("generation_settings")
+    if settings is None:
+        return False
+    _require(isinstance(settings, dict) and set(settings) == {"offload_model"}
+             and type(settings["offload_model"]) is bool,
+             "J1 generation settings are malformed")
+    return settings["offload_model"]
 
 
 def jz_authorization(protocol, stage_id):
@@ -459,18 +509,18 @@ def _stage_authorization(stage_id, protocol_id, assets, frozen_values):
         "output": f"{JZ_RUN_ROOT}/generator-pair/{attempt}",
         "min_free_gpu_bytes": 75161927680,
         "job_timeout_seconds": 3600,
-        "report_only_bootes_v16_reference": JZ_BOOTES_V16_REFERENCE,
-    }
+    } | ({} if JZ_VERSIONS[protocol_id].get("drop_report_only_reference")
+         else {"report_only_bootes_v16_reference": JZ_BOOTES_V16_REFERENCE})
 
 
-def _prerequisite_evidence(amendment, approved, frozen, spec):
+def _prerequisite_evidence(amendment, approved, frozen, spec, gates):
     """Frozen versions bind the passed evidence of the last approved stage's prerequisites."""
     declared = amendment.get("prerequisite_evidence")
     if not frozen or not approved:
         _require(declared == [], "J1 draft or unapproved version must not declare prerequisite evidence")
         return []
     prerequisites = next(
-        gate["prerequisites"] for gate in JZ_STAGE_GATES if gate["id"] == approved[-1]
+        gate["prerequisites"] for gate in gates if gate["id"] == approved[-1]
     )
     _require(
         isinstance(declared, list)
@@ -501,10 +551,13 @@ def expected_jz_protocol(protocol):
     frozen = protocol.get("frozen_at") is not None
     _require(frozen or spec["draft_allowed"], f"{protocol_id} must be frozen")
     approved = list(spec["approved_stages"]) if frozen else []
-    _require(approved == list(J1_STAGE_IDS[: len(approved)]) and (bool(approved) or not frozen),
+    sequence = [stage for stage in J1_STAGE_IDS if stage not in spec.get("withdrawn_stages", ())]
+    _require(approved == sequence[: len(approved)] and (bool(approved) or not frozen),
              "J1 stages must be approved in sequence")
     # Canary-only versions never depend on the pair source or the Bootes capture.
     binds_inputs = STEP0_STAGE in approved
+    # The pair source is bound once any source-consuming stage is approved.
+    binds_source = binds_inputs or "single-rank-generator-canary" in approved
     base = Path(__file__).resolve().parents[1] / "docs/r3_protocol_v19.json"
     _require(base.is_file() and sha256_file(base) == V19_PROTOCOL_SHA256,
              "J1 frozen v19 base is unavailable or changed")
@@ -539,7 +592,7 @@ def expected_jz_protocol(protocol):
             name: _freeze(value, frozen, _require_sha256, f"{name} component")
             for name, value in components.items()
         },
-        "source_sha256": _freeze(pair_source.get("sha256"), binds_inputs, _require_sha256,
+        "source_sha256": _freeze(pair_source.get("sha256"), binds_source, _require_sha256,
                                  "pair source sha256"),
         "reference_manifest_sha256": _freeze(reference.get("manifest_sha256"), binds_inputs,
                                              _require_sha256, "reference capture manifest sha256"),
@@ -571,6 +624,7 @@ def expected_jz_protocol(protocol):
         for name, asset in old["authorization_record"]["assets"].items()
     }
     approval = "approved" if approved else "required-not-approved"
+    gates = jz_stage_gates(protocol_id, approved)
 
     expected["protocol_id"] = protocol_id
     expected["lineage"] = {"protocol_id": spec["lineage"][0], "sha256": spec["lineage"][1]}
@@ -601,10 +655,7 @@ def expected_jz_protocol(protocol):
         },
         "tolerance_decision": old["tolerance_decision"],
         "cross_architecture_decision": JZ_CROSS_ARCHITECTURE_DECISION,
-        "stage_gates": [
-            gate | {"authorization": "approved" if gate["id"] in approved else "not-approved"}
-            for gate in JZ_STAGE_GATES
-        ],
+        "stage_gates": gates,
         "upstream_provenance_binding": old["upstream_provenance_binding"],
         "production_component_hashes": frozen_values["components"],
         "route_process_bindings": routes,
@@ -612,9 +663,11 @@ def expected_jz_protocol(protocol):
             stage: _stage_authorization(stage, protocol_id, assets, frozen_values)
             for stage in J1_STAGE_IDS
         },
-        "prerequisite_evidence": _prerequisite_evidence(amendment, approved, frozen, spec),
+        "prerequisite_evidence": _prerequisite_evidence(amendment, approved, frozen, spec, gates),
         "hook_canary_contract": old["hook_canary_contract"],
     }
+    if "generation_settings" in spec:
+        expected["execution_amendment"]["generation_settings"] = spec["generation_settings"]
     # Never alias module constants: a caller mutating the result must not change the binding.
     return copy.deepcopy(expected)
 

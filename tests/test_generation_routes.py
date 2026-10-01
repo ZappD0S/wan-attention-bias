@@ -124,3 +124,24 @@ def test_route_rejects_unknown_worker_method():
     task = copy.deepcopy(_task("unknown"))
     with pytest.raises(ValueError, match="unsupported worker generation method"):
         generation_route(task)
+
+
+@pytest.mark.parametrize("offload_model", [False, True])
+def test_both_routes_receive_the_same_protocol_bound_offload(offload_model):
+    upstream = FakeGenerator(object())
+    custom = FakeGenerator((object(), {}))
+    run_generator(upstream, _task("upstream"), _settings(frame_num=81), offload_model=offload_model)
+    run_generator(custom, _task("none"), _settings(frame_num=81),
+                  bias_kwargs={"bias_method": "none"}, offload_model=offload_model)
+    upstream_kwargs, custom_kwargs = upstream.calls[0][1], custom.calls[0][1]
+    assert upstream_kwargs["offload_model"] is offload_model
+    assert upstream_kwargs == custom_kwargs
+
+
+def test_offload_defaults_false_and_rejects_non_bool():
+    generator = FakeGenerator(object())
+    run_generator(generator, _task("upstream"), _settings(frame_num=81))
+    assert generator.calls[0][1]["offload_model"] is False
+    with pytest.raises(TypeError):
+        run_generator(FakeGenerator(object()), _task("upstream"), _settings(frame_num=81),
+                      offload_model="true")
