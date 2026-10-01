@@ -1,4 +1,4 @@
-"""One-shot Bootes R3 generator pair; never a general M1 execution entry point."""
+"""One-shot R3 generator pair (Bootes, or a J1 Jean Zay jz protocol); never a general M1 entry point."""
 
 from __future__ import annotations
 
@@ -33,6 +33,15 @@ from .r3_contracts import (
     stage_execution_blockers,
     write_immutable_json,
 )
+from .r3_jz import (
+    JZ_RUN_ROOT,
+    GpuMemorySampler,
+    jz_authorization,
+    require_jz_protocol_path,
+    require_node_class_cuda_device,
+    validate_node_class_observation,
+    verify_jz_prerequisites,
+)
 from .r3_preflight import validate_backend_runtime, validate_v4_runtime_environment
 
 STAGE = "single-rank-generator-canary"
@@ -43,9 +52,10 @@ def _require(value, message):
         raise ValueError(message)
 
 
-def validate_pair_plan(protocol, source, manifests, output):
+def validate_pair_plan(protocol, source, manifests, output, authorization=None):
     """Reject Cartesian expansions, route swaps and undeclared job/output changes."""
-    authorization = protocol["execution_amendment"]["authorization_record"]
+    if authorization is None:
+        authorization = protocol["execution_amendment"]["authorization_record"]
     pair = source.get("r3_evidence", {}).get("parity_pair")
     _require(source.get("smoke_only") is False and len(source.get("scenes", [])) == 1
              and len(source.get("video_seeds", [])) == 1
@@ -215,40 +225,88 @@ def _preflight_runtime(protocol, repo, protocol_path, gpu):
     return checkpoint
 
 
-def run_generator_pair(protocol_path, matrix_path, source_path, output):  # noqa: PLR0915
+def preflight_jz_runtime(protocol, repo, protocol_path, authorization):
+    """J1 variant: SLURM selects the GPU and the node class, not a fixed UUID, binds it."""
+    import torch  # noqa: PLC0415
+
+    from .r3_checkpoint_hook_canary import _verify_checkpoint  # noqa: PLC0415
+    from .r3_environment import (  # noqa: PLC0415
+        observe_attention_runtime,
+        observe_runtime_environment,
+    )
+
+    attention = observe_attention_runtime()
+    declarations = protocol["runtime_declarations"]
+    validate_backend_runtime({"backend_versions": {
+        "flash_attention_2": declarations["flash_attention_version"],
+        "flex_attention": declarations["flex_attention_version"],
+    }}, attention)
+    environment = observe_runtime_environment(attention)
+    validate_v4_runtime_environment(protocol, environment)
+    binding = protocol["execution_amendment"]["environment_binding"]
+    node_observation = validate_node_class_observation(binding, environment, os.environ)
+    checkpoint = _verify_checkpoint(repo, protocol, protocol_path)
+    _require(checkpoint["content_sha256"] == declarations["checkpoint_content_sha256"],
+             "J1 checkpoint declaration differs from rehashed contents")
+    node_observation["cuda_device"] = require_node_class_cuda_device(binding, torch)
+    free, _total = torch.cuda.mem_get_info(0)
+    _require(free >= authorization["min_free_gpu_bytes"],
+             "J1 GPU free memory is below the declared floor")
+    return checkpoint, node_observation
+
+
+def run_generator_pair(protocol_path, matrix_path, source_path, output):  # noqa: PLR0912, PLR0915
     repo = Path(__file__).resolve().parents[1]
     protocol_path, matrix_path = Path(protocol_path).resolve(), Path(matrix_path).resolve()
     source_path, output = Path(source_path).resolve(), Path(output).resolve()
-    _require(protocol_path in {repo / f"docs/r3_protocol_v{version}.json"
-                               for version in (12, 13, 14, 15, 16)}
-             and matrix_path == repo / "docs/r3_test_matrix_v3.json",
+    jz = protocol_path.parent == repo / "docs" and protocol_path.name.startswith("r3_protocol_jz_")
+    _require(jz or (protocol_path in {repo / f"docs/r3_protocol_v{version}.json"
+                                      for version in (12, 13, 14, 15, 16)}
+                    and matrix_path == repo / "docs/r3_test_matrix_v3.json"),
              "R3 pair requires its exact frozen v12-v16 protocol and matrix paths")
     bundle = load_protocol_bundle(protocol_path, matrix_path)
     protocol = bundle["protocol"]
-    _require(protocol["schema_version"] in {12, 13, 14, 15, 16}
-             and protocol_path.name == f"r3_protocol_v{protocol['schema_version']}.json",
-             "R3 pair protocol version/path mismatch")
-    auth = protocol["execution_amendment"]["authorization_record"]
-    _require(os.environ.get("CUDA_VISIBLE_DEVICES") == auth["gpu_uuid"]
-             and source_path == Path(auth["source"]["path"])
-             and output == Path(auth["output"])
-             and output.is_relative_to("/local_scratch2/gzappavi")
-             and not output.is_relative_to(repo)
-             and not output.exists(), "R3 pair input/GPU/output differs or attempt already exists")
+    if jz:
+        require_jz_protocol_path(repo, protocol_path, matrix_path, protocol)
+        auth = jz_authorization(protocol, STAGE)
+        _require(source_path == Path(auth["source"]["path"])
+                 and output == Path(auth["output"])
+                 and output.is_relative_to(JZ_RUN_ROOT)
+                 and not output.is_relative_to(repo)
+                 and not output.exists(), "J1 pair input/output differs or attempt already exists")
+        jz_blockers = stage_execution_blockers(protocol, STAGE)
+        _require(not jz_blockers, "J1 pair preflight blocked: " + ", ".join(jz_blockers))
+    else:
+        _require(protocol["schema_version"] in {12, 13, 14, 15, 16}
+                 and protocol_path.name == f"r3_protocol_v{protocol['schema_version']}.json",
+                 "R3 pair protocol version/path mismatch")
+        auth = protocol["execution_amendment"]["authorization_record"]
+        _require(os.environ.get("CUDA_VISIBLE_DEVICES") == auth["gpu_uuid"]
+                 and source_path == Path(auth["source"]["path"])
+                 and output == Path(auth["output"])
+                 and output.is_relative_to("/local_scratch2/gzappavi")
+                 and not output.is_relative_to(repo)
+                 and not output.exists(), "R3 pair input/GPU/output differs or attempt already exists")
     _require(sha256_file(source_path) == auth["source"]["sha256"],
              "R3 pair input source changed")
     blockers = stage_execution_blockers(protocol, STAGE)
     _require(not blockers, "R3 pair preflight blocked: " + ", ".join(blockers))
-    _verify_prerequisites(repo, protocol["execution_amendment"]["prerequisite_evidence"])
+    if jz:
+        verify_jz_prerequisites(repo, protocol, STAGE)
+    else:
+        _verify_prerequisites(repo, protocol["execution_amendment"]["prerequisite_evidence"])
     repositories = {name: repository_identity(path) for name, path in (
         ("parent", repo), ("wan", repo / "wan2.1"), ("lama", repo / "lama"))}
     _validate_v4_source_binding(repo, repositories, protocol)
     source = _read_json(source_path)
     manifests = expand_source(source_path, output, write=False)
-    by_route = validate_pair_plan(protocol, source, manifests, output)
+    by_route = validate_pair_plan(protocol, source, manifests, output, auth)
     _verify_bound_assets(auth, source)
     # All expensive checkpoint/hardware checks precede any model or task launch.
-    checkpoint = _preflight_runtime(protocol, repo, protocol_path, auth["gpu_uuid"])
+    if jz:
+        checkpoint, node_observation = preflight_jz_runtime(protocol, repo, protocol_path, auth)
+    else:
+        checkpoint = _preflight_runtime(protocol, repo, protocol_path, auth["gpu_uuid"])
     # Exclusive creation is the irreversible one-attempt marker. Never reuse this directory.
     output.mkdir(parents=True, exist_ok=False)
     base = {
@@ -257,10 +315,13 @@ def run_generator_pair(protocol_path, matrix_path, source_path, output):  # noqa
         "matrix_sha256": bundle["matrix_sha256"],
         "source_sha256": auth["source"]["sha256"],
         "checkpoint_content_sha256": checkpoint["content_sha256"],
-        "gpu_uuid": auth["gpu_uuid"],
         "started_at": dt.datetime.now(dt.UTC).isoformat(),
         "r3_acceptance": False,
     }
+    if jz:
+        base["j1_node_observation"] = node_observation
+    else:
+        base["gpu_uuid"] = auth["gpu_uuid"]
     completed = []
     def launch(route, manifest):
         manifest_path = output / "jobs" / f"{manifest['job_id']}.json"
@@ -294,8 +355,16 @@ def run_generator_pair(protocol_path, matrix_path, source_path, output):  # noqa
         return {"route": route, "job_id": manifest["job_id"],
                 "video_sha256": _hash_file(video), "evidence": evidence}
 
+    sampler = GpuMemorySampler() if jz else None
     try:
-        _run_pair_jobs(by_route, completed, launch)
+        if sampler is None:
+            _run_pair_jobs(by_route, completed, launch)
+        else:
+            try:
+                with sampler:
+                    _run_pair_jobs(by_route, completed, launch)
+            finally:
+                base["peak_gpu_memory"] = sampler.record()
         pair = source["r3_evidence"]["parity_pair"]
         artifacts = {}
         for route, manifest in by_route.items():

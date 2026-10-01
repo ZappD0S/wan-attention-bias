@@ -24,6 +24,13 @@ from .r3_contracts import (
     write_immutable_json,
 )
 from .r3_environment import observe_attention_runtime, observe_runtime_environment
+from .r3_jz import (
+    is_jz_protocol,
+    jz_authorization,
+    require_jz_protocol_path,
+    require_node_class_cuda_device,
+    validate_node_class_observation,
+)
 from .r3_preflight import validate_backend_runtime, validate_v4_runtime_environment
 
 STAGE_ID = "backend-kernel-canary"
@@ -110,7 +117,7 @@ def _run_sam2_canary():
     }
 
 
-def run_backend_canary(protocol_path, matrix_path, output_path):
+def run_backend_canary(protocol_path, matrix_path, output_path):  # noqa: PLR0912, PLR0915
     protocol_path = Path(protocol_path).resolve()
     matrix_path = Path(matrix_path).resolve()
     output_path = Path(output_path).resolve()
@@ -120,7 +127,13 @@ def run_backend_canary(protocol_path, matrix_path, output_path):
 
     bundle = load_protocol_bundle(protocol_path, matrix_path)
     protocol = bundle["protocol"]
-    if protocol["schema_version"] not in {5, 6, 10}:
+    jz = is_jz_protocol(protocol)
+    if jz:
+        require_jz_protocol_path(repo, protocol_path, matrix_path, protocol)
+        authorization = jz_authorization(protocol, STAGE_ID)
+        if str(output_path) != authorization["output"] or output_path.exists():
+            raise ValueError("J1 backend canary output differs from its bound one-attempt path")
+    elif protocol["schema_version"] not in {5, 6, 10}:
         raise ValueError("backend canary requires a bounded v5/v6/v10 authorization amendment")
     blockers = stage_execution_blockers(protocol, STAGE_ID)
     if blockers:
@@ -146,11 +159,18 @@ def run_backend_canary(protocol_path, matrix_path, output_path):
     )
     environment = observe_runtime_environment(attention_runtime)
     validate_v4_runtime_environment(protocol, environment)
+    node_observation = (
+        validate_node_class_observation(
+            protocol["execution_amendment"]["environment_binding"], environment, os.environ
+        )
+        if jz else None
+    )
 
     checkpoint_verified = None
-    if protocol["schema_version"] == 10:
+    if protocol["schema_version"] == 10 or jz:
         binding = protocol["execution_amendment"]["checkpoint_binding"]
-        inventory = repo / protocol["execution_amendment"]["authorization_record"]["checkpoint_inventory"]
+        record = authorization if jz else protocol["execution_amendment"]["authorization_record"]
+        inventory = repo / record["checkpoint_inventory"]
         checkpoint_verified = checkpoint_identity(
             protocol_path,
             {"path": binding["path"], "inventory": str(inventory),
@@ -162,6 +182,10 @@ def run_backend_canary(protocol_path, matrix_path, output_path):
                 or Path(checkpoint_verified["path"]).name != binding["snapshot_revision"]):
             raise RuntimeError("Bootes checkpoint identity differs from the v10 binding")
 
+    if jz:
+        node_observation["cuda_device"] = require_node_class_cuda_device(
+            protocol["execution_amendment"]["environment_binding"], torch
+        )
     if not torch.cuda.is_available():
         raise RuntimeError("CUDA is unavailable for the authorized backend canary")
     if torch.cuda.device_count() != 1:
@@ -185,6 +209,8 @@ def run_backend_canary(protocol_path, matrix_path, output_path):
             "sam2_connected_components": _run_sam2_canary(),
         }
     finished_at = dt.datetime.now(dt.UTC).isoformat()
+    if jz:
+        node_observation["peak_cuda_memory_allocated_bytes"] = torch.cuda.max_memory_allocated(0)
 
     record = {
         "schema_version": 1,
@@ -217,6 +243,8 @@ def run_backend_canary(protocol_path, matrix_path, output_path):
             "distributed_execution_performed": False,
         },
     }
+    if jz:
+        record["j1_node_observation"] = node_observation
     write_immutable_json(output_path, record)
     return {
         "status": "passed",

@@ -43,6 +43,7 @@ V15_PROTOCOL_SHA256 = "4a2c349ca69459653237ab5f91ac504d3f6d96d2d497fec1e071f6b49
 V16_PROTOCOL_SHA256 = "11943c853b07b5e8910bbd0f3a5409ddd2e254f1aebb58849d761ebb1f78e24e"
 V17_PROTOCOL_SHA256 = "fe76507f6647e759401d51d37f503526e1ebd740cc76154251814b1e690e1c3a"
 V18_PROTOCOL_SHA256 = "2a2ff18ee749f15179fc5874636680dfe0a954877e67fca2df6213bbf40af378"
+V19_PROTOCOL_SHA256 = "4039b2e933ad15730184f9e968c3394e685291ca3402a2b7f7f4e66c2cadb483"
 R3_STAGE_IDS = (
     "backend-kernel-canary",
     "checkpoint-load-hook-canary",
@@ -1781,12 +1782,23 @@ def _validate_protocol_lineage(protocol, schema_version):
 def validate_protocol(protocol, matrix, *, matrix_sha256):
     _require(isinstance(protocol, dict), "protocol must be a JSON object")
     schema_version = protocol.get("schema_version")
-    _require(type(schema_version) is int and schema_version in range(1, 20), "unsupported R3 protocol schema_version")
-    _require(
-        protocol.get("protocol_id") == f"r3-gpu-contracts-v{schema_version}",
-        "unexpected R3 protocol_id",
+    # J1 Jean Zay branch: structural v19 schema under its own protocol identity.
+    from .r3_jz import (  # noqa: PLC0415
+        is_jz_protocol,
+        validate_jz_execution_amendment,
+        validate_jz_protocol_identity,
     )
-    _validate_protocol_lineage(protocol, schema_version)
+
+    jz = is_jz_protocol(protocol)
+    if jz:
+        validate_jz_protocol_identity(protocol)
+    else:
+        _require(type(schema_version) is int and schema_version in range(1, 20), "unsupported R3 protocol schema_version")
+        _require(
+            protocol.get("protocol_id") == f"r3-gpu-contracts-v{schema_version}",
+            "unexpected R3 protocol_id",
+        )
+        _validate_protocol_lineage(protocol, schema_version)
     _require(protocol.get("status") == "in-progress", "R3 protocol must remain in-progress")
     matrix_ref = protocol.get("matrix")
     _require(isinstance(matrix_ref, dict), "protocol matrix reference is missing")
@@ -1877,7 +1889,9 @@ def validate_protocol(protocol, matrix, *, matrix_sha256):
             },
             "R3 protocol v3+ backend contract is missing or unexpected",
         )
-    if schema_version >= 4:
+    if jz:
+        validate_jz_execution_amendment(protocol)
+    elif schema_version >= 4:
         {
             4: _validate_v4_execution_amendment,
             5: _validate_v5_execution_amendment,
@@ -1967,6 +1981,10 @@ def _pristine_route_blockers(protocol):
 def stage_execution_blockers(protocol, stage_id):
     """Return blockers for one explicitly authorized bounded stage."""
     blockers = _base_execution_blockers(protocol)
+    from .r3_jz import is_jz_protocol, jz_stage_execution_blockers  # noqa: PLC0415
+
+    if is_jz_protocol(protocol):
+        return jz_stage_execution_blockers(protocol, stage_id, blockers)
     if protocol["schema_version"] not in {5, 6, 7, 8, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19}:
         return [*blockers, "stage-scoped-authorization-unavailable"]
     amendment = protocol["execution_amendment"]

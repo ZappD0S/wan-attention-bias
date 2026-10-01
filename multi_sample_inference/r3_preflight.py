@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 
 from .r3_contracts import (
@@ -13,6 +14,7 @@ from .r3_contracts import (
     load_protocol_bundle,
     stage_execution_blockers,
 )
+from .r3_jz import J1_STAGE_IDS, is_jz_protocol, validate_node_class_observation
 
 
 def validate_backend_runtime(dispatch_contract, observations):
@@ -47,6 +49,10 @@ def validate_v4_runtime_environment(protocol, observations):
     if protocol.get("schema_version", 0) < 4:
         return True
     expected = protocol["execution_amendment"]["environment_binding"]
+    if is_jz_protocol(protocol):
+        # J1 node class: exact package/driver/model match; host and GPU UUID are evidence.
+        validate_node_class_observation(expected, observations, os.environ)
+        return True
     if not isinstance(observations, dict) or set(observations) != set(expected):
         raise ValueError("R3 v4+ runtime environment observations are incomplete")
     mismatches = [
@@ -95,7 +101,7 @@ def main(argv=None):
     parser.add_argument("--protocol", required=True, type=Path)
     parser.add_argument("--matrix", required=True, type=Path)
     parser.add_argument("--execution", action="store_true")
-    parser.add_argument("--stage", choices=R3_STAGE_IDS)
+    parser.add_argument("--stage", choices=sorted({*R3_STAGE_IDS, *J1_STAGE_IDS}))
     args = parser.parse_args(argv)
     print(
         json.dumps(
