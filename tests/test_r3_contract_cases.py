@@ -10,6 +10,7 @@ from multi_sample_inference import r3_contract_cases as cases
 from multi_sample_inference.r3_contracts import (
     STAGE4_SOURCES,
     STAGE4_V18_SOURCES,
+    STAGE4_V19_SOURCES,
     sha256_file,
     stage_execution_blockers,
     validate_protocol,
@@ -230,7 +231,6 @@ def test_v18_reruns_only_contract_cases_with_the_bound_validator_fix():
     assert validate_protocol(protocol, matrix, matrix_sha256=sha256_file(MATRIX))
     assert stage_execution_blockers(protocol, cases.STAGE) == []
     assert stage_execution_blockers(protocol, "intended-rank-fsdp")
-    assert cases.SCHEMA_VERSION == 18
     old = json.loads((ROOT / "docs/r3_protocol_v17.json").read_text())["execution_amendment"]
     for change in (
         lambda p: p["execution_amendment"]["production_component_hashes"].update(
@@ -243,6 +243,63 @@ def test_v18_reruns_only_contract_cases_with_the_bound_validator_fix():
         lambda p: p["execution_amendment"]["authorization_record"].update(expected_jobs=195),
         lambda p: p["execution_amendment"]["stage_gates"][4].update(authorization="approved"),
         lambda p: p["execution_amendment"]["source_binding"].update(wan_revision="0" * 40),
+    ):
+        changed = copy.deepcopy(protocol)
+        change(changed)
+        with pytest.raises(ValueError):
+            validate_protocol(changed, matrix, matrix_sha256=sha256_file(MATRIX))
+
+
+WAN_V19 = {"commit": "4b822d5b053e8383a5bd76b25f58b75cb3344602",
+           "tree": "bc214c83dcecc0c5342741abce1bca96f119e581"}
+
+
+def _synthetic_v19():
+    protocol = json.loads((ROOT / "docs/r3_protocol_v18.json").read_text())
+    protocol["schema_version"] = 19
+    protocol["protocol_id"] = "r3-gpu-contracts-v19"
+    protocol["lineage"] = {"protocol_id": "r3-gpu-contracts-v18",
+                           "sha256": sha256_file(ROOT / "docs/r3_protocol_v18.json")}
+    amendment = protocol["execution_amendment"]
+    amendment["amendment_id"] = "r3-gpu-execution-amendment-v19"
+    amendment["source_binding"]["parent_revision_at_freeze"] = "1" * 40
+    amendment["source_binding"]["parent_production_content_sha256"] = "a" * 64
+    amendment["source_binding"]["wan_revision"] = WAN_V19["commit"]
+    amendment["route_process_bindings"]["local-custom"]["checkout"] = dict(WAN_V19)
+    for index, name in enumerate(("r3_contracts.py", "r3_contract_cases.py")):
+        amendment["production_component_hashes"][name] = str(index) * 64
+    record = amendment["authorization_record"]
+    output = f"{ROOT_INPUT}/contract-cases-attempt-3"
+    record["command"] = record["command"].replace("r3_protocol_v18.json", "r3_protocol_v19.json").replace(
+        f"--output {record['output']}", f"--output {output}")
+    record["output"] = output
+    record["sources"] = {name: {"path": f"{ROOT_INPUT}/input/source-stage4-v19-{name}.json",
+                                "sha256": digest} for name, digest in STAGE4_V19_SOURCES.items()}
+    return protocol
+
+
+def test_v19_reruns_only_contract_cases_with_the_bound_mask_sharing_fix():
+    protocol = _synthetic_v19()
+    matrix = json.loads(MATRIX.read_text())
+    assert validate_protocol(protocol, matrix, matrix_sha256=sha256_file(MATRIX))
+    assert stage_execution_blockers(protocol, cases.STAGE) == []
+    assert stage_execution_blockers(protocol, "intended-rank-fsdp")
+    assert cases.SCHEMA_VERSION == 19
+    old = json.loads((ROOT / "docs/r3_protocol_v18.json").read_text())["execution_amendment"]
+    for change in (
+        lambda p: p["execution_amendment"]["production_component_hashes"].update(
+            {"experiment_pipeline.py": "0" * 64}),
+        lambda p: p["execution_amendment"]["production_component_hashes"].update(
+            {"r3_contract_cases.py": old["production_component_hashes"]["r3_contract_cases.py"]}),
+        lambda p: p["execution_amendment"]["source_binding"].update(
+            wan_revision=old["source_binding"]["wan_revision"]),
+        lambda p: p["execution_amendment"]["route_process_bindings"]["local-custom"].update(
+            checkout=old["route_process_bindings"]["local-custom"]["checkout"]),
+        lambda p: p["execution_amendment"]["authorization_record"].update(output=old["authorization_record"]["output"]),
+        lambda p: p["execution_amendment"]["authorization_record"]["sources"]["dpmpp-flex"]
+        .update(sha256=STAGE4_V18_SOURCES["dpmpp-flex"]),
+        lambda p: p["execution_amendment"]["authorization_record"].update(expected_jobs=153),
+        lambda p: p["execution_amendment"]["stage_gates"][4].update(authorization="approved"),
     ):
         changed = copy.deepcopy(protocol)
         change(changed)
