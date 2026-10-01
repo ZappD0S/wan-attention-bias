@@ -1,0 +1,1879 @@
+{
+  "schema_version": 19,
+  "protocol_id": "r3-gpu-contracts-jz-v5",
+  "status": "in-progress",
+  "frozen_at": "2026-10-01T15:41:33Z",
+  "claim_boundary": "R3 stage 4 on one Jean Zay A100 node class: only the approved single-rank contract-case chunks may run, once each, in order, each on one SLURM-allocated A100 after its predecessor passed; the canary and pair keep their passed attempts. No distributed execution, scientific claim, or bitwise cross-architecture claim.",
+  "lineage": {
+    "protocol_id": "r3-gpu-contracts-jz-v4",
+    "sha256": "d94cd662bc00fd87ff3e23562e62fbdc6c77aaf07617db57479d361c7734867a"
+  },
+  "matrix": {
+    "path": "docs/r3_test_matrix_v3.json",
+    "matrix_id": "r3-gpu-contract-matrix-v3",
+    "sha256": "e1776af152b3b0594c3af7497ffe95ec31db263fc9e3974bc9ea3c1d838fbd86"
+  },
+  "approvals": {
+    "gpu_execution": "approved",
+    "hardware_environment": "approved"
+  },
+  "runtime_hooks": {
+    "initial_latent_all_rank": "implemented-source-hook-gpu-unvalidated",
+    "all_rank_masks_and_self_cross": "implemented-source-hook-gpu-unvalidated",
+    "cfg_branch_outputs": "implemented-source-hook-gpu-unvalidated",
+    "actual_attention_backend": "implemented-source-hook-gpu-unvalidated",
+    "fixed_tracker_call_count": "implemented-source-hook-gpu-unvalidated",
+    "full_generator_parity": "implemented-source-hook-gpu-unvalidated"
+  },
+  "runtime_declarations": {
+    "checkpoint_content_sha256": "80c954fbb46c39139a300a7dd41ed5a8b1c6b11c5f952c1bfb3c763d6e73ebb7",
+    "hardware_identifier": "15a5580eae7b351b235656884f17970142342a161525729efeb061e5748e6df5",
+    "torch_version": "2.10.0+cu128",
+    "cuda_version": "12.8",
+    "flash_attention_version": "2.8.3",
+    "flex_attention_version": "2.10.0+cu128",
+    "intended_fsdp_rank_count": 2
+  },
+  "numerical_tolerances": {
+    "full_generator_parity": {
+      "atol": 1e-05,
+      "rtol": 0.016,
+      "amendment_required": false
+    }
+  },
+  "exact_contracts": {
+    "rank_initial_latent_hashes": "exact-equality",
+    "mask_identity_hashes": "exact-equality",
+    "finiteness": "all-values-finite",
+    "cardinality": "exact"
+  },
+  "source_hook_state": {
+    "implementation_scope": "sol-bootes-v9-cpu-source-preparation",
+    "default_behavior": "observer-uninstalled-no-op",
+    "collector": "bounded-digest-metadata-within-event-alias-cache-only",
+    "distributed_gather": "rank-local-ordinals-all-ranks-call-rank-zero-receives",
+    "contract_validation_gate": "fully-approved-declared-amendment-may-run-with-gpu-unvalidated-hooks",
+    "evidence_acceptance_gate": "all-source-hooks-must-be-gpu-validated-and-marked-implemented",
+    "gpu_validation": "not-run"
+  },
+  "parity_artifact_state": {
+    "producer": "bounded-immutable-numpy-artifact",
+    "consumer": "offline-chunked-numerical-comparator",
+    "accepted_evidence_class": "not-enabled",
+    "gpu_validation": "not-run"
+  },
+  "execution_state": {
+    "cpu_schema_and_preflight": "prepared",
+    "checkpoint_bound_gpu_runtime": "not-run-on-jean-zay-a100",
+    "flash_attention_2": "not-run-on-jean-zay-a100",
+    "flex_attention": "not-run-on-jean-zay-a100",
+    "single_rank": "not-run-on-jean-zay-a100",
+    "intended_fsdp_ranks": "not-run-on-jean-zay-a100",
+    "full_generator_parity": "not-run-on-jean-zay-a100",
+    "flash_attention_3": "not-run-on-jean-zay-a100"
+  },
+  "amendment_rule": "Stop after each approved stage attempt, including partial failure. Any retry, later stage, threshold change or binding change requires fresh user approval and a new jz version.",
+  "backend_contract": {
+    "request_semantics": "expected-self-attention-coverage",
+    "flash_attention_3": "unsupported-fail-before-model-load",
+    "flash_attention_2": "required-for-all-routes",
+    "flex_attention": "declared-and-available-dispatched-only-when-derived",
+    "dispatch_derivation": "trusted-route-method-self-routing-and-schedules"
+  },
+  "execution_amendment": {
+    "amendment_id": "r3-gpu-execution-amendment-jz-v5",
+    "authorization_state": "approved-bounded-stage",
+    "source_binding": {
+      "parent_revision_at_freeze": "0533f0da66b49f04bf24094e872eeed5e4306d18",
+      "parent_production_paths": [
+        "multi_sample_inference",
+        "pyproject.toml",
+        "uv.lock"
+      ],
+      "parent_production_content_sha256": "e4914810fb6eb09de6920e986e9024bc212af273b33fcbf72688b63c03f7ecc9",
+      "wan_revision": "4b822d5b053e8383a5bd76b25f58b75cb3344602",
+      "lama_revision": "469acc7358a1c6828b647b4ee20c93474a2f36b4",
+      "require_clean_worktrees": true,
+      "manifest_repository_identity": "exact-head-and-dirty-fingerprint"
+    },
+    "checkpoint_binding": {
+      "identifier": "Wan-AI/Wan2.1-I2V-14B-480P@6b73f84e66371cdfe870c72acd6826e1d61cf279",
+      "snapshot_revision": "6b73f84e66371cdfe870c72acd6826e1d61cf279",
+      "inventory_sha256": "e6b7adbd6f6e5dfcb7fa06e09d5d2edfcb179e80ff25f1c743567d1948701dd4",
+      "content_sha256": "80c954fbb46c39139a300a7dd41ed5a8b1c6b11c5f952c1bfb3c763d6e73ebb7",
+      "path": "/lustre/fswork/projects/rech/xvh/ukl39yh/.cache/huggingface/hub/models--Wan-AI--Wan2.1-I2V-14B-480P/snapshots/6b73f84e66371cdfe870c72acd6826e1d61cf279"
+    },
+    "environment_binding": {
+      "binding_kind": "node-class",
+      "python_version": "3.11.13",
+      "torch_version": "2.10.0+cu128",
+      "cuda_runtime_version": "12.8",
+      "flash_attention_version": "2.8.3",
+      "flex_attention_version": "2.10.0+cu128",
+      "sam2_version": "1.1.0",
+      "driver_version": "595.71.05",
+      "gpu_model": "NVIDIA A100-SXM4-80GB",
+      "gpu_compute_capability": "8.0",
+      "visible_gpu_count": 1,
+      "hostname_pattern": "^jean-zay-iam[0-9]{2}$",
+      "scheduler": {
+        "system": "slurm",
+        "partition": "gpu_p5",
+        "account": "xvh@a100",
+        "constraint": "a100"
+      },
+      "pyproject_sha256": "1c5028d1c669b2c4bfd1c8f7fcdcb8a28b2f1acd1dde9cefa79d8b663784862b",
+      "uv_lock_sha256": "1be5614ef4f6ab8b44fd1f8b743b30a3a2ae77efaac96740c0d74b4a77fb2de3"
+    },
+    "provisioning_binding": {
+      "cuda_module": "cuda/12.8.0",
+      "cuda_toolkit_path": "/lustre/fshomisc/sys/common/nvidia/cuda/12.8",
+      "nvcc_version": "12.8.61",
+      "flash_attention_distribution_version": "2.8.3+cu128torch2.10",
+      "flash_attention_wheel_sha256": "e3976faa725618328617934fb773cae337408f91569b5ca4aadcef833c523f9d",
+      "static_sm80_cubins": [
+        "flash_attention_2",
+        "sam2"
+      ],
+      "uv_version": "0.12.17",
+      "uv_tarball_sha256": "fa82fd8dde8e8eefdecada6aa0889666556cfceb690d06e0c3bca49eb3070a63",
+      "build_recipe": {
+        "path": "tools/j1_jeanzay_sync_env.sh",
+        "sha256": "8f1c5cd33435d47853624bed22fa00453d4b1617bdd417e5eccbdf7fcb88833a"
+      }
+    },
+    "rank_decision": {
+      "intended_fsdp_rank_count": 2,
+      "basis": "Inherited R3 declaration for a future amendment; J1 runs no distributed stage."
+    },
+    "tolerance_decision": {
+      "atol": 1e-05,
+      "rtol": 0.016,
+      "basis": "Predeclared two-BF16-epsilon relative allowance with a near-zero absolute floor; shape, dtype, finiteness, identities and exact-contract checks remain separate hard gates.",
+      "u1_values_not_inherited": true
+    },
+    "cross_architecture_decision": {
+      "gate": "step0-divergence-probe-stages-vs-retained-bootes-pristine-capture",
+      "bitwise_stage_patterns": [
+        "encoder/clip/*/input/*",
+        "encoder/vae/*/input/*"
+      ],
+      "relative_l2_max": 0.02,
+      "relative_l2_definition": "float64 ||a-b||_2 / ||b||_2, complex via view_as_real",
+      "zero_reference_norm": "bitwise",
+      "value_stages": "exact-equality",
+      "shapes_dtypes_finiteness": "identical-shape-dtype-all-finite",
+      "allowed_candidate_only_stages": {
+        "official-pristine": [],
+        "local-custom": [
+          "encoder/t5/72f6646e35e0e69d/0"
+        ]
+      },
+      "final_latent_vs_bootes_v16": "report-only-max-abs-relative-l2-cosine",
+      "decoded_video_vs_bootes_v16": "report-only-psnr",
+      "relaxation_after_measurement": "forbidden"
+    },
+    "stage_gates": [
+      {
+        "id": "backend-kernel-canary",
+        "prerequisites": [],
+        "scope": "One bounded FA2, flex-attention and SAM2 CUDA canary on one SLURM-allocated A100 of the declared node class; checkpoint identity rehash only, no model load.",
+        "stop_on": [
+          "node-class-mismatch",
+          "environment-identity-mismatch",
+          "FA3-availability",
+          "kernel-error",
+          "nonfinite-output"
+        ],
+        "authorization": "approved"
+      },
+      {
+        "id": "step0-cross-architecture-probe",
+        "prerequisites": [
+          "backend-kernel-canary"
+        ],
+        "scope": "Withdrawn by the 2026-10-01 post-measurement amendment: the A100 capture ran out of memory and CUDA initial noise differs across GPU models.",
+        "stop_on": [
+          "pristine-route-identity-or-isolation-failure",
+          "probe-capture-failure",
+          "reference-capture-identity-mismatch",
+          "cross-architecture-gate-failure"
+        ],
+        "authorization": "not-approved"
+      },
+      {
+        "id": "single-rank-generator-canary",
+        "prerequisites": [
+          "backend-kernel-canary"
+        ],
+        "scope": "One single-rank checkpoint-bound official-pristine/custom-none pair on one A100 under the unchanged R3 parity rule; comparison with the Bootes v16 latent is report-only.",
+        "stop_on": [
+          "pristine-route-identity-or-isolation-failure",
+          "parity-failure",
+          "finiteness-failure",
+          "seed-mismatch",
+          "hook-cardinality-failure"
+        ],
+        "authorization": "approved"
+      },
+      {
+        "id": "single-rank-contract-cases-chunk-1",
+        "prerequisites": [
+          "backend-kernel-canary",
+          "single-rank-generator-canary"
+        ],
+        "waived_prerequisites": [
+          {
+            "stage_id": "checkpoint-load-hook-canary",
+            "rationale": "Waived on Jean Zay; the v19 stage-4 prerequisite never ran on an A100. R3's code-level hook-neutrality conclusion (Pollux v7: observer/no-observer layer-0 outputs bitwise identical) carries over through the passed J1 gate (within-A100 official-pristine/custom-none code equivalence), and the jz-v4 A100 pair validated source-hook cardinality and finiteness for both routes. The user may reject this waiver before freezing; a rejection requires an A100 hook-canary stage first."
+          }
+        ],
+        "scope": "Chunk 1 of 4 of the runnable v3 single-rank contract cases: exactly its frozen ordered job ids, each in an isolated route process on one SLURM-allocated A100 with offload_model=True, stopping at the first failure; rejected v3 lineage cases remain pre-launch failures.",
+        "stop_on": [
+          "node-class-mismatch",
+          "previous-chunk-not-passed",
+          "chunk-plan-mismatch",
+          "backend-route-mismatch",
+          "mask-identity-failure",
+          "tracker-contract-failure",
+          "artifact-failure",
+          "parity-failure"
+        ],
+        "authorization": "approved"
+      },
+      {
+        "id": "single-rank-contract-cases-chunk-2",
+        "prerequisites": [
+          "backend-kernel-canary",
+          "single-rank-generator-canary",
+          "single-rank-contract-cases-chunk-1"
+        ],
+        "waived_prerequisites": [
+          {
+            "stage_id": "checkpoint-load-hook-canary",
+            "rationale": "Waived on Jean Zay; the v19 stage-4 prerequisite never ran on an A100. R3's code-level hook-neutrality conclusion (Pollux v7: observer/no-observer layer-0 outputs bitwise identical) carries over through the passed J1 gate (within-A100 official-pristine/custom-none code equivalence), and the jz-v4 A100 pair validated source-hook cardinality and finiteness for both routes. The user may reject this waiver before freezing; a rejection requires an A100 hook-canary stage first."
+          }
+        ],
+        "scope": "Chunk 2 of 4 of the runnable v3 single-rank contract cases: exactly its frozen ordered job ids, each in an isolated route process on one SLURM-allocated A100 with offload_model=True, stopping at the first failure; rejected v3 lineage cases remain pre-launch failures.",
+        "stop_on": [
+          "node-class-mismatch",
+          "previous-chunk-not-passed",
+          "chunk-plan-mismatch",
+          "backend-route-mismatch",
+          "mask-identity-failure",
+          "tracker-contract-failure",
+          "artifact-failure",
+          "parity-failure"
+        ],
+        "authorization": "approved"
+      },
+      {
+        "id": "single-rank-contract-cases-chunk-3",
+        "prerequisites": [
+          "backend-kernel-canary",
+          "single-rank-generator-canary",
+          "single-rank-contract-cases-chunk-2"
+        ],
+        "waived_prerequisites": [
+          {
+            "stage_id": "checkpoint-load-hook-canary",
+            "rationale": "Waived on Jean Zay; the v19 stage-4 prerequisite never ran on an A100. R3's code-level hook-neutrality conclusion (Pollux v7: observer/no-observer layer-0 outputs bitwise identical) carries over through the passed J1 gate (within-A100 official-pristine/custom-none code equivalence), and the jz-v4 A100 pair validated source-hook cardinality and finiteness for both routes. The user may reject this waiver before freezing; a rejection requires an A100 hook-canary stage first."
+          }
+        ],
+        "scope": "Chunk 3 of 4 of the runnable v3 single-rank contract cases: exactly its frozen ordered job ids, each in an isolated route process on one SLURM-allocated A100 with offload_model=True, stopping at the first failure; rejected v3 lineage cases remain pre-launch failures.",
+        "stop_on": [
+          "node-class-mismatch",
+          "previous-chunk-not-passed",
+          "chunk-plan-mismatch",
+          "backend-route-mismatch",
+          "mask-identity-failure",
+          "tracker-contract-failure",
+          "artifact-failure",
+          "parity-failure"
+        ],
+        "authorization": "approved"
+      },
+      {
+        "id": "single-rank-contract-cases-chunk-4",
+        "prerequisites": [
+          "backend-kernel-canary",
+          "single-rank-generator-canary",
+          "single-rank-contract-cases-chunk-3"
+        ],
+        "waived_prerequisites": [
+          {
+            "stage_id": "checkpoint-load-hook-canary",
+            "rationale": "Waived on Jean Zay; the v19 stage-4 prerequisite never ran on an A100. R3's code-level hook-neutrality conclusion (Pollux v7: observer/no-observer layer-0 outputs bitwise identical) carries over through the passed J1 gate (within-A100 official-pristine/custom-none code equivalence), and the jz-v4 A100 pair validated source-hook cardinality and finiteness for both routes. The user may reject this waiver before freezing; a rejection requires an A100 hook-canary stage first."
+          }
+        ],
+        "scope": "Chunk 4 of 4 of the runnable v3 single-rank contract cases: exactly its frozen ordered job ids, each in an isolated route process on one SLURM-allocated A100 with offload_model=True, stopping at the first failure; rejected v3 lineage cases remain pre-launch failures.",
+        "stop_on": [
+          "node-class-mismatch",
+          "previous-chunk-not-passed",
+          "chunk-plan-mismatch",
+          "backend-route-mismatch",
+          "mask-identity-failure",
+          "tracker-contract-failure",
+          "artifact-failure",
+          "parity-failure"
+        ],
+        "authorization": "approved"
+      }
+    ],
+    "upstream_provenance_binding": {
+      "record": {
+        "path": "docs/r3_upstream_provenance.json",
+        "sha256": "7db6e5cf983c181aed11e4631f98b625a640bd159fed485fbb7c4f7d9266ad33"
+      },
+      "comparison_digest_sha256": "e54a8ca9757a2ade239c38a848a83a8681327d1ff44c58d343b22410abad422f",
+      "decision": "separate-pristine-route-required",
+      "official_source": {
+        "repository_url": "https://github.com/Wan-Video/Wan2.1.git",
+        "commit": "7c81b2f27defa56c7e627a4b6717c8f2292eee58",
+        "tree": "91b74dfa24e32dc86350fe2ef2b5f2f2e06f6ee9",
+        "require_clean_detached_checkout": true
+      },
+      "local_source": {
+        "commit": "00bde1e719ccb56c66a01a1f18a70c49b278c202",
+        "tree": "ee7dddb233e6acc14a89cf96951cca6536587fee"
+      },
+      "route_contract": {
+        "upstream": "separate-pristine-checkout",
+        "custom_none": "pinned-local-wan-checkout",
+        "process_isolation": "separate-python-processes-no-shared-wan-modules",
+        "pristine_source_mutation": "forbidden",
+        "observation_adapter": "implemented-exact-hash-binding",
+        "implementation_state": "implemented-and-cpu-validated"
+      }
+    },
+    "production_component_hashes": {
+      "experiment_pipeline.py": "5dcaa4576cc64ad6d9994ff5ff2a55fbb63a549d8abd53f16b1a668c7dde5379",
+      "fsdp_worker.py": "ef8c946fa066e41febd4eb4783a2d0ecf97ef4ea6525593438cf2ef2099dbfa8",
+      "r3_checkout_binding.py": "8b39355e7cfeafb40fe95248592f7ca9baa5b76b9999294ff620d0f285f2ac10",
+      "r3_route_isolation.py": "f8ffc89cbbe03cee12af799631ce4f5dc2f76a64daa1cbcec8c04b0f02b2450b",
+      "r3_pristine_adapter.py": "7f89aa4ba590b7fd810d8e6c0282717663e4151c93bd5e88366c0172323b7e77",
+      "r3_contracts.py": "ffe89433509b5df3ecf9ffc8596febad1d3e3ac25af38a3f41ed59a91c18a480",
+      "r3_checkpoint_hook_canary.py": "437ce26b9bf0e5def3a43033f0d193b9e31f76dc8ee48f61234a14504a0192df",
+      "r3_generator_pair.py": "ca3ac0e93914381374db534b15540334c070e9213f19da8447ad4be9e90660f2",
+      "r3_contract_cases.py": "1e143cbf48b9dbca4989d0aeee70077f3470915036caf94772feeb9bad620b7f",
+      "j1_stage.py": "b67662eaee033fab0a07f6d870c6624910b19167b859b3c3a9b54c8902ed470b",
+      "j1_step0_probe.py": "93bedffd96a414cacecd574020cbe558492fc27a0bb1c80bd3c3ca3b4ecd7d2f",
+      "r3_backend_canary.py": "83f888dfd690f99cb25eee6ece6b2fd00b2f6d87d5f7d836727cf95e6e51c72c",
+      "r3_divergence_probe.py": "9ff96846817b49432952f0329765b91e21b7edb0319412033ea85b0953d8003a",
+      "r3_environment.py": "dbf1140b887fab78f5b50aa0018e7d5c258cda9e580c7a79b121798eb8660fdd",
+      "r3_jz.py": "a07f24bca74b868406566752151f1a03644ba1cfa73422a1397ad9214f4accb1",
+      "r3_preflight.py": "2c3106f7dec8c65b46db4810865ed292b7a81f045f38d56fd6f560c13d6e735d"
+    },
+    "route_process_bindings": {
+      "official-pristine": {
+        "route": "official-pristine",
+        "wan_root": "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_pristine-Wan2.1",
+        "source_files": {
+          "wan/image2video.py": "ab3906d53831c2a6717e543a02d66c13377910257ae710705515bd826212b924",
+          "wan/modules/model.py": "c1572ade3bf7345bd4c00d4a19535788fab62f9c08b5aeb15f6d01f4435bb47a",
+          "wan/modules/attention.py": "23fe7c6f6e4065242d95e5e188cb2d1a16bd283f05dca7e7e878977158fcfdbc"
+        },
+        "adapter": {
+          "path": "/lustre/fswork/projects/rech/xvh/ukl39yh/wan_experiments_j1/multi_sample_inference/r3_pristine_adapter.py",
+          "sha256": "7f89aa4ba590b7fd810d8e6c0282717663e4151c93bd5e88366c0172323b7e77"
+        },
+        "checkout": {
+          "commit": "7c81b2f27defa56c7e627a4b6717c8f2292eee58",
+          "tree": "91b74dfa24e32dc86350fe2ef2b5f2f2e06f6ee9"
+        }
+      },
+      "local-custom": {
+        "route": "local-custom",
+        "wan_root": "/lustre/fswork/projects/rech/xvh/ukl39yh/wan_experiments_j1/wan2.1",
+        "source_files": {
+          "wan/image2video.py": "54805c566441ffeec8d90121eb9af8944dc4c281f8e11141e2926eaffa097ab0",
+          "wan/modules/model.py": "c7aef0bf587c8bffb3bd018aa6637935aae6e5a0b44b8b85c33f7e08afd829b1",
+          "wan/modules/attention.py": "4bf8975015f74b85f581c1491ef66ccafce4537e6db88b67c350daaf79804378",
+          "wan/modules/custom_model.py": "7e8676233e00e440ade32cbaf97133b694e01629113b602737ecb2952c82cc15"
+        },
+        "adapter": null,
+        "checkout": {
+          "commit": "4b822d5b053e8383a5bd76b25f58b75cb3344602",
+          "tree": "bc214c83dcecc0c5342741abce1bca96f119e581"
+        }
+      }
+    },
+    "authorization_record": {
+      "backend-kernel-canary": {
+        "authorized_stage": "backend-kernel-canary",
+        "authorization_source": "explicit-current-session-user-approval",
+        "command": "sbatch tools/j1_slurm_stage.sh backend-kernel-canary docs/r3_protocol_jz_v5.json",
+        "checkpoint_inventory": "docs/u1_checkpoint_inventory.json",
+        "stop_after_stage": true,
+        "authorized_operations": [
+          "verify-jean-zay-node-class-source-environment-and-checkpoint",
+          "fa2-flex-sam2-cuda-canaries"
+        ],
+        "prohibited_operations": [
+          "checkpoint-or-model-load",
+          "generation",
+          "distributed-execution",
+          "repeat-attempt",
+          "later-stage-execution",
+          "scientific-claim"
+        ],
+        "output": "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/backend-canary/attempt-2/backend-kernel-canary.json"
+      },
+      "step0-cross-architecture-probe": {
+        "authorized_stage": "step0-cross-architecture-probe",
+        "authorization_source": "explicit-current-session-user-approval",
+        "command": "sbatch tools/j1_slurm_stage.sh step0-cross-architecture-probe docs/r3_protocol_jz_v5.json",
+        "checkpoint_inventory": "docs/u1_checkpoint_inventory.json",
+        "stop_after_stage": true,
+        "authorized_operations": [
+          "verify-jean-zay-node-class-source-environment-checkpoint-and-prerequisites",
+          "two-sequential-isolated-single-rank-step0-probe-captures",
+          "cpu-cross-architecture-comparison"
+        ],
+        "prohibited_operations": [
+          "repeat-attempt",
+          "additional-jobs",
+          "full-generation",
+          "distributed-execution",
+          "later-stage-execution",
+          "scientific-claim"
+        ],
+        "source": {
+          "path": "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/inputs/jz_v4/source-j1-pair.json",
+          "sha256": "f7e2ddf8e67c05a0a6abba301d3b6bf59f9d23d84bc94e6f1928da8fea3851f3"
+        },
+        "assets": {
+          "reference.png": {
+            "path": "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/reference/bootes-inputs/reference.png",
+            "sha256": "3f24239d8b0eef18cb022f46ef81b9a0bbcbe76cab9bffe3bf018b94be6ca17b"
+          },
+          "mask-left.png": {
+            "path": "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/reference/bootes-inputs/mask-left.png",
+            "sha256": "ec534110d2c7c022847e2e9edcd1bb2c3bdeffa807cd43e336382dfce572b7bd"
+          },
+          "mask-right.png": {
+            "path": "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/reference/bootes-inputs/mask-right.png",
+            "sha256": "f7c53ec340a68e501182bb2987750bfaecb7dfc9d57536edbf36a6c629820b56"
+          }
+        },
+        "reference_capture": {
+          "path": "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/reference/bootes-divergence-probe-pristine",
+          "manifest_sha256": null,
+          "report": {
+            "path": "docs/r3_evidence/bootes-divergence-probe-pristine-vs-local-fixed.json",
+            "sha256": "f074512e0a9172f5d779d35399ac1992e8488c745c75a1168218f77a5e73c05c"
+          }
+        },
+        "output": "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/step0-probe/attempt-1",
+        "min_free_gpu_bytes": 75161927680,
+        "job_timeout_seconds": 1800
+      },
+      "single-rank-generator-canary": {
+        "authorized_stage": "single-rank-generator-canary",
+        "authorization_source": "explicit-current-session-user-approval",
+        "command": "sbatch --qos=qos_gpu_a100-t3 --time=04:00:00 tools/j1_slurm_stage.sh single-rank-generator-canary docs/r3_protocol_jz_v5.json",
+        "checkpoint_inventory": "docs/u1_checkpoint_inventory.json",
+        "stop_after_stage": true,
+        "authorized_operations": [
+          "verify-jean-zay-node-class-source-environment-checkpoint-and-prerequisites",
+          "two-sequential-isolated-single-rank-generator-jobs-and-offline-parity"
+        ],
+        "prohibited_operations": [
+          "repeat-attempt",
+          "additional-jobs",
+          "distributed-execution",
+          "later-stage-execution",
+          "scientific-claim"
+        ],
+        "source": {
+          "path": "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/inputs/jz_v4/source-j1-pair.json",
+          "sha256": "f7e2ddf8e67c05a0a6abba301d3b6bf59f9d23d84bc94e6f1928da8fea3851f3"
+        },
+        "assets": {
+          "reference.png": {
+            "path": "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/reference/bootes-inputs/reference.png",
+            "sha256": "3f24239d8b0eef18cb022f46ef81b9a0bbcbe76cab9bffe3bf018b94be6ca17b"
+          },
+          "mask-left.png": {
+            "path": "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/reference/bootes-inputs/mask-left.png",
+            "sha256": "ec534110d2c7c022847e2e9edcd1bb2c3bdeffa807cd43e336382dfce572b7bd"
+          },
+          "mask-right.png": {
+            "path": "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/reference/bootes-inputs/mask-right.png",
+            "sha256": "f7c53ec340a68e501182bb2987750bfaecb7dfc9d57536edbf36a6c629820b56"
+          }
+        },
+        "output": "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/generator-pair/attempt-1",
+        "min_free_gpu_bytes": 75161927680,
+        "job_timeout_seconds": 3600
+      },
+      "single-rank-contract-cases-chunk-1": {
+        "authorized_stage": "single-rank-contract-cases-chunk-1",
+        "authorization_source": "explicit-current-session-user-approval",
+        "command": "sbatch --parsable --qos=qos_gpu_a100-t3 --time=16:00:00 tools/j1_slurm_stage.sh single-rank-contract-cases-chunk-1 docs/r3_protocol_jz_v5.json",
+        "checkpoint_inventory": "docs/u1_checkpoint_inventory.json",
+        "stop_after_stage": true,
+        "authorized_operations": [
+          "verify-jean-zay-node-class-source-environment-checkpoint-and-prerequisites",
+          "sequential-isolated-single-rank-contract-case-jobs-of-this-chunk-and-parity-comparisons"
+        ],
+        "prohibited_operations": [
+          "repeat-attempt",
+          "additional-jobs",
+          "jobs-outside-this-chunk",
+          "distributed-execution",
+          "later-stage-execution",
+          "scientific-claim"
+        ],
+        "sources": {
+          "unipc-flash": {
+            "path": "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/inputs/jz_v5/source-stage4-unipc-flash.json",
+            "sha256": "1eaf52e6b8c1497dcafd09fa99d7c12a07443032f8f2ff74bf0bad4d02993c8d"
+          },
+          "unipc-flex": {
+            "path": "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/inputs/jz_v5/source-stage4-unipc-flex.json",
+            "sha256": "fb9fb2aae89e78d5afdd66d76360c225af5b7c679e7e48999857b91aaa7cf429"
+          },
+          "dpmpp-flash": {
+            "path": "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/inputs/jz_v5/source-stage4-dpmpp-flash.json",
+            "sha256": "7c8a392324770abef3bf6c0ff4599e9f53899acd940c7c749b0d93b82a4e9db1"
+          },
+          "dpmpp-flex": {
+            "path": "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/inputs/jz_v5/source-stage4-dpmpp-flex.json",
+            "sha256": "88c818496b32ead952308d5652cc68f8596a652fc3d176341e592cee0a10fcf0"
+          }
+        },
+        "assets": {
+          "reference.png": {
+            "path": "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/reference/bootes-inputs/reference.png",
+            "sha256": "3f24239d8b0eef18cb022f46ef81b9a0bbcbe76cab9bffe3bf018b94be6ca17b"
+          },
+          "mask-left.png": {
+            "path": "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/reference/bootes-inputs/mask-left.png",
+            "sha256": "ec534110d2c7c022847e2e9edcd1bb2c3bdeffa807cd43e336382dfce572b7bd"
+          },
+          "mask-right.png": {
+            "path": "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/reference/bootes-inputs/mask-right.png",
+            "sha256": "f7c53ec340a68e501182bb2987750bfaecb7dfc9d57536edbf36a6c629820b56"
+          }
+        },
+        "output": "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/contract-cases/chunk-1/attempt-1",
+        "min_free_gpu_bytes": 75161927680,
+        "job_timeout_seconds": 2700,
+        "stop_policy": "stop-on-first-failure",
+        "method_parameters": {
+          "regional_prompting": {
+            "beta": 0.5
+          },
+          "ediff-i": {
+            "strength": 3.0
+          }
+        },
+        "expected_jobs": 200,
+        "chunk": {
+          "index": 1,
+          "count": 4,
+          "plan_sha256": "ab3ba7f8b702d8722b792982caf8c80da9d5c861d11bf63e1e3327b8b59df33f",
+          "jobs": [
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-06be27a8bcb614f6",
+              "case_id": "upstream-generator-807bae64a4de4c0e6c2d"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-506cb07da81fbf6d",
+              "case_id": "custom-generator-4aecc814d0458b3b0482"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-1fc73e4ffb911b2b",
+              "case_id": "upstream-generator-ab8b818eef7c9f77d731"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-38cbae3acc68e0d5",
+              "case_id": "custom-generator-ce538dd73019850b9ecf"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-6fb01d3fbba153b6",
+              "case_id": "custom-generator-0c0c1721a37ac07b86c9"
+            },
+            {
+              "source": "dpmpp-flex",
+              "job_id": "job-3e1761c40b214c42",
+              "case_id": "custom-generator-66a85411acc6a1d1a192"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-2abc45113bce67e0",
+              "case_id": "custom-generator-3894bef815bc1d35c9c3"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-41fbbd49ab84aa09",
+              "case_id": "custom-generator-a05905bb066b74ed877c"
+            },
+            {
+              "source": "dpmpp-flex",
+              "job_id": "job-bf8250a865338cdb",
+              "case_id": "custom-generator-e73f64e76ee9d6de70be"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-02d95c753c1df9e0",
+              "case_id": "custom-generator-10eaa3122d01d1543949"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-8e3c65e1b775259a",
+              "case_id": "custom-generator-5083c5546c75704ca5f5"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-2b69679e70ab1cc9",
+              "case_id": "custom-generator-4a4e6546beab6642d798"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-feed0d9860631786",
+              "case_id": "custom-generator-747196ac8b31feb0f314"
+            },
+            {
+              "source": "dpmpp-flex",
+              "job_id": "job-7c1e6e3aa2b4dc04",
+              "case_id": "custom-generator-11d6b47b00d9170c41ed"
+            },
+            {
+              "source": "dpmpp-flex",
+              "job_id": "job-9c92be01c081dd6b",
+              "case_id": "custom-generator-88eb77c62cfeb261548f"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-35c29024c6c8802e",
+              "case_id": "custom-generator-6d79832ba00911f8501e"
+            },
+            {
+              "source": "dpmpp-flex",
+              "job_id": "job-95c15cac07fc3b0f",
+              "case_id": "custom-generator-8b9d4d519b12d7c8c591"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-3d7051ea5ed152d7",
+              "case_id": "custom-generator-ecf0934753ae37d909e8"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-5e74d336fdc8b429",
+              "case_id": "custom-generator-f7191d53612c3834705a"
+            },
+            {
+              "source": "dpmpp-flex",
+              "job_id": "job-fcb78057385c2b3a",
+              "case_id": "custom-generator-2630f22f47a755967fa6"
+            },
+            {
+              "source": "dpmpp-flex",
+              "job_id": "job-ebc23f7b8b2c80e8",
+              "case_id": "custom-generator-ae9c89eaa4d38478ea5e"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-7ee4118dd7a82802",
+              "case_id": "custom-generator-facc1c98412710fee75b"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-f7df95bf0b22d70d",
+              "case_id": "custom-generator-4dcebb73a46cd49123f6"
+            },
+            {
+              "source": "dpmpp-flex",
+              "job_id": "job-08a159d5ba4f35e4",
+              "case_id": "custom-generator-ae8193011331013aa3cb"
+            },
+            {
+              "source": "dpmpp-flex",
+              "job_id": "job-aedc586e43fdedd4",
+              "case_id": "custom-generator-df98d0e1cd551c48ce12"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-19b2d6848cdfea06",
+              "case_id": "custom-generator-b031308c6d2aedcfa777"
+            },
+            {
+              "source": "dpmpp-flex",
+              "job_id": "job-ad9701267c45dc14",
+              "case_id": "custom-generator-217bcbd105955909f755"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-577397d6cd61649f",
+              "case_id": "custom-generator-83a5c222af566a38edd2"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-f1e2ba4850973170",
+              "case_id": "custom-generator-4fa7d7049110d5b0bb33"
+            },
+            {
+              "source": "dpmpp-flex",
+              "job_id": "job-6298bb2d0901e813",
+              "case_id": "custom-generator-78428323f0002382b7ee"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-264af4a76707d4e1",
+              "case_id": "custom-generator-959a7c4055ebe8d387f3"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-793421a4b24304e9",
+              "case_id": "custom-generator-674ffe08e0516798dd7e"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-a8cf499d0a482941",
+              "case_id": "custom-generator-440c3c85e8fc9e672503"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-e79c861266428ac2",
+              "case_id": "custom-generator-f437ca7f63d0376d2df9"
+            },
+            {
+              "source": "dpmpp-flex",
+              "job_id": "job-dda940cd9f9875de",
+              "case_id": "custom-generator-a1d2c6f6bfa84cb999ff"
+            },
+            {
+              "source": "dpmpp-flex",
+              "job_id": "job-3eabe43be797c532",
+              "case_id": "custom-generator-76320023718d9d9559e3"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-a8a1f725e9769ddd",
+              "case_id": "custom-generator-f2b0004e0a170808d654"
+            },
+            {
+              "source": "dpmpp-flex",
+              "job_id": "job-7402789abf7a0298",
+              "case_id": "custom-generator-879acbff63b78afbb371"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-109ce463670b4f68",
+              "case_id": "custom-generator-7c9c642986e599bfcaab"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-368ae106ae44b2d0",
+              "case_id": "custom-generator-31de7e1d83685df2ff63"
+            },
+            {
+              "source": "dpmpp-flex",
+              "job_id": "job-2f2b13a0b59ea570",
+              "case_id": "custom-generator-8716454f51e8684af78e"
+            },
+            {
+              "source": "dpmpp-flex",
+              "job_id": "job-0509deb35bc97cca",
+              "case_id": "custom-generator-d369f2be7ffe5ca2d725"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-3ea459d7cd7e39c1",
+              "case_id": "custom-generator-38ff0de400ee4f6310bd"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-690018f523cc0d00",
+              "case_id": "custom-generator-5eaefed80254b4833914"
+            },
+            {
+              "source": "dpmpp-flex",
+              "job_id": "job-ce3b07fc4b2b31e6",
+              "case_id": "custom-generator-83ccc877524aa145d6ee"
+            },
+            {
+              "source": "dpmpp-flex",
+              "job_id": "job-53114c287cc45086",
+              "case_id": "custom-generator-be54164035f476811592"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-cfb713feec8a7ad1",
+              "case_id": "custom-generator-6d7bfa2ad50344e57be5"
+            },
+            {
+              "source": "dpmpp-flex",
+              "job_id": "job-98afc6e5f2319e1c",
+              "case_id": "custom-generator-03068116715a3fe50dcf"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-b9437137b92e5a32",
+              "case_id": "custom-generator-6f26974f5b11f7a150a4"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-13d568b9f09c4091",
+              "case_id": "custom-generator-b6614a9c5fa7a072c60c"
+            }
+          ],
+          "parity_pairs": {
+            "dpmpp-flash": {
+              "upstream": "job-06be27a8bcb614f6",
+              "custom-none": "job-506cb07da81fbf6d"
+            },
+            "unipc-flash": {
+              "upstream": "job-1fc73e4ffb911b2b",
+              "custom-none": "job-38cbae3acc68e0d5"
+            }
+          }
+        },
+        "previous_chunk": null
+      },
+      "single-rank-contract-cases-chunk-2": {
+        "authorized_stage": "single-rank-contract-cases-chunk-2",
+        "authorization_source": "explicit-current-session-user-approval",
+        "command": "sbatch --parsable --dependency=afterok:$J1_PREVIOUS_CHUNK_JOB_ID --kill-on-invalid-dep=yes --qos=qos_gpu_a100-t3 --time=16:00:00 tools/j1_slurm_stage.sh single-rank-contract-cases-chunk-2 docs/r3_protocol_jz_v5.json",
+        "checkpoint_inventory": "docs/u1_checkpoint_inventory.json",
+        "stop_after_stage": true,
+        "authorized_operations": [
+          "verify-jean-zay-node-class-source-environment-checkpoint-and-prerequisites",
+          "verify-passed-previous-contract-chunk-record",
+          "sequential-isolated-single-rank-contract-case-jobs-of-this-chunk-and-parity-comparisons"
+        ],
+        "prohibited_operations": [
+          "repeat-attempt",
+          "additional-jobs",
+          "jobs-outside-this-chunk",
+          "distributed-execution",
+          "later-stage-execution",
+          "scientific-claim"
+        ],
+        "sources": {
+          "unipc-flash": {
+            "path": "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/inputs/jz_v5/source-stage4-unipc-flash.json",
+            "sha256": "1eaf52e6b8c1497dcafd09fa99d7c12a07443032f8f2ff74bf0bad4d02993c8d"
+          },
+          "unipc-flex": {
+            "path": "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/inputs/jz_v5/source-stage4-unipc-flex.json",
+            "sha256": "fb9fb2aae89e78d5afdd66d76360c225af5b7c679e7e48999857b91aaa7cf429"
+          },
+          "dpmpp-flash": {
+            "path": "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/inputs/jz_v5/source-stage4-dpmpp-flash.json",
+            "sha256": "7c8a392324770abef3bf6c0ff4599e9f53899acd940c7c749b0d93b82a4e9db1"
+          },
+          "dpmpp-flex": {
+            "path": "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/inputs/jz_v5/source-stage4-dpmpp-flex.json",
+            "sha256": "88c818496b32ead952308d5652cc68f8596a652fc3d176341e592cee0a10fcf0"
+          }
+        },
+        "assets": {
+          "reference.png": {
+            "path": "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/reference/bootes-inputs/reference.png",
+            "sha256": "3f24239d8b0eef18cb022f46ef81b9a0bbcbe76cab9bffe3bf018b94be6ca17b"
+          },
+          "mask-left.png": {
+            "path": "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/reference/bootes-inputs/mask-left.png",
+            "sha256": "ec534110d2c7c022847e2e9edcd1bb2c3bdeffa807cd43e336382dfce572b7bd"
+          },
+          "mask-right.png": {
+            "path": "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/reference/bootes-inputs/mask-right.png",
+            "sha256": "f7c53ec340a68e501182bb2987750bfaecb7dfc9d57536edbf36a6c629820b56"
+          }
+        },
+        "output": "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/contract-cases/chunk-2/attempt-1",
+        "min_free_gpu_bytes": 75161927680,
+        "job_timeout_seconds": 2700,
+        "stop_policy": "stop-on-first-failure",
+        "method_parameters": {
+          "regional_prompting": {
+            "beta": 0.5
+          },
+          "ediff-i": {
+            "strength": 3.0
+          }
+        },
+        "expected_jobs": 200,
+        "chunk": {
+          "index": 2,
+          "count": 4,
+          "plan_sha256": "ab3ba7f8b702d8722b792982caf8c80da9d5c861d11bf63e1e3327b8b59df33f",
+          "jobs": [
+            {
+              "source": "dpmpp-flex",
+              "job_id": "job-b0edaa82a5c63f15",
+              "case_id": "custom-generator-7336ca2c1ff23e351bf2"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-404b68ddf5f1a423",
+              "case_id": "custom-generator-89f592b956db728f2269"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-aaad6fa4f3f19483",
+              "case_id": "custom-generator-ca385a697d076917eab1"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-e414590770916f2a",
+              "case_id": "custom-generator-54de10de5a570b20e0fa"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-53e091f43d470a2f",
+              "case_id": "custom-generator-c3bdcf8d2c8f7fb13186"
+            },
+            {
+              "source": "dpmpp-flex",
+              "job_id": "job-b96da8ea624cdfca",
+              "case_id": "custom-generator-cad9f7f421ad8e3a33c3"
+            },
+            {
+              "source": "dpmpp-flex",
+              "job_id": "job-d9f91a7891953f09",
+              "case_id": "custom-generator-964c9196ce9ea5d762f6"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-18b343b0bdafb3dc",
+              "case_id": "custom-generator-039b6d828dab4b59b2b4"
+            },
+            {
+              "source": "dpmpp-flex",
+              "job_id": "job-1df43f7c7316a302",
+              "case_id": "custom-generator-6501db4f18be3c303df6"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-bddab621c1db022a",
+              "case_id": "custom-generator-3ebdf185ca3d422d5b8f"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-d0f66eedffda3fbb",
+              "case_id": "custom-generator-9eece4fd1472dbc76a40"
+            },
+            {
+              "source": "dpmpp-flex",
+              "job_id": "job-d8701b67b27acdc7",
+              "case_id": "custom-generator-eb634814c8725bf0f1a5"
+            },
+            {
+              "source": "dpmpp-flex",
+              "job_id": "job-03384494662d1439",
+              "case_id": "custom-generator-f8b3c479a1a543b1593e"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-ad51e78a782cc974",
+              "case_id": "custom-generator-fc287421a4d092dd1132"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-0e49f0ef5600d563",
+              "case_id": "custom-generator-4646207694dc33ce1fb2"
+            },
+            {
+              "source": "dpmpp-flex",
+              "job_id": "job-1df3fd3b65732a8d",
+              "case_id": "custom-generator-844902439f4353c283f0"
+            },
+            {
+              "source": "dpmpp-flex",
+              "job_id": "job-67dc6bd9075b6968",
+              "case_id": "custom-generator-6d0c7eee9ab3b48bc2a1"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-5e8dd514b13ce289",
+              "case_id": "custom-generator-932fd06c7241e8c0def4"
+            },
+            {
+              "source": "unipc-flex",
+              "job_id": "job-37bf72404bacbde4",
+              "case_id": "custom-generator-1f3f0c8076b46c521eea"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-f21c891a70bd668b",
+              "case_id": "custom-generator-e20b85cee9bb870b3ea5"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-ace7288ace957a59",
+              "case_id": "custom-generator-56dcedac64c210025ce6"
+            },
+            {
+              "source": "unipc-flex",
+              "job_id": "job-8b8ca75deb0f54dd",
+              "case_id": "custom-generator-aaee406886f723592b62"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-4ff8a95602c6e84c",
+              "case_id": "custom-generator-9b43dc2098e649dbcd73"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-727850228742cbb2",
+              "case_id": "custom-generator-1659ee7ee0b5d0e5b00b"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-5fd20f5917b521f5",
+              "case_id": "custom-generator-5af10704f972268a1553"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-74603ce85fd70090",
+              "case_id": "custom-generator-08a3722e7c1d2a60cc3c"
+            },
+            {
+              "source": "unipc-flex",
+              "job_id": "job-efccb50311caa61d",
+              "case_id": "custom-generator-11d7c4a094e054ba8d25"
+            },
+            {
+              "source": "unipc-flex",
+              "job_id": "job-d5de219cc160d7f8",
+              "case_id": "custom-generator-c6042b18235edb796d4d"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-27b7cdcddc362cb2",
+              "case_id": "custom-generator-992aaedbb13e035602ed"
+            },
+            {
+              "source": "unipc-flex",
+              "job_id": "job-7d127ea635fbcd86",
+              "case_id": "custom-generator-aeedf917612cce7169ae"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-692edb9a67637034",
+              "case_id": "custom-generator-dd2249d4918c98cbdc38"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-bba10e302986fd89",
+              "case_id": "custom-generator-160afe1e357ae8686918"
+            },
+            {
+              "source": "unipc-flex",
+              "job_id": "job-b4aadf2b44c5ad6b",
+              "case_id": "custom-generator-e90a2b6c32ee1e357934"
+            },
+            {
+              "source": "unipc-flex",
+              "job_id": "job-56dec8e5fd4957a3",
+              "case_id": "custom-generator-7d209189018978daf448"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-75abfb76ff54c885",
+              "case_id": "custom-generator-f791f8fea924bb777c2b"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-31d04317dbbaab65",
+              "case_id": "custom-generator-89f96a5701e299fecabc"
+            },
+            {
+              "source": "unipc-flex",
+              "job_id": "job-1bec9e491caa80fc",
+              "case_id": "custom-generator-f79b253969097addabef"
+            },
+            {
+              "source": "unipc-flex",
+              "job_id": "job-0951d00b7606a6ef",
+              "case_id": "custom-generator-284ec06bbd2a72deb336"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-d1eab406166e104d",
+              "case_id": "custom-generator-83e812128336b37c6d98"
+            },
+            {
+              "source": "unipc-flex",
+              "job_id": "job-08abdb416f7f47cf",
+              "case_id": "custom-generator-c2bad44a73949c75aca2"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-763369b1b178813f",
+              "case_id": "custom-generator-ac83ee242049b67a2f46"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-ad00449a3de0f35b",
+              "case_id": "custom-generator-aed2fdebe9146ee632fe"
+            },
+            {
+              "source": "unipc-flex",
+              "job_id": "job-3b0218e0bc315371",
+              "case_id": "custom-generator-e9c4554491de79a157fd"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-5be00dbc8108b51e",
+              "case_id": "custom-generator-b163065a99cce210387a"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-1407e93dbb5fb73f",
+              "case_id": "custom-generator-36ddaa1d780b599a9f72"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-99e30e9be1a0a1c0",
+              "case_id": "custom-generator-b33168a320fc02967fd4"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-e0719829f39dc625",
+              "case_id": "custom-generator-10074d75a026ea55cedd"
+            },
+            {
+              "source": "unipc-flex",
+              "job_id": "job-e7c837ed49a3e72f",
+              "case_id": "custom-generator-07fa11ef5fa23f3ff6a2"
+            },
+            {
+              "source": "unipc-flex",
+              "job_id": "job-a64eb141e45cb3e8",
+              "case_id": "custom-generator-8fc26f0b11b3e46e6a14"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-54588611ff2cdcd9",
+              "case_id": "custom-generator-5f6ec23f08f2e4a336cc"
+            }
+          ],
+          "parity_pairs": {}
+        },
+        "previous_chunk": {
+          "stage_id": "single-rank-contract-cases-chunk-1",
+          "record": "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/contract-cases/chunk-1/attempt-1/attempt.json"
+        }
+      },
+      "single-rank-contract-cases-chunk-3": {
+        "authorized_stage": "single-rank-contract-cases-chunk-3",
+        "authorization_source": "explicit-current-session-user-approval",
+        "command": "sbatch --parsable --dependency=afterok:$J1_PREVIOUS_CHUNK_JOB_ID --kill-on-invalid-dep=yes --qos=qos_gpu_a100-t3 --time=16:00:00 tools/j1_slurm_stage.sh single-rank-contract-cases-chunk-3 docs/r3_protocol_jz_v5.json",
+        "checkpoint_inventory": "docs/u1_checkpoint_inventory.json",
+        "stop_after_stage": true,
+        "authorized_operations": [
+          "verify-jean-zay-node-class-source-environment-checkpoint-and-prerequisites",
+          "verify-passed-previous-contract-chunk-record",
+          "sequential-isolated-single-rank-contract-case-jobs-of-this-chunk-and-parity-comparisons"
+        ],
+        "prohibited_operations": [
+          "repeat-attempt",
+          "additional-jobs",
+          "jobs-outside-this-chunk",
+          "distributed-execution",
+          "later-stage-execution",
+          "scientific-claim"
+        ],
+        "sources": {
+          "unipc-flash": {
+            "path": "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/inputs/jz_v5/source-stage4-unipc-flash.json",
+            "sha256": "1eaf52e6b8c1497dcafd09fa99d7c12a07443032f8f2ff74bf0bad4d02993c8d"
+          },
+          "unipc-flex": {
+            "path": "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/inputs/jz_v5/source-stage4-unipc-flex.json",
+            "sha256": "fb9fb2aae89e78d5afdd66d76360c225af5b7c679e7e48999857b91aaa7cf429"
+          },
+          "dpmpp-flash": {
+            "path": "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/inputs/jz_v5/source-stage4-dpmpp-flash.json",
+            "sha256": "7c8a392324770abef3bf6c0ff4599e9f53899acd940c7c749b0d93b82a4e9db1"
+          },
+          "dpmpp-flex": {
+            "path": "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/inputs/jz_v5/source-stage4-dpmpp-flex.json",
+            "sha256": "88c818496b32ead952308d5652cc68f8596a652fc3d176341e592cee0a10fcf0"
+          }
+        },
+        "assets": {
+          "reference.png": {
+            "path": "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/reference/bootes-inputs/reference.png",
+            "sha256": "3f24239d8b0eef18cb022f46ef81b9a0bbcbe76cab9bffe3bf018b94be6ca17b"
+          },
+          "mask-left.png": {
+            "path": "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/reference/bootes-inputs/mask-left.png",
+            "sha256": "ec534110d2c7c022847e2e9edcd1bb2c3bdeffa807cd43e336382dfce572b7bd"
+          },
+          "mask-right.png": {
+            "path": "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/reference/bootes-inputs/mask-right.png",
+            "sha256": "f7c53ec340a68e501182bb2987750bfaecb7dfc9d57536edbf36a6c629820b56"
+          }
+        },
+        "output": "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/contract-cases/chunk-3/attempt-1",
+        "min_free_gpu_bytes": 75161927680,
+        "job_timeout_seconds": 2700,
+        "stop_policy": "stop-on-first-failure",
+        "method_parameters": {
+          "regional_prompting": {
+            "beta": 0.5
+          },
+          "ediff-i": {
+            "strength": 3.0
+          }
+        },
+        "expected_jobs": 200,
+        "chunk": {
+          "index": 3,
+          "count": 4,
+          "plan_sha256": "ab3ba7f8b702d8722b792982caf8c80da9d5c861d11bf63e1e3327b8b59df33f",
+          "jobs": [
+            {
+              "source": "unipc-flex",
+              "job_id": "job-e375ea79ff3a66e7",
+              "case_id": "custom-generator-d1a0ae5ca98f61aed327"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-ad86ad4648de926c",
+              "case_id": "custom-generator-4d08e1fd2f5a8dd00942"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-ac7006cf4463f731",
+              "case_id": "custom-generator-a6bce12163dc196954a0"
+            },
+            {
+              "source": "unipc-flex",
+              "job_id": "job-3517e524ac184ca5",
+              "case_id": "custom-generator-4af9e564e2c350c8603c"
+            },
+            {
+              "source": "unipc-flex",
+              "job_id": "job-a29d25ac80acc7f7",
+              "case_id": "custom-generator-e4a7f7c62c24234deffb"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-18678cb17a6d659d",
+              "case_id": "custom-generator-096ca05670cd7399c3aa"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-faf6e355d5839069",
+              "case_id": "custom-generator-6770ef29711a8a690500"
+            },
+            {
+              "source": "unipc-flex",
+              "job_id": "job-bf3b54b0a471d9c3",
+              "case_id": "custom-generator-162e9903b57c099e595e"
+            },
+            {
+              "source": "unipc-flex",
+              "job_id": "job-3cac082b6d85e74b",
+              "case_id": "custom-generator-b0aec2277ef932924cff"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-9741e8f5c706093b",
+              "case_id": "custom-generator-8cec50d95ebd463d4195"
+            },
+            {
+              "source": "unipc-flex",
+              "job_id": "job-b47b760b025192c4",
+              "case_id": "custom-generator-1ba53e049728532cd62e"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-db6becc9378f2a38",
+              "case_id": "custom-generator-0fedb09139fe610604ac"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-8b190ea16dc92302",
+              "case_id": "custom-generator-45dd64d36bd96e38369d"
+            },
+            {
+              "source": "unipc-flex",
+              "job_id": "job-31634170542fd2b2",
+              "case_id": "custom-generator-78c3e03c1acaa338bd3c"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-07d2fbe8081e8ba1",
+              "case_id": "custom-generator-021a1ad7cd4dcd4e5e1e"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-ac5a7c15284b227c",
+              "case_id": "custom-generator-bfa1c17bedcd31c7ecfc"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-aaefad762b69a4af",
+              "case_id": "custom-generator-efd0698767afbcc265c4"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-bdfbcb65614b08eb",
+              "case_id": "custom-generator-0c2e19d1da20fa9adf75"
+            },
+            {
+              "source": "unipc-flex",
+              "job_id": "job-bc0ccf7dcb3e8678",
+              "case_id": "custom-generator-19c543f1aa5d79a21271"
+            },
+            {
+              "source": "unipc-flex",
+              "job_id": "job-35ea4afddf576804",
+              "case_id": "custom-generator-956abb90e0f8b2688daf"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-49a67c38a9e2fb1f",
+              "case_id": "custom-generator-9a64058bc751f768aa09"
+            },
+            {
+              "source": "unipc-flex",
+              "job_id": "job-834ec6daf2d87adb",
+              "case_id": "custom-generator-0180deedaa36bb75cc6e"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-08ac7b357501cd2f",
+              "case_id": "custom-generator-e7fcd79d995e7f4b2a72"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-4b2bf108d8891945",
+              "case_id": "custom-generator-46f4497bf35e3b2cd84c"
+            },
+            {
+              "source": "unipc-flex",
+              "job_id": "job-3652b189a85f6fdc",
+              "case_id": "custom-generator-e26671343785a7a4961c"
+            },
+            {
+              "source": "unipc-flex",
+              "job_id": "job-e523a4ebd9004ab4",
+              "case_id": "custom-generator-914a6c51362c5fd4ebae"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-b33a987da8404a0a",
+              "case_id": "custom-generator-a1df3bf66c3be0edf4cb"
+            },
+            {
+              "source": "dpmpp-flash",
+              "job_id": "job-0ec80af01ec07ad5",
+              "case_id": "custom-generator-1d99df491af44d0c5212"
+            },
+            {
+              "source": "unipc-flex",
+              "job_id": "job-9e1c0b9e75bc86e3",
+              "case_id": "custom-generator-67f5acb1b89f9dbc743f"
+            },
+            {
+              "source": "unipc-flex",
+              "job_id": "job-9c9e46fc651c8a85",
+              "case_id": "custom-generator-eaac6dac02dcc54f2761"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-cc8622a58090b64c",
+              "case_id": "custom-generator-84223ea151f128f46d87"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-1e39b7577252e864",
+              "case_id": "custom-generator-fd11f79142870569d155"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-96804c748d0764bd",
+              "case_id": "custom-generator-19fd20d3b5b575db8b19"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-c392f724e2aa7d89",
+              "case_id": "custom-generator-e1a670f83d97cd3eee23"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-f9475eb9fda63ef4",
+              "case_id": "custom-generator-324f10288c673c19f2b7"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-fbb6838cd1f993ce",
+              "case_id": "custom-generator-753098aacda1de8c3cca"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-fc317c85611a4fcf",
+              "case_id": "custom-generator-1982b1797fa0a5d048a3"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-f005d07482186d3e",
+              "case_id": "custom-generator-b2468f6f0240daef6d67"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-cd084638aec26e61",
+              "case_id": "custom-generator-8b3e3c19bf1a5eb41d44"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-9658524099502d47",
+              "case_id": "custom-generator-8ead69ea87c62907790f"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-75d93ca6c102c037",
+              "case_id": "custom-generator-e5dea56893bf829c92ab"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-8e5063497c99114d",
+              "case_id": "custom-generator-cef7b09565faebe51d46"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-34db9cece6fd9292",
+              "case_id": "custom-generator-4cf5088671d4ff2c65eb"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-3e663e927d9da7b3",
+              "case_id": "custom-generator-8a01eb7b26306eb5f28a"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-9ee6ed6e2ac93d3b",
+              "case_id": "custom-generator-c6637691bbd4a7c5d4b1"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-75f41496ed6e15b7",
+              "case_id": "custom-generator-1c9d158855cca0960b03"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-d645d1cb58c8a658",
+              "case_id": "custom-generator-351b0cd3b40badd757a1"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-5fd76f2e0076ebc4",
+              "case_id": "custom-generator-8f3ebc90136c0655d328"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-3e3cdd58fce51248",
+              "case_id": "custom-generator-eedadb66625883d107cf"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-8d4b9a698614eb6d",
+              "case_id": "custom-generator-9ae1c71ba5c8034cfe62"
+            }
+          ],
+          "parity_pairs": {}
+        },
+        "previous_chunk": {
+          "stage_id": "single-rank-contract-cases-chunk-2",
+          "record": "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/contract-cases/chunk-2/attempt-1/attempt.json"
+        }
+      },
+      "single-rank-contract-cases-chunk-4": {
+        "authorized_stage": "single-rank-contract-cases-chunk-4",
+        "authorization_source": "explicit-current-session-user-approval",
+        "command": "sbatch --parsable --dependency=afterok:$J1_PREVIOUS_CHUNK_JOB_ID --kill-on-invalid-dep=yes --qos=qos_gpu_a100-t3 --time=16:00:00 tools/j1_slurm_stage.sh single-rank-contract-cases-chunk-4 docs/r3_protocol_jz_v5.json",
+        "checkpoint_inventory": "docs/u1_checkpoint_inventory.json",
+        "stop_after_stage": true,
+        "authorized_operations": [
+          "verify-jean-zay-node-class-source-environment-checkpoint-and-prerequisites",
+          "verify-passed-previous-contract-chunk-record",
+          "sequential-isolated-single-rank-contract-case-jobs-of-this-chunk-and-parity-comparisons"
+        ],
+        "prohibited_operations": [
+          "repeat-attempt",
+          "additional-jobs",
+          "jobs-outside-this-chunk",
+          "distributed-execution",
+          "later-stage-execution",
+          "scientific-claim"
+        ],
+        "sources": {
+          "unipc-flash": {
+            "path": "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/inputs/jz_v5/source-stage4-unipc-flash.json",
+            "sha256": "1eaf52e6b8c1497dcafd09fa99d7c12a07443032f8f2ff74bf0bad4d02993c8d"
+          },
+          "unipc-flex": {
+            "path": "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/inputs/jz_v5/source-stage4-unipc-flex.json",
+            "sha256": "fb9fb2aae89e78d5afdd66d76360c225af5b7c679e7e48999857b91aaa7cf429"
+          },
+          "dpmpp-flash": {
+            "path": "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/inputs/jz_v5/source-stage4-dpmpp-flash.json",
+            "sha256": "7c8a392324770abef3bf6c0ff4599e9f53899acd940c7c749b0d93b82a4e9db1"
+          },
+          "dpmpp-flex": {
+            "path": "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/inputs/jz_v5/source-stage4-dpmpp-flex.json",
+            "sha256": "88c818496b32ead952308d5652cc68f8596a652fc3d176341e592cee0a10fcf0"
+          }
+        },
+        "assets": {
+          "reference.png": {
+            "path": "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/reference/bootes-inputs/reference.png",
+            "sha256": "3f24239d8b0eef18cb022f46ef81b9a0bbcbe76cab9bffe3bf018b94be6ca17b"
+          },
+          "mask-left.png": {
+            "path": "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/reference/bootes-inputs/mask-left.png",
+            "sha256": "ec534110d2c7c022847e2e9edcd1bb2c3bdeffa807cd43e336382dfce572b7bd"
+          },
+          "mask-right.png": {
+            "path": "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/reference/bootes-inputs/mask-right.png",
+            "sha256": "f7c53ec340a68e501182bb2987750bfaecb7dfc9d57536edbf36a6c629820b56"
+          }
+        },
+        "output": "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/contract-cases/chunk-4/attempt-1",
+        "min_free_gpu_bytes": 75161927680,
+        "job_timeout_seconds": 2700,
+        "stop_policy": "stop-on-first-failure",
+        "method_parameters": {
+          "regional_prompting": {
+            "beta": 0.5
+          },
+          "ediff-i": {
+            "strength": 3.0
+          }
+        },
+        "expected_jobs": 200,
+        "chunk": {
+          "index": 4,
+          "count": 4,
+          "plan_sha256": "ab3ba7f8b702d8722b792982caf8c80da9d5c861d11bf63e1e3327b8b59df33f",
+          "jobs": [
+            {
+              "source": "unipc-flash",
+              "job_id": "job-c9f4ae21f66779fa",
+              "case_id": "custom-generator-06b6e596de2c6df5440d"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-8d18ae4d189d3da2",
+              "case_id": "custom-generator-d65317e3636aabea9abc"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-4620c9fbdd62127f",
+              "case_id": "custom-generator-ac2d4d83e00c6db879e0"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-7ea5539a96d60d07",
+              "case_id": "custom-generator-63189229290eb6e2fbf5"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-29baf147c22b13d0",
+              "case_id": "custom-generator-4799c69744a30907f86f"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-f919053dcfda9128",
+              "case_id": "custom-generator-b42b378d1576c55b8621"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-16f07eb0e25f170f",
+              "case_id": "custom-generator-8623f2769459b24352ec"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-458702ad3922487f",
+              "case_id": "custom-generator-6969935d452b750e57d1"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-499398eefa5131a1",
+              "case_id": "custom-generator-025fcf0d04811be9ea0a"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-92b8f7b9cf2e560a",
+              "case_id": "custom-generator-d6960adbf45095035830"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-3a000c15558f12bc",
+              "case_id": "custom-generator-49ac54187b4a0c3f9d5e"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-7e26786a14b7c6af",
+              "case_id": "custom-generator-df55ed8b992088ba5621"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-6e870bba62917022",
+              "case_id": "custom-generator-fe605341fb4f70bf0774"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-332d390fb64199f2",
+              "case_id": "custom-generator-eec9532b28ee42b18e9c"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-2d1863e4aa692987",
+              "case_id": "custom-generator-e5281e56821b85e312bb"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-57ab8a6c06bf7160",
+              "case_id": "custom-generator-b124c4d475f5f1f54202"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-878c10740386763c",
+              "case_id": "custom-generator-4e6df654b3cf6cee935b"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-3fdf912451815da5",
+              "case_id": "custom-generator-236d7fcd74cb3005b983"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-225a55728ea12a2b",
+              "case_id": "custom-generator-e5613c0e1f4a71a323b6"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-2b545155313523a6",
+              "case_id": "custom-generator-0285a52d2a90875120c8"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-a1daee093797a29f",
+              "case_id": "custom-generator-ade940b015af2333349c"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-1df402f83915fa36",
+              "case_id": "custom-generator-bf49e19cc01bafc351d6"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-5153672cfef8218a",
+              "case_id": "custom-generator-3c509c50b34ae3c2adf5"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-6afe27492e084609",
+              "case_id": "custom-generator-f454395b9d08951327fa"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-4db66ee1bfcf25b2",
+              "case_id": "custom-generator-e650e3671a0eb66617af"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-0d8d4ebad14191bf",
+              "case_id": "custom-generator-a37a9ad39942c0950f26"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-c48e3171111fda2f",
+              "case_id": "custom-generator-03808ed1b84cf8c17873"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-2c669d4441506728",
+              "case_id": "custom-generator-52d618a5ee148942c124"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-a3f4b334c98d3990",
+              "case_id": "custom-generator-54c61ece119210b8d206"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-0cb011da7553aa88",
+              "case_id": "custom-generator-03b7d931a1808a1ca4de"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-d4a71e8cd82bd066",
+              "case_id": "custom-generator-1197145cc84fcdb64ef5"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-50dbb3ce3b00f17b",
+              "case_id": "custom-generator-0283dbb84b66422ff2eb"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-1c7d524e7238e551",
+              "case_id": "custom-generator-3b70e592aab8d62140be"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-472339ebaf23b995",
+              "case_id": "custom-generator-33ae4e9b2b8577d6d261"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-b5b3e62bb702b2f3",
+              "case_id": "custom-generator-b04453ce632e77cc0be5"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-ad96aa3a1456facd",
+              "case_id": "custom-generator-33a1a47ff7208d05edd2"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-37fd0456a520634b",
+              "case_id": "custom-generator-aa04bb955093e823c14e"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-015aade7ff3532b1",
+              "case_id": "custom-generator-2f386bdbc1dc0b406918"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-10d81078ce0c91b1",
+              "case_id": "custom-generator-05650deb584e1cc7d09a"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-57c8bd573fd6bd12",
+              "case_id": "custom-generator-ab5a5cf56f1218b34754"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-53251551245206f1",
+              "case_id": "custom-generator-8a73bfc5cb2f66cff7a5"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-f2691650ba5cb8ed",
+              "case_id": "custom-generator-0eafb3dbfdc9d0bba7e2"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-612e18925d3959b9",
+              "case_id": "custom-generator-e51d306fb1608b8cde5c"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-13c9d998a340807d",
+              "case_id": "custom-generator-9954f5da4042a18055cd"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-f2a3a9b8e7eaea56",
+              "case_id": "custom-generator-1dbe5a2bb82cd017bc3f"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-3680f0b7733db118",
+              "case_id": "custom-generator-960d99fa5325ed78465c"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-6fb933d304ce3ddb",
+              "case_id": "custom-generator-c2856ee608a0be8aef9a"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-df094ccec40330e8",
+              "case_id": "custom-generator-825217b2b0f8f4ba3b13"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-733843e72b1996f2",
+              "case_id": "custom-generator-56fab4c066d6e8ac2a22"
+            },
+            {
+              "source": "unipc-flash",
+              "job_id": "job-19f5be754451a2b5",
+              "case_id": "custom-generator-67fb0037d43efcceec9a"
+            }
+          ],
+          "parity_pairs": {}
+        },
+        "previous_chunk": {
+          "stage_id": "single-rank-contract-cases-chunk-3",
+          "record": "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/contract-cases/chunk-3/attempt-1/attempt.json"
+        }
+      }
+    },
+    "prerequisite_evidence": [
+      {
+        "stage_id": "backend-kernel-canary",
+        "path": "docs/j1_evidence/jean-zay-backend-kernel-canary.json",
+        "sha256": "b505d04dfd48dc07d6e0030eb0239b9ea3cbd0a2eb5a51cd224b1850719d31ef",
+        "protocol_sha256": "8e7d7a01b20365d8760dbe76f5a8c4f7707c0da276150ac381db0c4584c3784a",
+        "status": "passed"
+      },
+      {
+        "stage_id": "single-rank-generator-canary",
+        "path": "docs/j1_evidence/jean-zay-generator-pair.json",
+        "sha256": "33233c20d40370298d028ec0e3644484553fc78836708c4266d124f672d93c92",
+        "protocol_sha256": "d94cd662bc00fd87ff3e23562e62fbdc6c77aaf07617db57479d361c7734867a",
+        "status": "passed"
+      }
+    ],
+    "hook_canary_contract": {
+      "checkpoint_inventory_path": "docs/u1_checkpoint_inventory.json",
+      "route": "upstream",
+      "loader": "wan.modules.model.WanModel.from_pretrained",
+      "model_type": "wan.modules.model.WanModel",
+      "selected_layer_index": 0,
+      "selected_layer_type": "wan.modules.model.WanAttentionBlock",
+      "torch_dtype": "bfloat16",
+      "expected_selected_layer_state_sha256": "eb1b247ba29d7974605b3f8c64c7ab82de411c74be6c4b083768250aa806c8c0",
+      "synthetic_input": {
+        "seed": 2026091701,
+        "sequence_length": 128,
+        "grid_size": [
+          2,
+          8,
+          8
+        ],
+        "context_length": 769,
+        "model_dim": 5120
+      },
+      "expected_observer_events": [
+        "observer-installed",
+        "attention-dispatch",
+        "attention-dispatch",
+        "attention-dispatch",
+        "observer-completed"
+      ],
+      "expected_attention_sites": [
+        "self",
+        "cross",
+        "cross"
+      ],
+      "expected_attention_backend": "flash_attention_2",
+      "neutrality": "bitwise-exact-output-input-and-layer-state"
+    },
+    "generation_settings": {
+      "offload_model": true
+    }
+  }
+}
