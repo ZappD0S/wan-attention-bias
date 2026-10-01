@@ -1,0 +1,130 @@
+start 2026-10-01T12:01:27Z job 448886 node jean-zay-iam01 stage step0-cross-architecture-probe commit 9303157cbb2d1f912b8f000ef2636be6c5d2e0e8
+GPU-c1b0d16f-19e0-896f-ecb1-f6eccd37b768, NVIDIA A100-SXM4-80GB, 595.71.05, 8.0, 81920 MiB
+/lustre/fswork/projects/rech/xvh/ukl39yh/j1_pristine-Wan2.1/wan/modules/model.py:31: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  @amp.autocast(enabled=False)
+/lustre/fswork/projects/rech/xvh/ukl39yh/j1_pristine-Wan2.1/wan/modules/model.py:42: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  @amp.autocast(enabled=False)
+Loading checkpoint shards:   0%|          | 0/7 [00:00<?, ?it/s]Loading checkpoint shards:  57%|█████▋    | 4/7 [00:00<00:00, 37.40it/s]Loading checkpoint shards: 100%|██████████| 7/7 [00:00<00:00, 50.59it/s]
+/lustre/fswork/projects/rech/xvh/ukl39yh/j1_pristine-Wan2.1/wan/modules/clip.py:540: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(dtype=self.dtype):
+/lustre/fswork/projects/rech/xvh/ukl39yh/j1_pristine-Wan2.1/wan/modules/vae.py:651: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with amp.autocast(dtype=self.dtype):
+/lustre/fswork/projects/rech/xvh/ukl39yh/j1_pristine-Wan2.1/wan/image2video.py:258: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with amp.autocast(dtype=self.param_dtype), torch.no_grad(), no_sync():
+  0%|          | 0/2 [00:00<?, ?it/s]/lustre/fswork/projects/rech/xvh/ukl39yh/j1_pristine-Wan2.1/wan/modules/model.py:546: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with amp.autocast(dtype=torch.float32):
+/lustre/fswork/projects/rech/xvh/ukl39yh/j1_pristine-Wan2.1/wan/modules/model.py:297: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with amp.autocast(dtype=torch.float32):
+  0%|          | 0/2 [00:02<?, ?it/s]
+[rank0]: Traceback (most recent call last):
+[rank0]:   File "<frozen runpy>", line 198, in _run_module_as_main
+[rank0]:   File "<frozen runpy>", line 88, in _run_code
+[rank0]:   File "/lustre/fswork/projects/rech/xvh/ukl39yh/wan_experiments_j1/multi_sample_inference/r3_divergence_probe.py", line 502, in <module>
+[rank0]:     main()
+[rank0]:   File "/lustre/fswork/projects/rech/xvh/ukl39yh/wan_experiments_j1/multi_sample_inference/r3_divergence_probe.py", line 498, in main
+[rank0]:     {"launch": run_launch, "capture": run_capture, "compare": run_compare}[args.command](args)
+[rank0]:   File "/lustre/fswork/projects/rech/xvh/ukl39yh/wan_experiments_j1/multi_sample_inference/r3_divergence_probe.py", line 358, in run_capture
+[rank0]:     run_inference(generator, task)
+[rank0]:   File "/lustre/fswork/projects/rech/xvh/ukl39yh/wan_experiments_j1/.venv/lib/python3.11/site-packages/torch/utils/_contextlib.py", line 124, in decorate_context
+[rank0]:     return func(*args, **kwargs)
+[rank0]:            ^^^^^^^^^^^^^^^^^^^^^
+[rank0]:   File "/lustre/fswork/projects/rech/xvh/ukl39yh/wan_experiments_j1/multi_sample_inference/fsdp_worker.py", line 51, in run_inference
+[rank0]:     return run_generator(wan_i2v, task, settings)
+[rank0]:            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank0]:   File "/lustre/fswork/projects/rech/xvh/ukl39yh/wan_experiments_j1/multi_sample_inference/generation_routes.py", line 80, in run_generator
+[rank0]:     video = generator.generate(task["prompt_sentences"][0], task["img"], **kwargs)
+[rank0]:             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank0]:   File "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_pristine-Wan2.1/wan/image2video.py", line 308, in generate
+[rank0]:     noise_pred_cond = self.model(
+[rank0]:                       ^^^^^^^^^^^
+[rank0]:   File "/lustre/fswork/projects/rech/xvh/ukl39yh/wan_experiments_j1/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+[rank0]:     return self._call_impl(*args, **kwargs)
+[rank0]:            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank0]:   File "/lustre/fswork/projects/rech/xvh/ukl39yh/wan_experiments_j1/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+[rank0]:     return forward_call(*args, **kwargs)
+[rank0]:            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank0]:   File "/lustre/fswork/projects/rech/xvh/ukl39yh/wan_experiments_j1/multi_sample_inference/r3_divergence_probe.py", line 248, in forward
+[rank0]:     result = original(*bound.args, **bound.kwargs)
+[rank0]:              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank0]:   File "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_pristine-Wan2.1/wan/modules/model.py", line 575, in forward
+[rank0]:     x = block(x, **kwargs)
+[rank0]:         ^^^^^^^^^^^^^^^^^^
+[rank0]:   File "/lustre/fswork/projects/rech/xvh/ukl39yh/wan_experiments_j1/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+[rank0]:     return self._call_impl(*args, **kwargs)
+[rank0]:            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank0]:   File "/lustre/fswork/projects/rech/xvh/ukl39yh/wan_experiments_j1/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1882, in _call_impl
+[rank0]:     return inner()
+[rank0]:            ^^^^^^^
+[rank0]:   File "/lustre/fswork/projects/rech/xvh/ukl39yh/wan_experiments_j1/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1830, in inner
+[rank0]:     result = forward_call(*args, **kwargs)
+[rank0]:              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank0]:   File "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_pristine-Wan2.1/wan/modules/model.py", line 302, in forward
+[rank0]:     y = self.self_attn(
+[rank0]:         ^^^^^^^^^^^^^^^
+[rank0]:   File "/lustre/fswork/projects/rech/xvh/ukl39yh/wan_experiments_j1/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+[rank0]:     return self._call_impl(*args, **kwargs)
+[rank0]:            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank0]:   File "/lustre/fswork/projects/rech/xvh/ukl39yh/wan_experiments_j1/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+[rank0]:     return forward_call(*args, **kwargs)
+[rank0]:            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank0]:   File "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_pristine-Wan2.1/wan/modules/model.py", line 150, in forward
+[rank0]:     q=rope_apply(q, grid_sizes, freqs),
+[rank0]:       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank0]:   File "/lustre/fswork/projects/rech/xvh/ukl39yh/wan_experiments_j1/.venv/lib/python3.11/site-packages/torch/amp/autocast_mode.py", line 44, in decorate_autocast
+[rank0]:     return func(*args, **kwargs)
+[rank0]:            ^^^^^^^^^^^^^^^^^^^^^
+[rank0]:   File "/lustre/fswork/projects/rech/xvh/ukl39yh/j1_pristine-Wan2.1/wan/modules/model.py", line 55, in rope_apply
+[rank0]:     x_i = torch.view_as_complex(x[i, :seq_len].to(torch.float64).reshape(
+[rank0]:                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank0]: torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 1.21 GiB. GPU 0 has a total capacity of 79.25 GiB of which 1006.31 MiB is free. Process 1881556 has 416.00 MiB memory in use. Including non-PyTorch memory, this process has 77.85 GiB memory in use. Of the allocated memory 76.83 GiB is allocated by PyTorch, and 68.45 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+E1001 14:09:29.411000 1884785 .venv/lib/python3.11/site-packages/torch/distributed/elastic/multiprocessing/api.py:984] failed (exitcode: 1) local_rank: 0 (pid: 1884886) of binary: /lustre/fswork/projects/rech/xvh/ukl39yh/wan_experiments_j1/.venv/bin/python
+Traceback (most recent call last):
+  File "<string>", line 7, in <module>
+  File "<frozen runpy>", line 229, in run_module
+  File "<frozen runpy>", line 88, in _run_code
+  File "/lustre/fswork/projects/rech/xvh/ukl39yh/wan_experiments_j1/.venv/lib/python3.11/site-packages/torch/distributed/run.py", line 995, in <module>
+    main()
+  File "/lustre/fswork/projects/rech/xvh/ukl39yh/wan_experiments_j1/.venv/lib/python3.11/site-packages/torch/distributed/elastic/multiprocessing/errors/__init__.py", line 362, in wrapper
+    return f(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^
+  File "/lustre/fswork/projects/rech/xvh/ukl39yh/wan_experiments_j1/.venv/lib/python3.11/site-packages/torch/distributed/run.py", line 991, in main
+    run(args)
+  File "/lustre/fswork/projects/rech/xvh/ukl39yh/wan_experiments_j1/.venv/lib/python3.11/site-packages/torch/distributed/run.py", line 982, in run
+    elastic_launch(
+  File "/lustre/fswork/projects/rech/xvh/ukl39yh/wan_experiments_j1/.venv/lib/python3.11/site-packages/torch/distributed/launcher/api.py", line 170, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/lustre/fswork/projects/rech/xvh/ukl39yh/wan_experiments_j1/.venv/lib/python3.11/site-packages/torch/distributed/launcher/api.py", line 317, in launch_agent
+    raise ChildFailedError(
+torch.distributed.elastic.multiprocessing.errors.ChildFailedError: 
+============================================================
+multi_sample_inference.r3_divergence_probe FAILED
+------------------------------------------------------------
+Failures:
+  <NO_OTHER_FAILURES>
+------------------------------------------------------------
+Root Cause (first observed failure):
+[0]:
+  time      : 2026-10-01_14:09:29
+  host      : jean-zay-iam01-ib0
+  rank      : 0 (local_rank: 0)
+  exitcode  : 1 (pid: 1884886)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+============================================================
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/lustre/fswork/projects/rech/xvh/ukl39yh/wan_experiments_j1/multi_sample_inference/j1_stage.py", line 69, in <module>
+    main()
+  File "/lustre/fswork/projects/rech/xvh/ukl39yh/wan_experiments_j1/multi_sample_inference/j1_stage.py", line 65, in main
+    print(json.dumps(run_stage(args.protocol, args.stage), sort_keys=True, default=str))
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/lustre/fswork/projects/rech/xvh/ukl39yh/wan_experiments_j1/multi_sample_inference/j1_stage.py", line 41, in run_stage
+    return run_step0_probe(protocol_path, matrix_path, output)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/lustre/fswork/projects/rech/xvh/ukl39yh/wan_experiments_j1/multi_sample_inference/j1_step0_probe.py", line 320, in run_step0_probe
+    _run_bounded_command(command, repo, auth["job_timeout_seconds"])
+  File "/lustre/fswork/projects/rech/xvh/ukl39yh/wan_experiments_j1/multi_sample_inference/r3_generator_pair.py", line 157, in _run_bounded_command
+    raise subprocess.CalledProcessError(exit_code, command)
+subprocess.CalledProcessError: Command '['/lustre/fswork/projects/rech/xvh/ukl39yh/wan_experiments_j1/.venv/bin/python', '-I', '-c', "import json,os,runpy,sys\nroute_root,project_root,target=json.loads(sys.argv.pop(1))\nos.environ['PYTHONPATH']=os.pathsep.join((route_root,project_root))\nos.environ['PYTHONSAFEPATH']='1'\nsys.path[:0]=[route_root,project_root]\nsys.argv=[target,*sys.argv[1:]]\nrunpy.run_module(target,run_name='__main__')\n", '["/lustre/fswork/projects/rech/xvh/ukl39yh/j1_pristine-Wan2.1","/lustre/fswork/projects/rech/xvh/ukl39yh/wan_experiments_j1","torch.distributed.run"]', '--nproc_per_node=1', '-m', 'multi_sample_inference.r3_divergence_probe', 'capture', '--route', 'official-pristine', '--wan-root', '/lustre/fswork/projects/rech/xvh/ukl39yh/j1_pristine-Wan2.1', '--task-file', '/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/step0-probe/attempt-1/pair/.tasks/job-65efc7fbb5c377ef.pkl', '--output', '/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/step0-probe/attempt-1/captures/official-pristine']' returned non-zero exit status 1.
