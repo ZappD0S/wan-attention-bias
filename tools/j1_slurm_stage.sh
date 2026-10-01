@@ -10,10 +10,11 @@
 #SBATCH --hint=nomultithread
 #SBATCH --time=02:00:00
 #SBATCH --no-requeue
-#SBATCH --output=%x-%j.out
+#SBATCH --output=/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/slurm-logs/%x-%j.out
 # Run exactly one approved J1 stage on one SLURM-allocated A100, offline.
 # Usage: sbatch [--qos=... --time=...] tools/j1_slurm_stage.sh <stage> <docs/r3_protocol_jz_vN.json>
 # The protocol's authorization record binds the exact sbatch command per stage.
+# Logs go outside the checkout: an untracked log would fail the clean-worktree gate.
 set -eo pipefail
 
 STAGE=${1:?stage id required}

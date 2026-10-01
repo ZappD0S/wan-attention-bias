@@ -358,6 +358,8 @@ def test_slurm_wrapper_is_bound_by_every_stage_command():
     for directive in ("--partition=gpu_p5", "--account=xvh@a100", "--gres=gpu:1", "--no-requeue",
                       "HF_HUB_OFFLINE=1", "PET_MASTER_PORT", "--print-output"):
         assert directive in script
+    # An untracked log inside the checkout would fail the clean-worktree gate.
+    assert "#SBATCH --output=/lustre/fswork/projects/rech/xvh/ukl39yh/j1_runs/slurm-logs/" in script
 
 
 def _capture(directory, route, tensors, values=None):
