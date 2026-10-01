@@ -14,7 +14,7 @@ from .r3_contracts import (
     load_protocol_bundle,
     stage_execution_blockers,
 )
-from .r3_jz import J1_STAGE_IDS, is_jz_protocol, validate_node_class_observation
+from .r3_jz import JZ_ALL_STAGE_IDS, is_jz_protocol, validate_node_class_observation
 
 
 def validate_backend_runtime(dispatch_contract, observations):
@@ -101,7 +101,7 @@ def main(argv=None):
     parser.add_argument("--protocol", required=True, type=Path)
     parser.add_argument("--matrix", required=True, type=Path)
     parser.add_argument("--execution", action="store_true")
-    parser.add_argument("--stage", choices=sorted({*R3_STAGE_IDS, *J1_STAGE_IDS}))
+    parser.add_argument("--stage", choices=sorted({*R3_STAGE_IDS, *JZ_ALL_STAGE_IDS}))
     args = parser.parse_args(argv)
     print(
         json.dumps(

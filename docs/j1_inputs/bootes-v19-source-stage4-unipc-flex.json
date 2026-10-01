@@ -1,0 +1,387 @@
+{
+  "schema_version": 1,
+  "experiment_id": "R3-bootes-stage4-unipc-flex_attention",
+  "smoke_only": false,
+  "checkpoint": {
+    "path": "/local_scratch2/gzappavi/hf/hub/models--Wan-AI--Wan2.1-I2V-14B-480P/snapshots/6b73f84e66371cdfe870c72acd6826e1d61cf279",
+    "identifier": "Wan-AI/Wan2.1-I2V-14B-480P@6b73f84e66371cdfe870c72acd6826e1d61cf279",
+    "inventory": "/local_scratch2/gzappavi/wan_experiments_r3_cpu_20260926/docs/u1_checkpoint_inventory.json"
+  },
+  "inference": {
+    "width": 832,
+    "height": 480,
+    "frame_num": 81,
+    "sampling_steps": 2,
+    "cfg": 5.0,
+    "shift": 5.0,
+    "solver": "unipc",
+    "rank_count": 1,
+    "num_layers": 40,
+    "negative_prompt": "blurry, distorted, low quality, extra limbs"
+  },
+  "video_seeds": [
+    {
+      "id": "seed-a",
+      "value": 101
+    }
+  ],
+  "conditions": [
+    {
+      "id": "regional-prompting-fixed-current-sam1",
+      "method": "regional_prompting",
+      "prompt_representation": "joint",
+      "mask_type": "fixed",
+      "mask_source": "fixed",
+      "mask_sharing": "current",
+      "self_attention_masking": true,
+      "image_context_isolation": false,
+      "beta": 0.5
+    },
+    {
+      "id": "regional-prompting-fixed-first-sam1",
+      "method": "regional_prompting",
+      "prompt_representation": "joint",
+      "mask_type": "fixed",
+      "mask_source": "fixed",
+      "mask_sharing": "first",
+      "self_attention_masking": true,
+      "image_context_isolation": false,
+      "beta": 0.5
+    },
+    {
+      "id": "regional-prompting-fixed-previous-generated-sam1",
+      "method": "regional_prompting",
+      "prompt_representation": "joint",
+      "mask_type": "fixed",
+      "mask_source": "fixed",
+      "mask_sharing": "previous_generated",
+      "self_attention_masking": true,
+      "image_context_isolation": false,
+      "beta": 0.5
+    },
+    {
+      "id": "regional-prompting-hard-current-sam1",
+      "method": "regional_prompting",
+      "prompt_representation": "joint",
+      "mask_type": "hard",
+      "mask_source": "dynamic",
+      "mask_sharing": "current",
+      "self_attention_masking": true,
+      "image_context_isolation": false,
+      "beta": 0.5
+    },
+    {
+      "id": "regional-prompting-hard-first-sam1",
+      "method": "regional_prompting",
+      "prompt_representation": "joint",
+      "mask_type": "hard",
+      "mask_source": "dynamic",
+      "mask_sharing": "first",
+      "self_attention_masking": true,
+      "image_context_isolation": false,
+      "beta": 0.5
+    },
+    {
+      "id": "regional-prompting-hard-previous-generated-sam1",
+      "method": "regional_prompting",
+      "prompt_representation": "joint",
+      "mask_type": "hard",
+      "mask_source": "dynamic",
+      "mask_sharing": "previous_generated",
+      "self_attention_masking": true,
+      "image_context_isolation": false,
+      "beta": 0.5
+    },
+    {
+      "id": "regional-prompting-soft-current-sam1",
+      "method": "regional_prompting",
+      "prompt_representation": "joint",
+      "mask_type": "soft",
+      "mask_source": "dynamic",
+      "mask_sharing": "current",
+      "self_attention_masking": true,
+      "image_context_isolation": false,
+      "beta": 0.5
+    },
+    {
+      "id": "regional-prompting-soft-first-sam1",
+      "method": "regional_prompting",
+      "prompt_representation": "joint",
+      "mask_type": "soft",
+      "mask_source": "dynamic",
+      "mask_sharing": "first",
+      "self_attention_masking": true,
+      "image_context_isolation": false,
+      "beta": 0.5
+    },
+    {
+      "id": "regional-prompting-soft-previous-generated-sam1",
+      "method": "regional_prompting",
+      "prompt_representation": "joint",
+      "mask_type": "soft",
+      "mask_source": "dynamic",
+      "mask_sharing": "previous_generated",
+      "self_attention_masking": true,
+      "image_context_isolation": false,
+      "beta": 0.5
+    },
+    {
+      "id": "concept-weaver-fixed-current-sam1",
+      "method": "concept_weaver",
+      "prompt_representation": "split",
+      "mask_type": "fixed",
+      "mask_source": "fixed",
+      "mask_sharing": "current",
+      "self_attention_masking": true,
+      "image_context_isolation": false
+    },
+    {
+      "id": "concept-weaver-fixed-first-sam1",
+      "method": "concept_weaver",
+      "prompt_representation": "split",
+      "mask_type": "fixed",
+      "mask_source": "fixed",
+      "mask_sharing": "first",
+      "self_attention_masking": true,
+      "image_context_isolation": false
+    },
+    {
+      "id": "concept-weaver-fixed-previous-generated-sam1",
+      "method": "concept_weaver",
+      "prompt_representation": "split",
+      "mask_type": "fixed",
+      "mask_source": "fixed",
+      "mask_sharing": "previous_generated",
+      "self_attention_masking": true,
+      "image_context_isolation": false
+    },
+    {
+      "id": "concept-weaver-hard-current-sam1",
+      "method": "concept_weaver",
+      "prompt_representation": "split",
+      "mask_type": "hard",
+      "mask_source": "dynamic",
+      "mask_sharing": "current",
+      "self_attention_masking": true,
+      "image_context_isolation": false
+    },
+    {
+      "id": "concept-weaver-hard-first-sam1",
+      "method": "concept_weaver",
+      "prompt_representation": "split",
+      "mask_type": "hard",
+      "mask_source": "dynamic",
+      "mask_sharing": "first",
+      "self_attention_masking": true,
+      "image_context_isolation": false
+    },
+    {
+      "id": "concept-weaver-hard-previous-generated-sam1",
+      "method": "concept_weaver",
+      "prompt_representation": "split",
+      "mask_type": "hard",
+      "mask_source": "dynamic",
+      "mask_sharing": "previous_generated",
+      "self_attention_masking": true,
+      "image_context_isolation": false
+    },
+    {
+      "id": "concept-weaver-soft-current-sam1",
+      "method": "concept_weaver",
+      "prompt_representation": "split",
+      "mask_type": "soft",
+      "mask_source": "dynamic",
+      "mask_sharing": "current",
+      "self_attention_masking": true,
+      "image_context_isolation": false
+    },
+    {
+      "id": "concept-weaver-soft-first-sam1",
+      "method": "concept_weaver",
+      "prompt_representation": "split",
+      "mask_type": "soft",
+      "mask_source": "dynamic",
+      "mask_sharing": "first",
+      "self_attention_masking": true,
+      "image_context_isolation": false
+    },
+    {
+      "id": "concept-weaver-soft-previous-generated-sam1",
+      "method": "concept_weaver",
+      "prompt_representation": "split",
+      "mask_type": "soft",
+      "mask_source": "dynamic",
+      "mask_sharing": "previous_generated",
+      "self_attention_masking": true,
+      "image_context_isolation": false
+    },
+    {
+      "id": "ediff-i-fixed-current-sam1",
+      "method": "ediff-i",
+      "prompt_representation": "joint",
+      "mask_type": "fixed",
+      "mask_source": "fixed",
+      "mask_sharing": "current",
+      "self_attention_masking": true,
+      "image_context_isolation": false,
+      "strength": 3.0
+    },
+    {
+      "id": "ediff-i-fixed-first-sam1",
+      "method": "ediff-i",
+      "prompt_representation": "joint",
+      "mask_type": "fixed",
+      "mask_source": "fixed",
+      "mask_sharing": "first",
+      "self_attention_masking": true,
+      "image_context_isolation": false,
+      "strength": 3.0
+    },
+    {
+      "id": "ediff-i-fixed-previous-generated-sam1",
+      "method": "ediff-i",
+      "prompt_representation": "joint",
+      "mask_type": "fixed",
+      "mask_source": "fixed",
+      "mask_sharing": "previous_generated",
+      "self_attention_masking": true,
+      "image_context_isolation": false,
+      "strength": 3.0
+    },
+    {
+      "id": "ediff-i-hard-current-sam1",
+      "method": "ediff-i",
+      "prompt_representation": "joint",
+      "mask_type": "hard",
+      "mask_source": "dynamic",
+      "mask_sharing": "current",
+      "self_attention_masking": true,
+      "image_context_isolation": false,
+      "strength": 3.0
+    },
+    {
+      "id": "ediff-i-hard-first-sam1",
+      "method": "ediff-i",
+      "prompt_representation": "joint",
+      "mask_type": "hard",
+      "mask_source": "dynamic",
+      "mask_sharing": "first",
+      "self_attention_masking": true,
+      "image_context_isolation": false,
+      "strength": 3.0
+    },
+    {
+      "id": "ediff-i-hard-previous-generated-sam1",
+      "method": "ediff-i",
+      "prompt_representation": "joint",
+      "mask_type": "hard",
+      "mask_source": "dynamic",
+      "mask_sharing": "previous_generated",
+      "self_attention_masking": true,
+      "image_context_isolation": false,
+      "strength": 3.0
+    },
+    {
+      "id": "ediff-i-soft-current-sam1",
+      "method": "ediff-i",
+      "prompt_representation": "joint",
+      "mask_type": "soft",
+      "mask_source": "dynamic",
+      "mask_sharing": "current",
+      "self_attention_masking": true,
+      "image_context_isolation": false,
+      "strength": 3.0
+    },
+    {
+      "id": "ediff-i-soft-first-sam1",
+      "method": "ediff-i",
+      "prompt_representation": "joint",
+      "mask_type": "soft",
+      "mask_source": "dynamic",
+      "mask_sharing": "first",
+      "self_attention_masking": true,
+      "image_context_isolation": false,
+      "strength": 3.0
+    },
+    {
+      "id": "ediff-i-soft-previous-generated-sam1",
+      "method": "ediff-i",
+      "prompt_representation": "joint",
+      "mask_type": "soft",
+      "mask_source": "dynamic",
+      "mask_sharing": "previous_generated",
+      "self_attention_masking": true,
+      "image_context_isolation": false,
+      "strength": 3.0
+    }
+  ],
+  "scenes": [
+    {
+      "id": "smoke-scene",
+      "reference_image": "/local_scratch2/gzappavi/r3_stage3/input/reference.png",
+      "actors": [
+        {
+          "id": "actor-left",
+          "isolated_image": "/local_scratch2/gzappavi/r3_stage3/input/reference.png"
+        },
+        {
+          "id": "actor-right",
+          "isolated_image": "/local_scratch2/gzappavi/r3_stage3/input/reference.png"
+        }
+      ],
+      "fixed_boxes": {
+        "actor-left": [
+          0,
+          0,
+          416,
+          480
+        ],
+        "actor-right": [
+          416,
+          0,
+          832,
+          480
+        ]
+      },
+      "segmentation_masks": {
+        "actor-left": "/local_scratch2/gzappavi/r3_stage3/input/mask-left.png",
+        "actor-right": "/local_scratch2/gzappavi/r3_stage3/input/mask-right.png"
+      },
+      "assignments": [
+        {
+          "id": "ab",
+          "targets": {
+            "actor-left": "waves",
+            "actor-right": "nods"
+          },
+          "prompts": {
+            "joint_sentence": "the red actor waves while the blue actor nods",
+            "joint_character_segments": [
+              "the red actor waves",
+              "the blue actor nods"
+            ],
+            "split_sentences": [
+              "the red actor waves",
+              "the blue actor nods"
+            ],
+            "split_character_segments": [
+              [
+                "the red actor waves"
+              ],
+              [
+                "the blue actor nods"
+              ]
+            ],
+            "general_prompt": "simple static test scene"
+          }
+        }
+      ]
+    }
+  ],
+  "r3_evidence": {
+    "protocol": "/local_scratch2/gzappavi/wan_experiments_r3_cpu_20260926/docs/r3_protocol_v19.json",
+    "matrix": "/local_scratch2/gzappavi/wan_experiments_r3_cpu_20260926/docs/r3_test_matrix_v3.json",
+    "attention_backend": "flex_attention",
+    "rank_mode": "single"
+  }
+}

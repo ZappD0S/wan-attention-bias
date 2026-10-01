@@ -2,6 +2,7 @@
 
 import ast
 import copy
+import hashlib
 import json
 import subprocess
 from pathlib import Path
@@ -11,6 +12,7 @@ import pytest
 import torch
 
 from multi_sample_inference import j1_stage, r3_jz
+from multi_sample_inference import r3_contract_cases as contract_cases
 from multi_sample_inference import r3_generator_pair as pair
 from multi_sample_inference.j1_step0_probe import (
     compare_cross_architecture,
@@ -19,6 +21,7 @@ from multi_sample_inference.j1_step0_probe import (
 )
 from multi_sample_inference.r3_backend_canary import run_backend_canary
 from multi_sample_inference.r3_contracts import (
+    STAGE4_V19_SOURCES,
     V19_PROTOCOL_SHA256,
     execution_blockers,
     load_protocol_bundle,
@@ -714,3 +717,374 @@ def test_freeze_of_jz_v4_binds_source_and_canary_without_reference(tmp_path, mon
     assert json.loads(source.read_text())["r3_evidence"]["protocol"].endswith("r3_protocol_jz_v4.json")
     written = json.loads((repo / "docs/r3_protocol_jz_v4.json").read_text())
     assert written == _jz_v4(source_sha256=sha256_file(source))
+
+
+# --- jz-v5: R3 stage 4 as sequential contract-case chunks on the A100 -------------------
+
+V5 = "r3-gpu-contracts-jz-v5"
+CHUNKS = r3_jz.JZ_CONTRACT_CHUNK_STAGES
+PAIR_EVIDENCE = {
+    "stage_id": "single-rank-generator-canary",
+    "path": "docs/j1_evidence/jean-zay-generator-pair.json",
+    "sha256": sha256_file(ROOT / "docs/j1_evidence/jean-zay-generator-pair.json"),
+    "protocol_sha256": r3_jz.JZ_V4_PROTOCOL_SHA256,
+    "status": "passed",
+}
+
+
+def _jz_v5(**values):
+    values = {"prerequisite_evidence": [CANARY_EVIDENCE, PAIR_EVIDENCE]} | values
+    return _frozen(V5, **values)
+
+
+def _chunk(protocol, index):
+    return _amendment(protocol)["authorization_record"][CHUNKS[index - 1]]
+
+
+def _bootes_sources():
+    return {name: json.loads((ROOT / r3_jz.bootes_v19_stage4_source_path(name)).read_text())
+            for name in STAGE4_V19_SOURCES}
+
+
+def test_jz_v4_constant_and_committed_file_validate_unchanged():
+    path = ROOT / "docs/r3_protocol_jz_v4.json"
+    assert sha256_file(path) == r3_jz.JZ_V4_PROTOCOL_SHA256
+    protocol = load_protocol_bundle(path, MATRIX)["protocol"]
+    assert set(_amendment(protocol)["authorization_record"]) == set(r3_jz.J1_STAGE_IDS)
+    record = _amendment(protocol)["authorization_record"]["single-rank-generator-canary"]
+    assert record["source"]["sha256"] == r3_jz.JZ_V4_PAIR_SOURCE_SHA256
+
+
+def test_committed_bootes_v19_sources_match_the_frozen_v19_declaration():
+    v19 = json.loads((ROOT / "docs/r3_protocol_v19.json").read_text())
+    declared = v19["execution_amendment"]["authorization_record"]["sources"]
+    for name, digest in STAGE4_V19_SOURCES.items():
+        assert sha256_file(ROOT / r3_jz.bootes_v19_stage4_source_path(name)) == digest
+        assert declared[name]["sha256"] == digest
+
+
+def test_planned_order_reproduces_the_bootes_v18_runtime_order():
+    """Job ids and cases are path-free, so the pure plan matches the real v18 expansion."""
+    ordered, pairs = contract_cases.planned_contract_order(
+        _bootes_sources(), json.loads(MATRIX.read_text()))
+    v18 = json.loads((ROOT / "docs/r3_evidence/bootes-contract-cases-v18-failed-attempt.json")
+                     .read_text())
+    observed = [{key: job[key] for key in ("source", "job_id", "case_id")} for job in v18["jobs"]]
+    assert ordered[:len(observed)] == observed
+    assert ordered[len(observed)]["job_id"] == v18["failed_job"]
+    jobs, parity = contract_cases.expected_single_rank_cases(json.loads(MATRIX.read_text()))
+    assert len(ordered) == 200 and {job["case_id"] for job in ordered} == jobs
+    assert len({job["job_id"] for job in ordered}) == 200
+    assert set(pairs) == {"dpmpp-flash", "unipc-flash"} and len(parity) == len(pairs)
+
+
+def test_jz_v5_freezes_four_sequential_chunks_after_the_canary_and_pair():
+    protocol = _jz_v5()
+    assert _validate(protocol)
+    assert protocol["lineage"] == {"protocol_id": "r3-gpu-contracts-jz-v4",
+                                   "sha256": r3_jz.JZ_V4_PROTOCOL_SHA256}
+    assert protocol["claim_boundary"] == r3_jz.JZ_V5_CLAIM_BOUNDARY
+    amendment = _amendment(protocol)
+    assert amendment["generation_settings"] == {"offload_model": True}
+    assert amendment["prerequisite_evidence"] == [CANARY_EVIDENCE, PAIR_EVIDENCE]
+    records = amendment["authorization_record"]
+    assert set(records) == set(r3_jz.JZ_ALL_STAGE_IDS)
+    # Passed stages keep their used attempts, so their runners refuse a rerun.
+    assert records["backend-kernel-canary"]["output"].endswith("/attempt-2/backend-kernel-canary.json")
+    pair_record = records["single-rank-generator-canary"]
+    assert pair_record["output"].endswith("/generator-pair/attempt-1")
+    assert pair_record["source"] == {
+        "path": f"{r3_jz.JZ_RUN_ROOT}/inputs/jz_v4/source-j1-pair.json",
+        "sha256": r3_jz.JZ_V4_PAIR_SOURCE_SHA256}
+    gates = {gate["id"]: gate for gate in amendment["stage_gates"]}
+    assert gates[r3_jz.STEP0_STAGE]["authorization"] == "not-approved"
+    planned, previous = [], None
+    for index, stage in enumerate(CHUNKS, start=1):
+        gate, record = gates[stage], _chunk(protocol, index)
+        assert gate["authorization"] == "approved"
+        assert gate["prerequisites"] == ["backend-kernel-canary", "single-rank-generator-canary",
+                                         *([CHUNKS[index - 2]] if index > 1 else [])]
+        assert gate["waived_prerequisites"] == [r3_jz.JZ_CONTRACT_HOOK_CANARY_WAIVER]
+        assert stage_execution_blockers(protocol, stage) == []
+        assert record["chunk"]["index"] == index and len(record["chunk"]["jobs"]) == 50
+        assert record["output"] == f"{r3_jz.JZ_RUN_ROOT}/contract-cases/chunk-{index}/attempt-1"
+        assert record["previous_chunk"] == previous
+        assert record["job_timeout_seconds"] == 2700 and record["expected_jobs"] == 200
+        assert record["sources"] == _chunk(protocol, 1)["sources"]
+        dependency = ("" if index == 1 else
+                      "--dependency=afterok:$J1_PREVIOUS_CHUNK_JOB_ID --kill-on-invalid-dep=yes ")
+        assert record["command"] == (
+            f"sbatch --parsable {dependency}--qos=qos_gpu_a100-t3 --time=16:00:00 "
+            f"tools/j1_slurm_stage.sh {stage} docs/r3_protocol_jz_v5.json")
+        planned += record["chunk"]["jobs"]
+        previous = {"stage_id": stage, "record": f"{record['output']}/attempt.json"}
+    ordered, pairs = contract_cases.planned_contract_order(
+        _bootes_sources(), json.loads(MATRIX.read_text()))
+    assert planned == ordered
+    first = _chunk(protocol, 1)["chunk"]
+    assert first["parity_pairs"] == pairs
+    assert {job["job_id"] for job in first["jobs"][:4]} == {
+        job_id for pair in pairs.values() for job_id in pair.values()}
+    assert all(_chunk(protocol, index)["chunk"]["parity_pairs"] == {} for index in (2, 3, 4))
+
+
+def _swap_first_jobs(protocol):
+    jobs = _chunk(protocol, 2)["chunk"]["jobs"]
+    jobs[0], jobs[1] = jobs[1], jobs[0]
+
+
+def _move_job(protocol):
+    _chunk(protocol, 3)["chunk"]["jobs"].append(_chunk(protocol, 4)["chunk"]["jobs"].pop(0))
+
+
+@pytest.mark.parametrize("change", [
+    _swap_first_jobs,
+    _move_job,
+    lambda p: _chunk(p, 1)["chunk"].update(plan_sha256="0" * 64),
+    lambda p: _chunk(p, 2)["chunk"].update(parity_pairs=_chunk(p, 1)["chunk"]["parity_pairs"]),
+    lambda p: _chunk(p, 2).update(command=_chunk(p, 2)["command"].replace(
+        "--dependency=afterok:$J1_PREVIOUS_CHUNK_JOB_ID ", "")),
+    lambda p: _chunk(p, 2).update(previous_chunk=None),
+    lambda p: _chunk(p, 3)["sources"]["unipc-flex"].update(sha256="0" * 64),
+    lambda p: _chunk(p, 1).update(job_timeout_seconds=1800),
+    lambda p: _amendment(p)["stage_gates"][3].update(waived_prerequisites=[]),
+    lambda p: _amendment(p)["stage_gates"][4].update(
+        prerequisites=["backend-kernel-canary", "single-rank-generator-canary"]),
+    lambda p: _amendment(p)["stage_gates"][1].update(authorization="approved"),
+    lambda p: _amendment(p)["authorization_record"]["single-rank-generator-canary"][
+        "source"].update(sha256="d" * 64),
+    lambda p: _amendment(p)["authorization_record"][r3_jz.STEP0_STAGE]["source"].update(
+        sha256="d" * 64),
+    lambda p: _amendment(p).update(prerequisite_evidence=[CANARY_EVIDENCE]),
+    lambda p: _amendment(p)["prerequisite_evidence"][1].update(
+        protocol_sha256=r3_jz.JZ_V3_PROTOCOL_SHA256),
+    lambda p: _amendment(p).pop("generation_settings"),
+    lambda p: p.update(claim_boundary=r3_jz.JZ_CLAIM_BOUNDARY),
+    lambda p: p["lineage"].update(sha256=r3_jz.JZ_V3_PROTOCOL_SHA256),
+])
+def test_jz_v5_rejects_unbound_changes(change):
+    protocol = _jz_v5()
+    change(protocol)
+    with pytest.raises(ValueError):
+        _validate(protocol)
+
+
+def test_jz_v5_chunk_prerequisites_rehash_committed_canary_and_offload_pair(tmp_path):
+    protocol = _jz_v5()
+    for stage in CHUNKS:
+        records = r3_jz.verify_jz_prerequisites(ROOT, protocol, stage)
+        assert set(records) == {"backend-kernel-canary", "single-rank-generator-canary"}
+    (tmp_path / "docs/j1_evidence").mkdir(parents=True)
+    for entry in (CANARY_EVIDENCE, PAIR_EVIDENCE):
+        (tmp_path / entry["path"]).write_bytes((ROOT / entry["path"]).read_bytes())
+    tampered = json.loads((tmp_path / PAIR_EVIDENCE["path"]).read_text())
+    tampered["generation_settings"] = {"offload_model": False}
+    (tmp_path / PAIR_EVIDENCE["path"]).write_text(json.dumps(tampered))
+    with pytest.raises(ValueError, match="changed or is missing"):
+        r3_jz.verify_jz_prerequisites(tmp_path, protocol, CHUNKS[0])
+    _amendment(protocol)["prerequisite_evidence"][1]["sha256"] = sha256_file(
+        tmp_path / PAIR_EVIDENCE["path"])
+    with pytest.raises(ValueError, match="invalid stage/status/binding"):
+        r3_jz.verify_jz_prerequisites(tmp_path, protocol, CHUNKS[0])
+
+
+def _chunk_record(protocol, index, protocol_sha256, previous_sha256, **changes):
+    auth = _chunk(protocol, index)
+    comparisons = {name: {"measurements": {"passed": True, "maximum_absolute_error": 0.0}}
+                   for name in auth["chunk"]["parity_pairs"]}
+    return {
+        "stage_id": CHUNKS[index - 1], "status": "passed", "protocol_sha256": protocol_sha256,
+        "matrix_sha256": sha256_file(MATRIX), "r3_acceptance": False,
+        "chunk": {"index": index, "count": 4, "plan_sha256": auth["chunk"]["plan_sha256"]},
+        "previous_chunk_record_sha256": previous_sha256,
+        "jobs": [job | {"video_sha256": "9" * 64} for job in auth["chunk"]["jobs"]],
+        "comparisons": comparisons,
+    } | changes
+
+
+def _write_chunk_records(tmp_path, protocol, protocol_sha256, changes=None):
+    paths, previous = [], None
+    for index in range(1, 5):
+        path = tmp_path / f"chunk-{index}.json"
+        record = _chunk_record(protocol, index, protocol_sha256, previous)
+        path.write_text(json.dumps(record | (changes or {}).get(index, {})))
+        paths.append(path)
+        previous = sha256_file(path)
+    return paths
+
+
+def test_aggregate_accepts_exactly_the_passed_hash_chained_chunks(tmp_path):
+    protocol = _jz_v5()
+    path = tmp_path / "r3_protocol_jz_v5.json"
+    path.write_text(json.dumps(protocol, indent=2) + "\n")
+    digest = sha256_file(path)
+    summary = contract_cases.aggregate_jz_contract_chunks(
+        path, MATRIX, _write_chunk_records(tmp_path, protocol, digest))
+    assert summary["status"] == "passed" and summary["jobs"] == 200
+    assert summary["parity_pairs"] == ["dpmpp-flash", "unipc-flash"]
+    assert summary["r3_acceptance"] is False
+    first_jobs = _chunk(protocol, 1)["chunk"]["jobs"]
+    for changes in (
+        {3: {"status": "failed"}},
+        {2: {"protocol_sha256": "0" * 64}},
+        {2: {"previous_chunk_record_sha256": "0" * 64}},
+        {4: {"jobs": [job | {"video_sha256": "9" * 64} for job in first_jobs[:50]]}},
+        {1: {"comparisons": {"unipc-flash": {"measurements": {"passed": True}}}}},
+        {1: {"comparisons": {name: {"measurements": {"passed": False}}
+                             for name in ("dpmpp-flash", "unipc-flash")}}},
+    ):
+        with pytest.raises(ValueError):
+            contract_cases.aggregate_jz_contract_chunks(
+                path, MATRIX, _write_chunk_records(tmp_path, protocol, digest, changes))
+    records = _write_chunk_records(tmp_path, protocol, digest)
+    with pytest.raises(ValueError):
+        contract_cases.aggregate_jz_contract_chunks(path, MATRIX, records[:3])
+    with pytest.raises(ValueError):
+        contract_cases.aggregate_jz_contract_chunks(path, MATRIX, [records[1], records[0],
+                                                                   *records[2:]])
+
+
+def _patched_chunk_runner(tmp_path, monkeypatch, protocol):
+    """Run the chunk runner's CPU gates against an in-memory jz-v5 rooted in tmp_path."""
+    monkeypatch.setattr(contract_cases, "JZ_RUN_ROOT", str(tmp_path))
+    monkeypatch.setattr(contract_cases, "require_jz_protocol_path", lambda *args: None)
+    bundle = {"protocol": protocol, "matrix": json.loads(MATRIX.read_text()),
+              "protocol_sha256": "f" * 64, "matrix_sha256": sha256_file(MATRIX)}
+    monkeypatch.setattr(contract_cases, "load_protocol_bundle", lambda *args: bundle)
+    inputs = tmp_path / "inputs"
+    digests = j1_freeze.write_contract_sources(V5, inputs)
+    for index in range(1, 5):
+        auth = _chunk(protocol, index)
+        auth["output"] = str(tmp_path / f"chunk-{index}")
+        auth["sources"] = {name: {"path": str(inputs / f"source-stage4-{name}.json"),
+                                  "sha256": digest} for name, digest in digests.items()}
+        if auth["previous_chunk"] is not None:
+            auth["previous_chunk"]["record"] = str(tmp_path / f"chunk-{index - 1}/attempt.json")
+    return f"{r3_jz.JZ_REPO_ROOT}/docs/r3_protocol_jz_v5.json"
+
+
+def test_chunk_runner_refuses_rerun_and_unpassed_predecessor_before_gpu(tmp_path, monkeypatch):
+    protocol = _jz_v5()
+    protocol_path = _patched_chunk_runner(tmp_path, monkeypatch, protocol)
+    output = tmp_path / "chunk-2"
+    output.mkdir()
+    with pytest.raises(ValueError, match="attempt already exists"):
+        contract_cases.run_jz_contract_chunk(protocol_path, MATRIX, CHUNKS[1], output)
+    output.rmdir()
+    with pytest.raises(ValueError, match="has no record"):
+        contract_cases.run_jz_contract_chunk(protocol_path, MATRIX, CHUNKS[1], output)
+    previous = tmp_path / "chunk-1/attempt.json"
+    previous.parent.mkdir()
+    previous.write_text(json.dumps(_chunk_record(protocol, 1, "f" * 64, None, status="failed")))
+    with pytest.raises(ValueError, match="did not pass under this protocol"):
+        contract_cases.run_jz_contract_chunk(protocol_path, MATRIX, CHUNKS[1], output)
+    assert not output.exists()
+    previous.write_text(json.dumps(_chunk_record(protocol, 1, "f" * 64, None)))
+    assert contract_cases.verify_previous_chunk(_chunk(protocol, 2), "f" * 64) == sha256_file(previous)
+    assert contract_cases.verify_previous_chunk(_chunk(protocol, 1), "f" * 64) is None
+    with pytest.raises(ValueError):
+        contract_cases.verify_previous_chunk(_chunk(protocol, 2), "e" * 64)
+    with pytest.raises(ValueError, match="unknown J1 contract-case chunk"):
+        contract_cases.run_jz_contract_chunk(protocol_path, MATRIX, "single-rank-generator-canary",
+                                             output)
+
+
+def test_jz_v4_has_no_contract_chunk_stages():
+    path = ROOT / "docs/r3_protocol_jz_v4.json"
+    protocol = load_protocol_bundle(path, MATRIX)["protocol"]
+    with pytest.raises(ValueError, match="unknown J1 stage"):
+        r3_jz.jz_authorization(protocol, CHUNKS[0])
+    with pytest.raises(ValueError, match="unknown J1 stage"):
+        contract_cases.run_jz_contract_chunk(path, MATRIX, CHUNKS[0], "/nonexistent")
+
+
+def test_derived_contract_sources_change_only_enumerated_fields(tmp_path):
+    digests = j1_freeze.write_contract_sources(V5, tmp_path)
+    assert digests == {name: entry["sha256"]
+                       for name, entry in _chunk(_jz_v5(), 1)["sources"].items()}
+
+    def leaves(value, prefix=()):
+        if isinstance(value, dict):
+            return {k: v for key, item in value.items() for k, v in leaves(item, (*prefix, key)).items()}
+        if isinstance(value, list):
+            return {k: v for index, item in enumerate(value)
+                    for k, v in leaves(item, (*prefix, index)).items()}
+        return {prefix: value}
+
+    for name, bootes in _bootes_sources().items():
+        derived = json.loads((tmp_path / f"source-stage4-{name}.json").read_text())
+        before, after = leaves(bootes), leaves(derived)
+        assert set(before) == set(after)
+        changed = {key for key in before if before[key] != after[key]}
+        assert changed == {
+            ("checkpoint", "path"), ("checkpoint", "inventory"),
+            ("scenes", 0, "reference_image"), ("scenes", 0, "actors", 0, "isolated_image"),
+            ("scenes", 0, "actors", 1, "isolated_image"),
+            ("scenes", 0, "segmentation_masks", "actor-left"),
+            ("scenes", 0, "segmentation_masks", "actor-right"),
+            ("r3_evidence", "protocol"), ("r3_evidence", "matrix"),
+        }
+        assert derived["r3_evidence"]["protocol"] == (
+            f"{r3_jz.JZ_REPO_ROOT}/docs/r3_protocol_jz_v5.json")
+    with pytest.raises(ValueError, match="already exists"):
+        j1_freeze.write_contract_sources(V5, tmp_path)
+    with pytest.raises(ValueError, match="binds no contract-case sources"):
+        j1_freeze.write_contract_sources("r3-gpu-contracts-jz-v4", tmp_path / "v4")
+
+
+def test_pair_source_derivation_is_unchanged_for_jz_v4():
+    assert hashlib.sha256(j1_freeze.derive_jz_source("r3-gpu-contracts-jz-v4")).hexdigest() == (
+        r3_jz.JZ_V4_PAIR_SOURCE_SHA256)
+
+
+def test_freeze_of_jz_v5_binds_canary_and_pair_evidence(tmp_path, monkeypatch):
+    repo = _freeze_repo(tmp_path, monkeypatch)
+    (repo / "docs/j1_evidence").mkdir()
+    for entry in (CANARY_EVIDENCE, PAIR_EVIDENCE):
+        (repo / entry["path"]).write_bytes((ROOT / entry["path"]).read_bytes())
+    prerequisites = [("backend-kernel-canary", CANARY_EVIDENCE["path"]),
+                     ("single-rank-generator-canary", PAIR_EVIDENCE["path"])]
+    with pytest.raises(ValueError, match="writes no pair source"):
+        j1_freeze.freeze(V5, prerequisites=prerequisites, write_source=tmp_path / "s.json",
+                         repo=repo)
+    result = j1_freeze.freeze(V5, prerequisites=prerequisites, repo=repo,
+                              frozen_at="2026-10-02T09:00:00Z")
+    assert result["approved_stage"] == CHUNKS[-1]
+    assert result["source_sha256"] == r3_jz.JZ_V4_PAIR_SOURCE_SHA256
+    assert json.loads((repo / "docs/r3_protocol_jz_v5.json").read_text()) == _jz_v5()
+
+
+def test_submission_helper_chains_bound_commands_with_afterok(tmp_path):
+    protocol = _jz_v5()
+    commands = {stage: _amendment(protocol)["authorization_record"][stage]["command"]
+                for stage in CHUNKS}
+    bin_dir, repo = tmp_path / "bin", tmp_path / "repo"
+    bin_dir.mkdir()
+    repo.mkdir()
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    (tmp_path / "commands.json").write_text(json.dumps(commands))
+    (bin_dir / "uv").write_text(
+        "#!/bin/bash\n"
+        f"exec python3 -c 'import json,sys; print(json.load(open(\"{tmp_path}/commands.json\"))"
+        "[sys.argv[sys.argv.index(\"--stage\") + 1]])' \"$@\"\n")
+    (bin_dir / "sbatch").write_text(
+        "#!/bin/bash\n"
+        f"echo \"$*\" >> {tmp_path}/sbatch.log\n"
+        f"echo $((1000 + $(wc -l < {tmp_path}/sbatch.log)))\n")
+    for tool in ("uv", "sbatch"):
+        (bin_dir / tool).chmod(0o755)
+    env = {"PATH": f"{bin_dir}:/usr/bin:/bin", "J1_REPO": str(repo),
+           "J1_TOOLS": str(tmp_path / "tools"), "HOME": str(tmp_path)}
+    result = subprocess.run(["bash", str(ROOT / "tools/j1_submit_contract_chunks.sh"),
+                             "docs/r3_protocol_jz_v5.json"],
+                            env=env, capture_output=True, text=True, check=True)
+    assert result.stdout.split() == [CHUNKS[0], "1001", CHUNKS[1], "1002",
+                                     CHUNKS[2], "1003", CHUNKS[3], "1004"]
+    submitted = (tmp_path / "sbatch.log").read_text().splitlines()
+    assert submitted[0] == commands[CHUNKS[0]].removeprefix("sbatch ")
+    for index in (1, 2, 3):
+        assert submitted[index] == commands[CHUNKS[index]].removeprefix("sbatch ").replace(
+            "$J1_PREVIOUS_CHUNK_JOB_ID", str(1000 + index))
+    code = [line for line in (ROOT / "tools/j1_submit_contract_chunks.sh").read_text().splitlines()
+            if not line.lstrip().startswith("#")]
+    assert not any("eval" in line.split() for line in code)

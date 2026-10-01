@@ -19,12 +19,17 @@ approved. Later stages add one entry each (lineage to the previous frozen jz
 file). Source and Bootes-capture hashes are freeze-time values only for versions
 that approve the step-0 probe or later; each version binds its own pair source,
 whose ``r3_evidence.protocol`` names that version's protocol file.
+
+Contract chunks (jz-v5 on): R3 stage 4 runs as sequential chunk stages. Their
+Jean Zay sources and the frozen ordered job plan are recomputed at validation from
+the committed byte-exact Bootes v19 sources and the v3 matrix, so neither can drift.
 """
 
 from __future__ import annotations
 
 import copy
 import hashlib
+import json
 import re
 import subprocess
 import threading
@@ -63,6 +68,14 @@ JZ_MATRIX_PATH = "docs/r3_test_matrix_v3.json"
 
 STEP0_STAGE = "step0-cross-architecture-probe"
 J1_STAGE_IDS = ("backend-kernel-canary", STEP0_STAGE, "single-rank-generator-canary")
+# R3 stage 4 on Jean Zay (jz-v5 on): the v19 contract cases, cut into sequential chunks
+# because the ~22 h A100 total exceeds the 20 h qos_gpu_a100-t3 wall limit.
+CONTRACT_STAGE = "single-rank-contract-cases"
+JZ_CONTRACT_CHUNK_COUNT = 4
+JZ_CONTRACT_CHUNK_STAGES = tuple(
+    f"{CONTRACT_STAGE}-chunk-{index}" for index in range(1, JZ_CONTRACT_CHUNK_COUNT + 1)
+)
+JZ_ALL_STAGE_IDS = (*J1_STAGE_IDS, *JZ_CONTRACT_CHUNK_STAGES)
 # Modules that J1 stages execute beyond the v19 production component set.
 JZ_EXTRA_COMPONENTS = (
     "j1_stage.py",
@@ -204,10 +217,40 @@ JZ_STAGE_SLURM = {
     STEP0_STAGE: "",
     "single-rank-generator-canary": "--qos=qos_gpu_a100-t3 --time=04:00:00 ",
 }
+# ~50 jobs at ~6.5 min (A100 pair with offload) is ~5.5-7 h; 16 h keeps a >2x margin
+# under the 20 h qos_gpu_a100-t3 cap. Each later chunk waits for its predecessor
+# (afterok) and is cancelled if that dependency can never be satisfied.
+JZ_CONTRACT_CHUNK_SLURM = "--qos=qos_gpu_a100-t3 --time=16:00:00 "
+JZ_PREVIOUS_CHUNK_JOB_VARIABLE = "$J1_PREVIOUS_CHUNK_JOB_ID"
+# Bootes v19 observed 3-4 min per job (one 10.5 min); A100 with offload is ~2x slower.
+JZ_CONTRACT_JOB_TIMEOUT_SECONDS = 2700
+# The four frozen Bootes v19 stage-4 sources, committed byte-exact (fetched from Bootes,
+# SHA-256 equal to the v19 declaration); Jean Zay sources are derived from them.
+JZ_BOOTES_V19_STAGE4_SOURCE_ROOT = "docs/j1_inputs"
+JZ_CONTRACT_HOOK_CANARY_WAIVER = {
+    "stage_id": "checkpoint-load-hook-canary",
+    "rationale": (
+        "Waived on Jean Zay; the v19 stage-4 prerequisite never ran on an A100. R3's "
+        "code-level hook-neutrality conclusion (Pollux v7: observer/no-observer layer-0 "
+        "outputs bitwise identical) carries over through the passed J1 gate (within-A100 "
+        "official-pristine/custom-none code equivalence), and the jz-v4 A100 pair validated "
+        "source-hook cardinality and finiteness for both routes. The user may reject this "
+        "waiver before freezing; a rejection requires an A100 hook-canary stage first."
+    ),
+}
 # Frozen jz files bound as lineage by later versions (verified on disk at validation).
 JZ_V1_PROTOCOL_SHA256 = "6ef409e45045a0f5217023c2cbd91611d26dfa8fea4846f9cd1f8897fa8aa5db"
 JZ_V2_PROTOCOL_SHA256 = "8e7d7a01b20365d8760dbe76f5a8c4f7707c0da276150ac381db0c4584c3784a"
 JZ_V3_PROTOCOL_SHA256 = "8b0765f2a781797ca1e50ece9704bbe0e727fcd079f1c0bce3dbc9a5c071755f"
+JZ_V4_PROTOCOL_SHA256 = "d94cd662bc00fd87ff3e23562e62fbdc6c77aaf07617db57479d361c7734867a"
+# The jz-v4 pair source that produced the passed A100 pair (job 454384).
+JZ_V4_PAIR_SOURCE_SHA256 = "f7e2ddf8e67c05a0a6abba301d3b6bf59f9d23d84bc94e6f1928da8fea3851f3"
+JZ_V5_CLAIM_BOUNDARY = (
+    "R3 stage 4 on one Jean Zay A100 node class: only the approved single-rank contract-case "
+    "chunks may run, once each, in order, each on one SLURM-allocated A100 after its "
+    "predecessor passed; the canary and pair keep their passed attempts. No distributed "
+    "execution, scientific claim, or bitwise cross-architecture claim."
+)
 # ``attempts`` numbers a stage's one-shot output directory; it defaults to 1. A retry
 # after a consumed approval is a new version with the next attempt number; a stage
 # that already passed keeps its used attempt, so its runner refuses a rerun.
@@ -259,6 +302,36 @@ JZ_VERSIONS = {
         "generation_settings": {"offload_model": True},
         "drop_report_only_reference": True,
     },
+    # R3 stages 4-5 moved to Jean Zay (user decision 2026-10-01); Bootes v19 never runs.
+    # Stage 4 as sequential chunks after the jz-v2 canary and the passed jz-v4 pair.
+    "r3-gpu-contracts-jz-v5": {
+        "lineage": ("r3-gpu-contracts-jz-v4", JZ_V4_PROTOCOL_SHA256),
+        "draft_allowed": False,
+        "approved_stages": (
+            "backend-kernel-canary", "single-rank-generator-canary", *JZ_CONTRACT_CHUNK_STAGES,
+        ),
+        "attempts": {"backend-kernel-canary": 2},
+        "prerequisite_protocols": {
+            "backend-kernel-canary": JZ_V2_PROTOCOL_SHA256,
+            "single-rank-generator-canary": JZ_V4_PROTOCOL_SHA256,
+        },
+        "withdrawn_stages": (STEP0_STAGE,),
+        "stage_gate_overrides": {
+            STEP0_STAGE: {
+                "scope": (
+                    "Withdrawn by the 2026-10-01 post-measurement amendment: the A100 capture ran "
+                    "out of memory and CUDA initial noise differs across GPU models."
+                ),
+            },
+            "single-rank-generator-canary": {"prerequisites": ["backend-kernel-canary"]},
+        },
+        "generation_settings": {"offload_model": True},
+        "drop_report_only_reference": True,
+        # The passed pair keeps the jz-v4 source and output, so its runner refuses a rerun.
+        "pinned_pair_source": ("r3-gpu-contracts-jz-v4", JZ_V4_PAIR_SOURCE_SHA256),
+        "contract_chunks": True,
+        "claim_boundary": JZ_V5_CLAIM_BOUNDARY,
+    },
 }
 _FROZEN_AT = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z")
 
@@ -291,17 +364,131 @@ def jz_version_suffix(protocol_id):
 
 def jz_source_path(protocol_id):
     """Each version binds its own pair source naming that version's protocol file."""
+    pinned = JZ_VERSIONS[protocol_id].get("pinned_pair_source")
+    if pinned is not None:
+        protocol_id = pinned[0]
     return f"{JZ_RUN_ROOT}/inputs/{jz_version_suffix(protocol_id)}/source-j1-pair.json"
+
+
+def jz_contract_source_path(protocol_id, name):
+    return f"{JZ_RUN_ROOT}/inputs/{jz_version_suffix(protocol_id)}/source-stage4-{name}.json"
+
+
+def jz_stage_ids(protocol_id):
+    """All stage ids of one version: the J1 stages, plus contract chunks from jz-v5 on."""
+    chunks = JZ_CONTRACT_CHUNK_STAGES if JZ_VERSIONS[protocol_id].get("contract_chunks") else ()
+    return (*J1_STAGE_IDS, *chunks)
+
+
+def _contract_chunk_gates():
+    gates = []
+    for index, stage_id in enumerate(JZ_CONTRACT_CHUNK_STAGES, start=1):
+        previous = [JZ_CONTRACT_CHUNK_STAGES[index - 2]] if index > 1 else []
+        gates.append({
+            "id": stage_id,
+            "prerequisites": ["backend-kernel-canary", "single-rank-generator-canary", *previous],
+            "waived_prerequisites": [dict(JZ_CONTRACT_HOOK_CANARY_WAIVER)],
+            "scope": (
+                f"Chunk {index} of {JZ_CONTRACT_CHUNK_COUNT} of the runnable v3 single-rank "
+                "contract cases: exactly its frozen ordered job ids, each in an isolated route "
+                "process on one SLURM-allocated A100 with offload_model=True, stopping at the "
+                "first failure; rejected v3 lineage cases remain pre-launch failures."
+            ),
+            "stop_on": [
+                "node-class-mismatch", "previous-chunk-not-passed", "chunk-plan-mismatch",
+                "backend-route-mismatch", "mask-identity-failure", "tracker-contract-failure",
+                "artifact-failure", "parity-failure",
+            ],
+        })
+    return gates
 
 
 def jz_stage_gates(protocol_id, approved):
     """Stage gates of one version, with its overrides and approved prefix."""
     overrides = JZ_VERSIONS[protocol_id].get("stage_gate_overrides", {})
+    chunks = _contract_chunk_gates() if JZ_VERSIONS[protocol_id].get("contract_chunks") else []
     return [
         gate | overrides.get(gate["id"], {})
         | {"authorization": "approved" if gate["id"] in approved else "not-approved"}
-        for gate in JZ_STAGE_GATES
+        for gate in (*JZ_STAGE_GATES, *chunks)
     ]
+
+
+def committed_prerequisites(prerequisites):
+    """Prerequisites with committed evidence; earlier chunks are verified at run time."""
+    return [stage for stage in prerequisites if stage not in JZ_CONTRACT_CHUNK_STAGES]
+
+
+def derive_jz_bootes_source(bootes_bytes, bound_sha256, bootes_protocol, protocol_id):
+    """Rewrite one hash-bound Bootes source into its Jean Zay form (enumerated fields only).
+
+    Only checkpoint/inventory/asset paths and the protocol/matrix references change.
+    """
+    bootes_root = "/local_scratch2/gzappavi"
+    bootes_repo = f"{bootes_root}/wan_experiments_r3_cpu_20260926"
+    bootes_input = f"{bootes_root}/r3_stage3/input"
+    _require(hashlib.sha256(bootes_bytes).hexdigest() == bound_sha256,
+             "Bootes source differs from its bound SHA-256")
+    source = copy.deepcopy(json.loads(bootes_bytes))
+
+    def rewrite(container, key, old, new):
+        _require(container.get(key) == old,
+                 f"Bootes source field {key} differs from the bound value")
+        container[key] = new
+
+    rewrite(source["checkpoint"], "path",
+            f"{bootes_root}/hf/hub/models--Wan-AI--Wan2.1-I2V-14B-480P/"
+            "snapshots/6b73f84e66371cdfe870c72acd6826e1d61cf279", JZ_CHECKPOINT_PATH)
+    rewrite(source["checkpoint"], "inventory", f"{bootes_repo}/docs/u1_checkpoint_inventory.json",
+            f"{JZ_REPO_ROOT}/docs/u1_checkpoint_inventory.json")
+    _require(len(source["scenes"]) == 1, "Bootes source must have one scene")
+    scene = source["scenes"][0]
+    inputs = f"{JZ_REFERENCE_ROOT}/bootes-inputs"
+    rewrite(scene, "reference_image", f"{bootes_input}/reference.png", f"{inputs}/reference.png")
+    for actor in scene["actors"]:
+        rewrite(actor, "isolated_image", f"{bootes_input}/reference.png", f"{inputs}/reference.png")
+    for actor_id, name in (("actor-left", "mask-left.png"), ("actor-right", "mask-right.png")):
+        rewrite(scene["segmentation_masks"], actor_id, f"{bootes_input}/{name}", f"{inputs}/{name}")
+    rewrite(source["r3_evidence"], "protocol", f"{bootes_repo}/docs/{bootes_protocol}",
+            f"{JZ_REPO_ROOT}/{jz_protocol_relative_path(protocol_id)}")
+    rewrite(source["r3_evidence"], "matrix", f"{bootes_repo}/docs/r3_test_matrix_v3.json",
+            f"{JZ_REPO_ROOT}/{JZ_MATRIX_PATH}")
+    text = json.dumps(source, indent=2) + "\n"
+    _require(bootes_root not in text, "derived Jean Zay source still names a Bootes path")
+    return text.encode()
+
+
+def bootes_v19_stage4_source_path(name):
+    return f"{JZ_BOOTES_V19_STAGE4_SOURCE_ROOT}/bootes-v19-source-stage4-{name}.json"
+
+
+def jz_contract_sources(protocol_id, repo=None):
+    """Deterministic Jean Zay contract-case source bytes per name, from committed v19 sources."""
+    from .r3_contracts import STAGE4_V19_SOURCES  # noqa: PLC0415
+
+    repo = Path(repo or Path(__file__).resolve().parents[1])
+    return {
+        name: derive_jz_bootes_source(
+            (repo / bootes_v19_stage4_source_path(name)).read_bytes(), digest,
+            "r3_protocol_v19.json", protocol_id,
+        )
+        for name, digest in STAGE4_V19_SOURCES.items()
+    }
+
+
+def jz_contract_chunk_plan(sources, matrix):
+    """Frozen order (parity pairs first) of every runnable single-rank case, cut into chunks."""
+    from .r3_contract_cases import planned_contract_order  # noqa: PLC0415
+
+    ordered, pairs = planned_contract_order(sources, matrix)
+    size = -(-len(ordered) // JZ_CONTRACT_CHUNK_COUNT)
+    chunks = [ordered[start:start + size] for start in range(0, len(ordered), size)]
+    _require(len(chunks) == JZ_CONTRACT_CHUNK_COUNT and all(chunks),
+             "J1 contract-case plan does not split into the declared chunks")
+    first = {job["job_id"] for job in chunks[0]}
+    _require(all(job_id in first for pair in pairs.values() for job_id in pair.values()),
+             "J1 contract-case parity pairs must complete within the first chunk")
+    return chunks, pairs
 
 
 def protocol_offload_model(protocol):
@@ -318,7 +505,8 @@ def protocol_offload_model(protocol):
 
 
 def jz_authorization(protocol, stage_id):
-    _require(is_jz_protocol(protocol) and stage_id in J1_STAGE_IDS, "unknown J1 stage")
+    _require(is_jz_protocol(protocol) and stage_id in jz_stage_ids(protocol["protocol_id"]),
+             "unknown J1 stage")
     return protocol["execution_amendment"]["authorization_record"][stage_id]
 
 
@@ -451,7 +639,7 @@ def _stage_authorization(stage_id, protocol_id, assets, frozen_values):
     attempt = f"attempt-{JZ_VERSIONS[protocol_id].get('attempts', {}).get(stage_id, 1)}"
     protocol_file = jz_protocol_relative_path(protocol_id)
     command = (
-        f"sbatch {JZ_STAGE_SLURM[stage_id]}tools/j1_slurm_stage.sh {stage_id} {protocol_file}"
+        f"sbatch {JZ_STAGE_SLURM.get(stage_id, '')}tools/j1_slurm_stage.sh {stage_id} {protocol_file}"
     )
     common = {
         "authorized_stage": stage_id,
@@ -461,6 +649,8 @@ def _stage_authorization(stage_id, protocol_id, assets, frozen_values):
         "stop_after_stage": True,
     }
     source = {"path": jz_source_path(protocol_id), "sha256": frozen_values["source_sha256"]}
+    if stage_id in JZ_CONTRACT_CHUNK_STAGES:
+        return _contract_chunk_authorization(stage_id, protocol_id, assets, frozen_values, common)
     if stage_id == "backend-kernel-canary":
         return common | {
             "authorized_operations": [
@@ -513,15 +703,78 @@ def _stage_authorization(stage_id, protocol_id, assets, frozen_values):
          else {"report_only_bootes_v16_reference": JZ_BOOTES_V16_REFERENCE})
 
 
+def jz_contract_chunk_output(protocol_id, stage_id):
+    attempt = f"attempt-{JZ_VERSIONS[protocol_id].get('attempts', {}).get(stage_id, 1)}"
+    index = JZ_CONTRACT_CHUNK_STAGES.index(stage_id) + 1
+    return f"{JZ_RUN_ROOT}/contract-cases/chunk-{index}/{attempt}"
+
+
+def _contract_chunk_authorization(stage_id, protocol_id, assets, frozen_values, common):
+    contract = frozen_values["contract"]
+    v19 = contract["v19_record"]
+    index = JZ_CONTRACT_CHUNK_STAGES.index(stage_id)
+    protocol_file = jz_protocol_relative_path(protocol_id)
+    dependency = (
+        "" if index == 0
+        else f"--dependency=afterok:{JZ_PREVIOUS_CHUNK_JOB_VARIABLE} --kill-on-invalid-dep=yes "
+    )
+    chunk_jobs = contract["chunks"][index]
+    previous = None
+    if index:
+        previous_stage = JZ_CONTRACT_CHUNK_STAGES[index - 1]
+        previous = {
+            "stage_id": previous_stage,
+            "record": f"{jz_contract_chunk_output(protocol_id, previous_stage)}/attempt.json",
+        }
+    return common | {
+        "command": (
+            f"sbatch --parsable {dependency}{JZ_CONTRACT_CHUNK_SLURM}tools/j1_slurm_stage.sh "
+            f"{stage_id} {protocol_file}"
+        ),
+        "authorized_operations": [
+            "verify-jean-zay-node-class-source-environment-checkpoint-and-prerequisites",
+            *(["verify-passed-previous-contract-chunk-record"] if index else []),
+            "sequential-isolated-single-rank-contract-case-jobs-of-this-chunk-and-parity-comparisons",
+        ],
+        "prohibited_operations": [
+            "repeat-attempt", "additional-jobs", "jobs-outside-this-chunk",
+            "distributed-execution", "later-stage-execution", "scientific-claim",
+        ],
+        "sources": {
+            name: {"path": jz_contract_source_path(protocol_id, name), "sha256": digest}
+            for name, digest in contract["sources"].items()
+        },
+        "assets": assets,
+        "output": jz_contract_chunk_output(protocol_id, stage_id),
+        "min_free_gpu_bytes": 75161927680,
+        "job_timeout_seconds": JZ_CONTRACT_JOB_TIMEOUT_SECONDS,
+        "stop_policy": v19["stop_policy"],
+        "method_parameters": v19["method_parameters"],
+        "expected_jobs": v19["expected_jobs"],
+        "chunk": {
+            "index": index + 1,
+            "count": JZ_CONTRACT_CHUNK_COUNT,
+            "plan_sha256": contract["plan_sha256"],
+            "jobs": chunk_jobs,
+            "parity_pairs": contract["pairs"] if index == 0 else {},
+        },
+        "previous_chunk": previous,
+    }
+
+
+def contract_plan_sha256(chunks, pairs):
+    return hashlib.sha256(canonical_json_bytes({"chunks": chunks, "pairs": pairs})).hexdigest()
+
+
 def _prerequisite_evidence(amendment, approved, frozen, spec, gates):
     """Frozen versions bind the passed evidence of the last approved stage's prerequisites."""
     declared = amendment.get("prerequisite_evidence")
     if not frozen or not approved:
         _require(declared == [], "J1 draft or unapproved version must not declare prerequisite evidence")
         return []
-    prerequisites = next(
+    prerequisites = committed_prerequisites(next(
         gate["prerequisites"] for gate in gates if gate["id"] == approved[-1]
-    )
+    ))
     _require(
         isinstance(declared, list)
         and [entry.get("stage_id") if isinstance(entry, dict) else None for entry in declared]
@@ -544,6 +797,23 @@ def _prerequisite_evidence(amendment, approved, frozen, spec, gates):
     return declared
 
 
+def _contract_values(protocol_id, v19_record):
+    """Contract-case sources and chunk plan, recomputed from committed inputs at validation."""
+    repo = Path(__file__).resolve().parents[1]
+    source_bytes = jz_contract_sources(protocol_id, repo)
+    chunks, pairs = jz_contract_chunk_plan(
+        {name: json.loads(data) for name, data in source_bytes.items()},
+        _read_json(repo / JZ_MATRIX_PATH),
+    )
+    return {
+        "sources": {name: hashlib.sha256(data).hexdigest() for name, data in source_bytes.items()},
+        "chunks": chunks,
+        "pairs": pairs,
+        "plan_sha256": contract_plan_sha256(chunks, pairs),
+        "v19_record": v19_record,
+    }
+
+
 def expected_jz_protocol(protocol):
     """Reconstruct the only acceptable jz protocol for ``protocol['protocol_id']``."""
     protocol_id = protocol.get("protocol_id")
@@ -551,7 +821,8 @@ def expected_jz_protocol(protocol):
     frozen = protocol.get("frozen_at") is not None
     _require(frozen or spec["draft_allowed"], f"{protocol_id} must be frozen")
     approved = list(spec["approved_stages"]) if frozen else []
-    sequence = [stage for stage in J1_STAGE_IDS if stage not in spec.get("withdrawn_stages", ())]
+    stage_ids = jz_stage_ids(protocol_id)
+    sequence = [stage for stage in stage_ids if stage not in spec.get("withdrawn_stages", ())]
     _require(approved == sequence[: len(approved)] and (bool(approved) or not frozen),
              "J1 stages must be approved in sequence")
     # Canary-only versions never depend on the pair source or the Bootes capture.
@@ -571,7 +842,7 @@ def expected_jz_protocol(protocol):
     records = amendment.get("authorization_record")
     _require(
         isinstance(source, dict) and isinstance(components, dict) and isinstance(records, dict)
-        and set(records) == set(J1_STAGE_IDS),
+        and set(records) == set(stage_ids),
         "J1 amendment bindings are missing or malformed",
     )
     _require(
@@ -594,9 +865,15 @@ def expected_jz_protocol(protocol):
         },
         "source_sha256": _freeze(pair_source.get("sha256"), binds_source, _require_sha256,
                                  "pair source sha256"),
+        "contract": None,
         "reference_manifest_sha256": _freeze(reference.get("manifest_sha256"), binds_inputs,
                                              _require_sha256, "reference capture manifest sha256"),
     }
+    pinned = spec.get("pinned_pair_source")
+    _require(pinned is None or frozen_values["source_sha256"] == pinned[1],
+             "J1 pinned pair source differs from the passed pair's source")
+    if spec.get("contract_chunks"):
+        frozen_values["contract"] = _contract_values(protocol_id, old["authorization_record"])
     old_environment = old["environment_binding"]
     node_class = {
         "binding_kind": "node-class",
@@ -629,7 +906,7 @@ def expected_jz_protocol(protocol):
     expected["protocol_id"] = protocol_id
     expected["lineage"] = {"protocol_id": spec["lineage"][0], "sha256": spec["lineage"][1]}
     expected["frozen_at"] = frozen_values["frozen_at"]
-    expected["claim_boundary"] = JZ_CLAIM_BOUNDARY
+    expected["claim_boundary"] = spec.get("claim_boundary", JZ_CLAIM_BOUNDARY)
     expected["amendment_rule"] = JZ_AMENDMENT_RULE
     expected["approvals"] = {"gpu_execution": approval, "hardware_environment": approval}
     expected["runtime_declarations"]["hardware_identifier"] = node_class_hardware_identifier(
@@ -661,7 +938,7 @@ def expected_jz_protocol(protocol):
         "route_process_bindings": routes,
         "authorization_record": {
             stage: _stage_authorization(stage, protocol_id, assets, frozen_values)
-            for stage in J1_STAGE_IDS
+            for stage in stage_ids
         },
         "prerequisite_evidence": _prerequisite_evidence(amendment, approved, frozen, spec, gates),
         "hook_canary_contract": old["hook_canary_contract"],
@@ -718,7 +995,8 @@ def verify_jz_prerequisites(repo, protocol, stage_id):
     gate = next(stage for stage in protocol["execution_amendment"]["stage_gates"]
                 if stage["id"] == stage_id)
     declared = protocol["execution_amendment"]["prerequisite_evidence"]
-    _require([entry["stage_id"] for entry in declared] == gate["prerequisites"],
+    _require([entry["stage_id"] for entry in declared]
+             == committed_prerequisites(gate["prerequisites"]),
              f"J1 {stage_id} prerequisite evidence is incomplete")
     repo = Path(repo).resolve()
     records = {}
@@ -728,11 +1006,24 @@ def verify_jz_prerequisites(repo, protocol, stage_id):
                  and sha256_file(path) == entry["sha256"],
                  f"J1 prerequisite {entry['stage_id']} changed or is missing")
         record = _read_json(path)
+        if entry["stage_id"] == "single-rank-generator-canary":
+            # Pair records carry their binding at top level and must show passed parity
+            # under this version's generation settings.
+            valid = (
+                record.get("protocol_sha256") == entry["protocol_sha256"]
+                and record.get("comparison", {}).get("measurements", {}).get("passed") is True
+                and record.get("r3_acceptance") is False
+                and record.get("generation_settings")
+                == {"offload_model": protocol_offload_model(protocol)}
+            )
+        else:
+            valid = (
+                record.get("bindings", {}).get("protocol_sha256") == entry["protocol_sha256"]
+                and record.get("scope", {}).get("distributed_execution_performed") is False
+            )
         _require(
-            record.get("stage_id") == entry["stage_id"]
-            and record.get("status") == "passed"
-            and record.get("bindings", {}).get("protocol_sha256") == entry["protocol_sha256"]
-            and record.get("scope", {}).get("distributed_execution_performed") is False,
+            record.get("stage_id") == entry["stage_id"] and record.get("status") == "passed"
+            and valid,
             f"J1 prerequisite {entry['stage_id']} has invalid stage/status/binding/scope",
         )
         records[entry["stage_id"]] = record
