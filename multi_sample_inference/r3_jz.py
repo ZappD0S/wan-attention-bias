@@ -204,11 +204,22 @@ JZ_STAGE_SLURM = {
     STEP0_STAGE: "",
     "single-rank-generator-canary": "--qos=qos_gpu_a100-t3 --time=04:00:00 ",
 }
+# Frozen jz files bound as lineage by later versions (verified on disk at validation).
+JZ_V1_PROTOCOL_SHA256 = "6ef409e45045a0f5217023c2cbd91611d26dfa8fea4846f9cd1f8897fa8aa5db"
+# ``attempts`` numbers a stage's one-shot output directory; it defaults to 1. A retry
+# after a consumed approval is a new version with the next attempt number.
 JZ_VERSIONS = {
     "r3-gpu-contracts-jz-v1": {
         "lineage": ("r3-gpu-contracts-v19", V19_PROTOCOL_SHA256),
         "draft_allowed": True,
         "approved_stages": ("backend-kernel-canary",),
+    },
+    # Canary retry: jz-v1 attempt 1 failed before any CUDA kernel (no git on compute nodes).
+    "r3-gpu-contracts-jz-v2": {
+        "lineage": ("r3-gpu-contracts-jz-v1", JZ_V1_PROTOCOL_SHA256),
+        "draft_allowed": False,
+        "approved_stages": ("backend-kernel-canary",),
+        "attempts": {"backend-kernel-canary": 2},
     },
 }
 _FROZEN_AT = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z")
@@ -376,6 +387,7 @@ def _check_frozen_at(value, label):
 
 
 def _stage_authorization(stage_id, protocol_id, assets, frozen_values):
+    attempt = f"attempt-{JZ_VERSIONS[protocol_id].get('attempts', {}).get(stage_id, 1)}"
     protocol_file = jz_protocol_relative_path(protocol_id)
     command = (
         f"sbatch {JZ_STAGE_SLURM[stage_id]}tools/j1_slurm_stage.sh {stage_id} {protocol_file}"
@@ -398,7 +410,7 @@ def _stage_authorization(stage_id, protocol_id, assets, frozen_values):
                 "checkpoint-or-model-load", "generation", "distributed-execution",
                 "repeat-attempt", "later-stage-execution", "scientific-claim",
             ],
-            "output": f"{JZ_RUN_ROOT}/backend-canary/attempt-1/backend-kernel-canary.json",
+            "output": f"{JZ_RUN_ROOT}/backend-canary/{attempt}/backend-kernel-canary.json",
         }
     if stage_id == STEP0_STAGE:
         return common | {
@@ -418,7 +430,7 @@ def _stage_authorization(stage_id, protocol_id, assets, frozen_values):
                 "manifest_sha256": frozen_values["reference_manifest_sha256"],
                 "report": dict(JZ_REFERENCE_REPORT),
             },
-            "output": f"{JZ_RUN_ROOT}/step0-probe/attempt-1",
+            "output": f"{JZ_RUN_ROOT}/step0-probe/{attempt}",
             "min_free_gpu_bytes": 75161927680,
             "job_timeout_seconds": 1800,
         }
@@ -433,7 +445,7 @@ def _stage_authorization(stage_id, protocol_id, assets, frozen_values):
         ],
         "source": source,
         "assets": assets,
-        "output": f"{JZ_RUN_ROOT}/generator-pair/attempt-1",
+        "output": f"{JZ_RUN_ROOT}/generator-pair/{attempt}",
         "min_free_gpu_bytes": 75161927680,
         "job_timeout_seconds": 3600,
         "report_only_bootes_v16_reference": JZ_BOOTES_V16_REFERENCE,
@@ -603,6 +615,11 @@ def validate_jz_protocol_identity(protocol):
         protocol.get("lineage") == {"protocol_id": lineage[0], "sha256": lineage[1]},
         "J1 jz protocol lineage differs from its frozen predecessor",
     )
+    if lineage[0] in JZ_VERSIONS:
+        # A jz predecessor must still exist unchanged at its repository path.
+        frozen = Path(__file__).resolve().parents[1] / jz_protocol_relative_path(lineage[0])
+        _require(frozen.is_file() and sha256_file(frozen) == lineage[1],
+                 f"J1 frozen predecessor {lineage[0]} is unavailable or changed")
 
 
 def validate_jz_execution_amendment(protocol):
